@@ -218,7 +218,8 @@ def vendor_profile_view(request):
                     )
                 except Exception as e:
                     messages.error(request, f"Document upload error: {str(e)}")
-            return redirect("vendor_profile")
+            next_url = request.POST.get("next")
+            return redirect(next_url if next_url else "vendor_profile")
 
         elif action == "submit_kyc":
             try:

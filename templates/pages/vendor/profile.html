@@ -38,7 +38,7 @@
     <!-- Vendor Governance & Status Overview Cards -->
     <div class="row g-3 mb-4">
         <!-- 1. Vendor Lifecycle Status Card -->
-        <div class="col-md-3 col-sm-6">
+        <div class="col-12 col-sm-6 col-xl-3">
             <div class="card glass-card border-0 shadow-sm h-100">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-2">
@@ -46,17 +46,17 @@
                         <i class="fa-solid fa-user-gear text-primary fs-5"></i>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge py-2 px-3 rounded-pill fs-6 {% if vendor.status == 'ACTIVE' %}bg-success{% elif vendor.status == 'APPROVED' %}bg-info text-dark{% elif vendor.status == 'KYC_REVIEW' or vendor.status == 'SUBMITTED' %}bg-warning text-dark{% elif vendor.status == 'ON_HOLD' %}bg-warning text-dark{% elif vendor.status == 'SUSPENDED' or vendor.status == 'REJECTED' %}bg-danger{% else %}bg-secondary{% endif %}">
+                        <span class="badge py-2 px-3 rounded-pill fs-6 text-wrap text-start {% if vendor.status == 'ACTIVE' %}bg-success{% elif vendor.status == 'APPROVED' %}bg-info text-dark{% elif vendor.status == 'KYC_REVIEW' or vendor.status == 'SUBMITTED' %}bg-warning text-dark{% elif vendor.status == 'ON_HOLD' %}bg-warning text-dark{% elif vendor.status == 'SUSPENDED' or vendor.status == 'REJECTED' %}bg-danger{% else %}bg-secondary{% endif %}">
                             <i class="fa-solid fa-circle-dot me-1 small"></i> {{ vendor.get_status_display }}
                         </span>
                     </div>
-                    <div class="small text-muted mt-2">Ref: <span class="font-monospace text-dark fw-bold">{{ vendor.vendor_number }}</span></div>
+                    <div class="small text-muted mt-2 text-truncate">Ref: <span class="font-monospace text-dark fw-bold">{{ vendor.vendor_number }}</span></div>
                 </div>
             </div>
         </div>
 
         <!-- 2. Approved Status Card -->
-        <div class="col-md-3 col-sm-6">
+        <div class="col-12 col-sm-6 col-xl-3">
             <div class="card glass-card border-0 shadow-sm h-100">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-2">
@@ -65,19 +65,19 @@
                     </div>
                     <div>
                         {% if vendor.status == 'ACTIVE' or vendor.status == 'APPROVED' %}
-                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 fs-6">
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 fs-6 text-wrap text-start">
                                 <i class="fa-solid fa-check-circle me-1"></i> Approved
                             </span>
                         {% elif vendor.status == 'KYC_REVIEW' or vendor.status == 'SUBMITTED' %}
-                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-3 py-2 fs-6">
+                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-3 py-2 fs-6 text-wrap text-start">
                                 <i class="fa-solid fa-clock me-1"></i> Under Review
                             </span>
                         {% elif vendor.status == 'REJECTED' %}
-                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-3 py-2 fs-6">
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-3 py-2 fs-6 text-wrap text-start">
                                 <i class="fa-solid fa-xmark-circle me-1"></i> Rejected
                             </span>
                         {% else %}
-                            <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-3 py-2 fs-6">
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-3 py-2 fs-6 text-wrap text-start">
                                 <i class="fa-solid fa-hourglass-start me-1"></i> Pending Submission
                             </span>
                         {% endif %}
@@ -88,7 +88,7 @@
         </div>
 
         <!-- 3. Vendor Categories Card -->
-        <div class="col-md-3 col-sm-6">
+        <div class="col-12 col-sm-6 col-xl-3">
             <div class="card glass-card border-0 shadow-sm h-100">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-2">
@@ -96,17 +96,17 @@
                         <i class="fa-solid fa-tags text-info fs-5"></i>
                     </div>
                     <div>
-                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-2 fs-6">
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-2 fs-6 text-wrap text-start d-inline-block text-break" style="max-width: 100%;">
                             <i class="fa-solid fa-tag me-1"></i> {{ vendor.category.name }}
                         </span>
                     </div>
-                    <div class="small text-muted mt-2 font-monospace">Code: {{ vendor.category.code }}</div>
+                    <div class="small text-muted mt-2 font-monospace text-truncate">Code: {{ vendor.category.code }}</div>
                 </div>
             </div>
         </div>
 
         <!-- 4. Overall Risk Level Card -->
-        <div class="col-md-3 col-sm-6">
+        <div class="col-12 col-sm-6 col-xl-3">
             <div class="card glass-card border-0 shadow-sm h-100">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-2">
@@ -115,11 +115,11 @@
                     </div>
                     <div>
                         {% if latest_risk %}
-                            <span class="badge {% if latest_risk.risk_level == 'LOW' %}bg-success{% elif latest_risk.risk_level == 'MEDIUM' %}bg-warning text-dark{% else %}bg-danger{% endif %} rounded-pill px-3 py-2 fs-6">
+                            <span class="badge {% if latest_risk.risk_level == 'LOW' %}bg-success{% elif latest_risk.risk_level == 'MEDIUM' %}bg-warning text-dark{% else %}bg-danger{% endif %} rounded-pill px-3 py-2 fs-6 text-wrap text-start d-inline-block text-break" style="max-width: 100%;">
                                 <i class="fa-solid fa-shield me-1"></i> {{ latest_risk.get_risk_level_display }}
                             </span>
                         {% else %}
-                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 fs-6">
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 fs-6 text-wrap text-start d-inline-block text-break" style="max-width: 100%;">
                                 <i class="fa-solid fa-check me-1"></i> Low Risk (Good Standing)
                             </span>
                         {% endif %}
@@ -579,6 +579,12 @@
                         <label class="form-label small fw-semibold">Select File (PDF, PNG, JPG &le; 10MB)</label>
                         <input type="file" name="kyc_file" class="form-control form-control-sm" required>
                     </div>
+                </div>
+                <div class="modal-footer border-top bg-light py-2 px-4 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 shadow-sm fw-semibold">
+                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> Upload Document
+                    </button>
                 </div>
             </form>
         </div>
