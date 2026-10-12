@@ -33,6 +33,20 @@ class IsSuperAdmin(BasePermission):
         )
 
 
+class IsNotVendorUser(BasePermission):
+    """
+    Blocks external vendor users from accessing internal resources and directories.
+    """
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return not (
+            getattr(request.user, "is_vendor", False)
+            or getattr(request.user, "role_code", None) == Role.VENDOR_USER
+        )
+
+
 class IsRequester(BasePermission):
     def has_permission(self, request, view):
         return bool(

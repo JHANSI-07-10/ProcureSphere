@@ -2,7 +2,7 @@ import os
 
 from django.core.exceptions import ValidationError
 from django.http import FileResponse
-from rest_framework import status, viewsets
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from apps.audit.models import AuditLog
 
-from .models import ContractDocument, ContractMilestone, ContractObligation
+from .models import Contract, ContractDocument, ContractMilestone, ContractObligation
 from .permissions import CanManageContract, CanViewContract, IsLegalManager, IsNotAuditor
 from .selectors import get_contracts_qs
 from .serializers import (
@@ -39,10 +39,24 @@ from .services import (
 
 class ContractViewSet(viewsets.ModelViewSet):
     serializer_class = ContractSerializer
-    permission_classes = [IsAuthenticated, CanViewContract, IsNotAuditor]
+    permission_classes = [IsAuthenticated, CanManageContract, CanViewContract]
 
     def get_queryset(self):
-        return get_contracts_qs(user=self.request.user)
+        status_param = self.request.query_params.get("status", "").strip().upper()
+        if status_param:
+            valid_statuses = [choice[0] for choice in Contract.STATUS_CHOICES]
+            if status_param not in valid_statuses:
+                raise serializers.ValidationError(
+                    {
+                        "status": [
+                            f"Invalid status '{status_param}'. Valid choices are: {', '.join(valid_statuses)}"
+                        ]
+                    }
+                )
+        search_param = self.request.query_params.get("search", "").strip()
+        return get_contracts_qs(
+            user=self.request.user, status=status_param or None, search=search_param or None
+        )
 
     def perform_create(self, serializer):
         role_code = getattr(self.request.user, "role_code", None) or (

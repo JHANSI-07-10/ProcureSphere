@@ -155,14 +155,22 @@ class AwardApproveAPIView(APIView):
         )
         if org and event_org and event_org.id != org.id:
             return Response(
-                {"detail": "Permission denied: Sourcing event belongs to another organization."},
+                {
+                    "error": {
+                        "code": "PERMISSION_DENIED",
+                        "message": "Permission denied: Sourcing event belongs to another organization.",
+                    }
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         if event.status == SourcingEvent.STATUS_AWARDED:
             return Response(
                 {
-                    "detail": f"Sourcing Event {event.event_number} is already awarded. Duplicate award approval is prevented."
+                    "error": {
+                        "code": "INVALID_TRANSITION",
+                        "message": f"Sourcing Event {event.event_number} is already awarded. Duplicate award approval is prevented.",
+                    }
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -174,7 +182,10 @@ class AwardApproveAPIView(APIView):
         ]:
             return Response(
                 {
-                    "detail": f"Sourcing Event in status '{event.status}' cannot be awarded, rejected, or returned."
+                    "error": {
+                        "code": "INVALID_TRANSITION",
+                        "message": f"Sourcing Event in status '{event.status}' cannot be awarded, rejected, or returned.",
+                    }
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -208,7 +219,10 @@ class AwardApproveAPIView(APIView):
             if not winning_bid:
                 return Response(
                     {
-                        "detail": "A valid submitted winning bid must be selected for award approval."
+                        "error": {
+                            "code": "VALIDATION_ERROR",
+                            "message": "A valid submitted winning bid must be selected for award approval.",
+                        }
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
@@ -232,12 +246,20 @@ class AwardApproveAPIView(APIView):
                     status=status.HTTP_200_OK,
                 )
             except Exception as e:
-                return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": {"code": "VALIDATION_ERROR", "message": str(e)}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         elif action in ["REJECT", "RETURN"]:
             if not comments:
                 return Response(
-                    {"detail": "Rejection/return justification comments are mandatory."},
+                    {
+                        "error": {
+                            "code": "VALIDATION_ERROR",
+                            "message": "Rejection/return justification comments are mandatory.",
+                        }
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -269,7 +291,12 @@ class AwardApproveAPIView(APIView):
             )
 
         return Response(
-            {"detail": f"Invalid action '{action}'. Supported actions: APPROVE, REJECT, RETURN."},
+            {
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": f"Invalid action '{action}'. Supported actions: APPROVE, REJECT, RETURN.",
+                }
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 

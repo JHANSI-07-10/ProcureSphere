@@ -7,6 +7,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.accounts.api_views import SessionLoginView, SessionLogoutView
 from apps.accounts.views import portal_login_view, portal_logout_view
+from apps.core.views import custom_404_view
 
 from .healthchecks import health, readyz
 
@@ -61,7 +62,9 @@ urlpatterns = [
     path("api/v1/reports/", include("apps.reports.api_urls")),
     path("api/v1/audit/", include("apps.audit.api_urls")),
     path("api/v1/manager/", include("apps.core.manager_api_urls")),
+    re_path(r"^api/.*$", custom_404_view),
 ]
+
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,7 +1,12 @@
-from rest_framework import permissions, serializers, viewsets
+from decimal import Decimal
+
+from rest_framework import permissions, serializers, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 
+from apps.accounts.models import Role
 from apps.audit.permissions import AuditorReadOnlyPermission
 
 from .models import PRAttachment, PRLine, PurchaseRequisition
@@ -11,6 +16,7 @@ class PRLineSerializer(serializers.ModelSerializer):
     class Meta:
         model = PRLine
         fields = "__all__"
+        read_only_fields = ["id", "requisition", "created_at", "updated_at"]
 
 
 class PRAttachmentSerializer(serializers.ModelSerializer):
@@ -20,7 +26,7 @@ class PRAttachmentSerializer(serializers.ModelSerializer):
 
 
 class PurchaseRequisitionSerializer(serializers.ModelSerializer):
-    lines = PRLineSerializer(many=True, read_only=True)
+    lines = PRLineSerializer(many=True, required=False)
     attachments = PRAttachmentSerializer(many=True, read_only=True)
     requester_email = serializers.CharField(source="requester.email", read_only=True)
     department_name = serializers.CharField(source="department.name", read_only=True)
@@ -28,20 +34,74 @@ class PurchaseRequisitionSerializer(serializers.ModelSerializer):
     class Meta:
         model = PurchaseRequisition
         fields = "__all__"
+        read_only_fields = [
+            "id",
+            "pr_number",
+            "status",
+            "total_amount",
+            "requester",
+            "created_at",
+            "updated_at",
+        ]
+
+    def create(self, validated_data):
+        lines_data = self.initial_data.get("line_items", self.initial_data.get("lines", []))
+        validated_data.pop("lines", None)
+
+        if not validated_data.get("pr_number"):
+            from django.utils import timezone
+
+            count = PurchaseRequisition.objects.count() + 1
+            validated_data["pr_number"] = f"PR-{timezone.now().strftime('%Y')}-{count:05d}"
+
+        pr = super().create(validated_data)
+
+        total = Decimal("0.00")
+        for item in lines_data:
+            qty = Decimal(str(item.get("quantity", 1)))
+            price = Decimal(str(item.get("unit_price", 0)))
+            line_tot = qty * price
+            total += line_tot
+            PRLine.objects.create(
+                requisition=pr,
+                item_description=item.get("item_description", "Line Item"),
+                quantity=qty,
+                unit_of_measure=item.get("unit_of_measure", "EA"),
+                unit_price=price,
+                line_total=line_tot,
+            )
+
+        if total > Decimal("0.00"):
+            pr.total_amount = total
+            pr.save(update_fields=["total_amount"])
+
+        return pr
 
 
 class CanCreateRequisitionPermission(permissions.BasePermission):
+    """
+    Requisition RBAC:
+    - Vendors are completely blocked from internal requisitions (403).
+    - Writes (create, update, delete) are strictly limited to Requesters and Super Admins.
+    - Auditors, approvers, vendors receive 403 before payload validation.
+    """
+
     def has_permission(self, request, view):
-        if request.method == "POST":
-            user = request.user
-            if not user or not user.is_authenticated:
-                return False
-            if user.is_superuser:
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        role_code = getattr(request.user, "role_code", None) or (
+            request.user.role.code if hasattr(request.user, "role") and request.user.role else None
+        )
+
+        if getattr(request.user, "is_vendor", False) or role_code == Role.VENDOR_USER:
+            return False
+
+        if request.method in ["POST", "PUT", "PATCH", "DELETE"]:
+            if request.user.is_superuser:
                 return True
-            role_code = getattr(user, "role_code", None) or (
-                user.role.code if hasattr(user, "role") and user.role else None
-            )
-            return role_code in ["REQUESTER", "SUPER_ADMIN"]
+            return role_code in [Role.REQUESTER, Role.SUPER_ADMIN]
+
         return True
 
 
@@ -60,30 +120,64 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_superuser or user.role_code in [
-            "SUPER_ADMIN",
-            "PROC_EXEC",
-            "PROC_MGR",
-            "AUDITOR",
+        if not user or not user.is_authenticated:
+            return self.queryset.none()
+
+        role_code = getattr(user, "role_code", None) or (
+            user.role.code if hasattr(user, "role") and user.role else None
+        )
+
+        # Vendors have zero visibility into internal purchase requisitions
+        if getattr(user, "is_vendor", False) or role_code == Role.VENDOR_USER:
+            return self.queryset.none()
+
+        if user.is_superuser or role_code in [
+            Role.SUPER_ADMIN,
+            Role.PROC_EXEC,
+            Role.PROC_MGR,
+            Role.AUDITOR,
         ]:
-            return self.queryset
-        # Requester / Approver scoped by department
-        if user.department_id:
-            return self.queryset.filter(department_id=user.department_id)
-        return self.queryset.filter(requester=user)
+            qs = self.queryset
+        elif role_code == Role.DEPT_APPROVER and user.department_id:
+            qs = self.queryset.filter(department_id=user.department_id)
+        else:
+            # Requesters are strictly scoped to their own requisitions (prevents IDOR)
+            qs = self.queryset.filter(requester=user)
+
+        # Filter by status
+        status_param = self.request.query_params.get("status", "").strip().upper()
+        if status_param:
+            valid_statuses = [c[0] for c in PurchaseRequisition.STATUS_CHOICES]
+            if status_param not in valid_statuses:
+                raise serializers.ValidationError(
+                    {
+                        "status": f"Invalid status '{status_param}'. Valid choices: {', '.join(valid_statuses)}"
+                    }
+                )
+            qs = qs.filter(status=status_param)
+
+        return qs
 
     def perform_create(self, serializer):
         user = self.request.user
         role_code = getattr(user, "role_code", None) or (
             user.role.code if hasattr(user, "role") and user.role else None
         )
-        if not user.is_superuser and role_code not in ["REQUESTER", "SUPER_ADMIN"]:
+        if not user.is_superuser and role_code not in [Role.REQUESTER, Role.SUPER_ADMIN]:
             from rest_framework.exceptions import PermissionDenied
 
             raise PermissionDenied(
                 "Only users with the Requester role can raise Purchase Requisitions."
             )
         serializer.save(requester=user)
+
+    @action(detail=True, methods=["post"], url_path="submit")
+    def submit(self, request, pk=None):
+        pr = self.get_object()
+        from apps.requisitions.services import submit_purchase_requisition_service
+
+        updated_pr = submit_purchase_requisition_service(pr=pr, user=request.user)
+        return Response(self.get_serializer(updated_pr).data, status=status.HTTP_200_OK)
 
 
 router = DefaultRouter()

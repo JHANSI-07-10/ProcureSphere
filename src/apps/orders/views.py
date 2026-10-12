@@ -263,3 +263,78 @@ def po_amendments_partial_view(request, pk):
     return render(
         request, "orders/partials/htmx_amendments.html", {"po": po, "amendments": amendments}
     )
+
+
+@login_required(login_url="/login/")
+def po_create_view(request):
+    """View & modal to issue a purchase order."""
+    user = request.user
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
+    )
+    if role_code not in [Role.SUPER_ADMIN, Role.PROC_EXEC, Role.PROC_MGR]:
+        raise PermissionDenied("Only Procurement users can issue purchase orders.")
+
+    if request.method == "POST":
+        from decimal import Decimal
+
+        from apps.organization.models import CostCenter
+        from apps.requisitions.models import PurchaseRequisition
+        from apps.vendors.models import Vendor
+
+        from .services import generate_purchase_order_service
+
+        vendor_id = request.POST.get("vendor_id")
+        cost_center_id = request.POST.get("cost_center_id")
+        req_id = request.POST.get("requisition_id")
+        item_name = request.POST.get("item_name", "Line Item")
+        qty = request.POST.get("quantity", "1")
+        price = request.POST.get("unit_price", "0")
+        terms = request.POST.get(
+            "terms_and_conditions",
+            "Standard HPE Enterprise Procurement Terms & Conditions",
+        )
+
+        vendor = get_object_or_404(Vendor, pk=vendor_id)
+        cost_center = get_object_or_404(CostCenter, pk=cost_center_id)
+        requisition = PurchaseRequisition.objects.filter(pk=req_id).first() if req_id else None
+
+        line_items = [
+            {
+                "item_description": item_name,
+                "quantity": Decimal(str(qty)),
+                "unit_price": Decimal(str(price)),
+                "unit_of_measure": "EA",
+            }
+        ]
+
+        po = generate_purchase_order_service(
+            vendor=vendor,
+            cost_center=cost_center,
+            line_items=line_items,
+            created_by_user=user,
+            requisition=requisition,
+            terms_and_conditions=terms,
+        )
+        messages.success(request, f"Purchase Order {po.po_number} issued successfully.")
+        return redirect("order_detail", pk=po.pk)
+
+    from apps.organization.models import CostCenter
+    from apps.requisitions.models import PurchaseRequisition
+    from apps.vendors.models import Vendor
+
+    vendors = Vendor.objects.filter(status=Vendor.STATUS_ACTIVE).order_by("legal_name")
+    cost_centers = CostCenter.objects.all().order_by("code")
+    requisitions = PurchaseRequisition.objects.filter(
+        status=PurchaseRequisition.STATUS_APPROVED
+    ).order_by("-created_at")
+
+    return render(
+        request,
+        "orders/partials/po_create_modal.html",
+        {
+            "vendors": vendors,
+            "cost_centers": cost_centers,
+            "requisitions": requisitions,
+        },
+    )

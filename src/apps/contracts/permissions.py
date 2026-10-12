@@ -41,17 +41,25 @@ class IsNotAuditor(permissions.BasePermission):
 
 class CanManageContract(permissions.BasePermission):
     """
-    Permission required to amend or update core contract structure:
-    Legal Manager, Procurement Manager, Contract Owner, or Super Admin (excludes Auditor & Vendor User).
+    Permission required to create, amend, terminate, or update core contract structure:
+    Legal Manager, Procurement Manager, Procurement Executive, Super Admin.
+    Requesters, Auditors, and Vendors are strictly prohibited (403) from write operations.
     """
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
         role_code = getattr(request.user, "role_code", None) or (
             request.user.role.code if getattr(request.user, "role", None) else None
         )
-        return role_code not in [Role.AUDITOR, Role.VENDOR_USER]
+        return role_code in [
+            Role.SUPER_ADMIN,
+            Role.LEGAL_MGR,
+            Role.PROC_MGR,
+            Role.PROC_EXEC,
+        ]
 
     def has_object_permission(self, request, view, obj):
         return self.has_permission(request, view)
@@ -64,6 +72,17 @@ class CanViewContract(permissions.BasePermission):
     - Vendor User: View only vendor's contracts
     - Contract Owner: View owned contracts
     """
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        role_code = getattr(request.user, "role_code", None) or (
+            request.user.role.code if getattr(request.user, "role", None) else None
+        )
+        # Requesters have no contract access per RBAC matrix
+        if role_code == Role.REQUESTER:
+            return False
+        return True
 
     def has_object_permission(self, request, view, obj):
         if not request.user or not request.user.is_authenticated:

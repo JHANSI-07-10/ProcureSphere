@@ -111,8 +111,17 @@ class SourcingEventViewSet(
     def close_bidding(self, request, pk=None):
         _require_manage(request)
         event = self.get_object()
-        if event.status == SourcingEvent.STATUS_BID_WINDOW:
-            services.close_bid_window_service(event=event, user=request.user)
+        if event.status != SourcingEvent.STATUS_BID_WINDOW:
+            return Response(
+                {
+                    "error": {
+                        "code": "INVALID_TRANSITION",
+                        "message": f"Cannot close bidding on event in status '{event.status}'. Must be in BID_WINDOW.",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        services.close_bid_window_service(event=event, user=request.user)
         return self._ok(event)
 
     @extend_schema(request=None, responses=SourcingEventSerializer)

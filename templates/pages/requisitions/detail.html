@@ -47,7 +47,6 @@
             <i class="fa-solid fa-ban me-2"></i>Cancel PR
         </button>
         {% endif %}
-        {% if pr.status in 'SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' and role_code in 'DEPT_APPROVER,PROC_MGR,SUPER_ADMIN' %}
         {% if pr.status == 'SUBMITTED' or pr.status == 'MANAGER_REVIEW' %}
             {% if role_code == 'DEPT_APPROVER' or role_code == 'PROC_MGR' or role_code == 'SUPER_ADMIN' %}
         <form method="POST" action="{% url 'requisition_approve' pr.pk %}" class="d-inline-flex gap-2">
@@ -390,8 +389,6 @@
         </div>
         
         <!-- Approval Action Decision Card -->
-        {% if pr.status in 'SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' and role_code in 'DEPT_APPROVER,PROC_MGR,SUPER_ADMIN' %}
-        <div class="card border-warning border-2 shadow-sm rounded-4 mb-4 bg-warning bg-opacity-10">
         {% if pr.status == 'SUBMITTED' or pr.status == 'MANAGER_REVIEW' %}
             {% if role_code == 'DEPT_APPROVER' or role_code == 'PROC_MGR' or role_code == 'SUPER_ADMIN' %}
         <div class="card border-primary border-2 shadow-sm rounded-4 mb-4 bg-primary bg-opacity-10">

@@ -360,13 +360,51 @@ def home_view(request):  # noqa: C901
     return render(request, "pages/dashboards/requester_dashboard.html")
 
 
+def _is_api_request(request):
+    accept = request.headers.get("Accept", "").lower()
+    return request.path.startswith("/api/") or "application/json" in accept or "json" in accept
+
+
 def custom_404_view(request, exception=None):
+    if _is_api_request(request):
+        return JsonResponse(
+            {
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "The requested resource was not found.",
+                    "details": {"path": request.path},
+                }
+            },
+            status=404,
+        )
     return render(request, "404.html", status=404)
 
 
 def custom_500_view(request):
+    if _is_api_request(request):
+        return JsonResponse(
+            {
+                "error": {
+                    "code": "INTERNAL_SERVER_ERROR",
+                    "message": "An unexpected server error occurred.",
+                    "details": {},
+                }
+            },
+            status=500,
+        )
     return render(request, "500.html", status=500)
 
 
 def custom_403_view(request, exception=None):
+    if _is_api_request(request):
+        return JsonResponse(
+            {
+                "error": {
+                    "code": "PERMISSION_DENIED",
+                    "message": "You do not have permission to access this resource.",
+                    "details": {"detail": str(exception) if exception else "Permission denied."},
+                }
+            },
+            status=403,
+        )
     return render(request, "403.html", status=403)

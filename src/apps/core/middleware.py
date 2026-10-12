@@ -66,3 +66,30 @@ class AuditContextMiddleware:
             return self.get_response(request)
         finally:
             _request_context.user = None
+
+
+class SecurityHeadersMiddleware:
+    """
+    Middleware that enforces baseline security headers per PRD and AGENTS.md §12:
+    Content-Security-Policy, Strict-Transport-Security, Permissions-Policy.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if "Content-Security-Policy" not in response:
+            response["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com; "
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
+                "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net data:; "
+                "img-src 'self' data: https:; "
+                "connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com;"
+            )
+        if request.is_secure() and "Strict-Transport-Security" not in response:
+            response["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        if "Permissions-Policy" not in response:
+            response["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        return response

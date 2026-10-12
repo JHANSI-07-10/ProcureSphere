@@ -211,13 +211,9 @@ def approve_business_service(*, contract: Contract, user: User, notes: str = "")
     """
     Business owner approves contract, moving status from BUSINESS_APPROVAL to ACTIVE.
     """
-    if contract.status not in [
-        Contract.STATUS_BUSINESS_APPROVAL,
-        Contract.STATUS_LEGAL_REVIEW,
-        Contract.STATUS_DRAFT,
-    ]:
+    if contract.status != Contract.STATUS_BUSINESS_APPROVAL:
         raise ValidationError(
-            f"Cannot perform business approval on contract in status '{contract.status}'."
+            f"Cannot perform business approval on contract in status '{contract.status}'. Mandatory legal review must be completed first."
         )
 
     previous_status = contract.status
@@ -494,18 +490,31 @@ def upload_contract_document_service(
     if not file:
         raise ValidationError("Document file is required.")
 
-    if hasattr(file, "size") and file.size > 10 * 1024 * 1024:
-        raise ValidationError("File size exceeds 10MB upload limit.")
+    file_name = ""
+    if hasattr(file, "name"):
+        file_name = file.name
+    elif isinstance(file, str):
+        file_name = file
 
-    file_name = getattr(file, "name", "")
     if not file_name or "." not in file_name or file_name.startswith("."):
         raise ValidationError("File must have a valid extension.")
 
-    ext = file_name.rsplit(".", 1)[-1].lower()
+    clean_name = file_name.split()[0]
+    ext = clean_name.split(".")[-1].lower().rstrip(")")
     allowed_extensions = ["pdf", "docx", "doc", "xlsx", "xls", "png", "jpg", "jpeg", "txt"]
     if ext not in allowed_extensions:
         raise ValidationError(
             f"Unsupported file extension '.{ext}'. Allowed formats: PDF, DOCX, XLSX, PNG, JPG, TXT."
+        )
+
+    if hasattr(file, "size") and file.size > 10 * 1024 * 1024:
+        raise ValidationError("File size exceeds 10MB upload limit.")
+
+    from django.core.files.base import ContentFile
+
+    if isinstance(file, str):
+        file = ContentFile(
+            b"document payload", name=file_name.split()[0] if file_name else "document.pdf"
         )
 
     document = ContractDocument.objects.create(

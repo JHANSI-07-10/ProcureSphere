@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Count, Q, Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
@@ -273,6 +274,15 @@ class VendorSerializer(serializers.ModelSerializer):
             ),
         }
 
+    def create(self, validated_data):
+        if not validated_data.get("vendor_number"):
+            from django.utils import timezone
+
+            count = Vendor.objects.count() + 1
+            year = timezone.now().strftime("%Y")
+            validated_data["vendor_number"] = f"VND-{year}-{count:05d}"
+        return super().create(validated_data)
+
 
 class VendorViewSet(viewsets.ModelViewSet):
     queryset = (
@@ -321,8 +331,9 @@ class VendorViewSet(viewsets.ModelViewSet):
                 return qs.none()
 
         filterset = VendorFilter(self.request.query_params, queryset=qs)
-        if filterset.is_valid():
-            qs = filterset.qs
+        if not filterset.is_valid():
+            raise serializers.ValidationError(filterset.errors)
+        qs = filterset.qs
 
         # Search query
         search_query = self.request.query_params.get("search", "").strip()
@@ -405,12 +416,19 @@ class VendorViewSet(viewsets.ModelViewSet):
         vendor = self.get_object()
         new_status = str(request.data.get("status", "")).upper()
         notes = str(request.data.get("notes", request.data.get("reason", ""))).strip()
-        vendor = set_vendor_status_governance_service(
-            vendor=vendor,
-            actor=request.user,
-            new_status=new_status,
-            notes=notes,
-        )
+        try:
+            vendor = set_vendor_status_governance_service(
+                vendor=vendor,
+                actor=request.user,
+                new_status=new_status,
+                notes=notes,
+            )
+        except DjangoValidationError as exc:
+            msg = exc.messages[0] if hasattr(exc, "messages") and exc.messages else str(exc)
+            return Response(
+                {"error": {"code": "INVALID", "message": msg, "details": {}}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(self.get_serializer(vendor).data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["get"], url_path="allowed-transitions")

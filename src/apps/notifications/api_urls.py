@@ -2,6 +2,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
@@ -20,6 +21,11 @@ HIGH_PRIORITY_TYPES = [
 
 
 class NotificationSerializer(serializers.ModelSerializer):
+    recipient = serializers.PrimaryKeyRelatedField(
+        queryset=Notification._meta.get_field("recipient").remote_field.model.objects.all(),
+        required=False,
+        allow_null=True,
+    )
     recipient_email = serializers.CharField(source="recipient.email", read_only=True)
     notification_type_display = serializers.CharField(
         source="get_notification_type_display", read_only=True
@@ -43,6 +49,16 @@ class NotificationSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def to_internal_value(self, data):
+        data_copy = data.copy() if hasattr(data, "copy") else dict(data)
+        if "type" in data_copy and "notification_type" not in data_copy:
+            data_copy["notification_type"] = data_copy["type"]
+        if "recipient" in data_copy and str(data_copy["recipient"]).lower() == "self":
+            request = self.context.get("request")
+            if request and request.user:
+                data_copy["recipient"] = request.user.pk
+        return super().to_internal_value(data_copy)
+
     def get_is_high_priority(self, obj):
         return obj.notification_type in HIGH_PRIORITY_TYPES
 
@@ -53,6 +69,14 @@ class NotificationViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     search_fields = ["title", "message"]
     ordering_fields = ["created_at", "is_read", "notification_type"]
+
+    def perform_create(self, serializer):
+        recipient = serializer.validated_data.get("recipient")
+        if recipient and recipient != self.request.user:
+            raise PermissionDenied(
+                "Permission Denied: Users cannot push notifications to other recipients."
+            )
+        serializer.save(recipient=recipient or self.request.user)
 
     def get_queryset(self):
         user = self.request.user

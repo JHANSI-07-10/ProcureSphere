@@ -1,5 +1,17 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
-from rest_framework.exceptions import ValidationError as DRFValidationError
+from django.db.models.deletion import ProtectedError
+from django.http import Http404
+from rest_framework import status
+from rest_framework.exceptions import (
+    AuthenticationFailed,
+    NotAuthenticated,
+    NotFound,
+    PermissionDenied,
+    Throttled,
+)
+from rest_framework.exceptions import (
+    ValidationError as DRFValidationError,
+)
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 
@@ -15,6 +27,19 @@ def custom_exception_handler(exc, context):
         }
     }
     """
+    if isinstance(exc, ProtectedError):
+        protected_list = [str(obj) for obj in exc.protected_objects]
+        return Response(
+            {
+                "error": {
+                    "code": "PROTECTED_ERROR",
+                    "message": "Cannot delete record because it is referenced by other active entities.",
+                    "details": {"protected_objects": protected_list},
+                }
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     if isinstance(exc, DjangoValidationError):
         # Domain/service-layer validation errors -> structured 400 instead of a 500.
         detail = exc.message_dict if hasattr(exc, "error_dict") else exc.messages
@@ -24,9 +49,25 @@ def custom_exception_handler(exc, context):
 
     if response is not None:
         status_code = response.status_code
-        error_code = getattr(exc, "default_code", "API_ERROR")
-        if isinstance(error_code, str):
-            error_code = error_code.upper()
+
+        # Derive semantic error code based on exception and status code
+        if isinstance(exc, (Http404, NotFound)) or status_code == status.HTTP_404_NOT_FOUND:
+            error_code = "NOT_FOUND"
+        elif isinstance(exc, PermissionDenied) or status_code == status.HTTP_403_FORBIDDEN:
+            error_code = "PERMISSION_DENIED"
+        elif (
+            isinstance(exc, (NotAuthenticated, AuthenticationFailed))
+            or status_code == status.HTTP_401_UNAUTHORIZED
+        ):
+            error_code = "AUTHENTICATION_FAILED"
+        elif isinstance(exc, Throttled) or status_code == status.HTTP_429_TOO_MANY_REQUESTS:
+            error_code = "THROTTLED"
+        elif isinstance(exc, DRFValidationError) or status_code == status.HTTP_400_BAD_REQUEST:
+            error_code = "VALIDATION_ERROR"
+        else:
+            error_code = getattr(exc, "default_code", "API_ERROR")
+            if isinstance(error_code, str):
+                error_code = error_code.upper()
 
         message = str(exc)
         if hasattr(exc, "detail") and isinstance(exc.detail, dict):
