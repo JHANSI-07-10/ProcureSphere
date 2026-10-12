@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main, dev, staging ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
@@ -20,7 +24,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U procure_user -d procuresphere_test_db"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -76,6 +80,7 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: config.settings.dev
           DB_HOST: localhost
+          DB_PORT: "5432"
           DB_NAME: procuresphere_test_db
           DB_USER: procure_user
           DB_PASSWORD: procure_password
@@ -88,6 +93,7 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: config.settings.dev
           DB_HOST: localhost
+          DB_PORT: "5432"
           DB_NAME: procuresphere_test_db
           DB_USER: procure_user
           DB_PASSWORD: procure_password

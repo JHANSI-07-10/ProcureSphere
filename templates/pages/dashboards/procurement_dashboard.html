@@ -17,6 +17,24 @@
     </div>
 </div>
 
+{% if ready_prs_count > 0 %}
+<div class="alert alert-info border-info border-2 shadow-sm rounded-4 d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between p-3 mb-4 gap-3">
+    <div class="d-flex align-items-center">
+        <div class="bg-primary text-white rounded-circle p-2 me-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+            <i class="fa-solid fa-file-circle-check fa-lg"></i>
+        </div>
+        <div>
+            <h6 class="fw-bold mb-1 text-dark"><i class="fa-solid fa-bell text-primary me-1"></i> Approved Requisitions Intake: {{ ready_prs_count }} PR{{ ready_prs_count|pluralize }} Ready for Sourcing</h6>
+            <span class="small text-secondary d-block">Department-approved requisitions awaiting RFQ/RFP event creation and vendor invites.</span>
+        </div>
+    </div>
+    <button class="btn btn-primary btn-sm rounded-pill px-4 py-2 fw-bold shadow-sm flex-shrink-0 text-nowrap"
+            onclick="document.querySelector('[data-bs-target=\'#pillar-sourcing\']').click();">
+        <i class="fa-solid fa-arrow-right me-1"></i> View Sourcing Intake
+    </button>
+</div>
+{% endif %}
+
 <!-- Procurement Executive Workspace: 4-pillar HTMX operations (all actions persist to PostgreSQL via services.py) -->
 <div class="glass-card p-4 shadow-sm mb-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -32,7 +50,7 @@
     </div>
     <ul class="nav nav-pills small gap-1 flex-wrap mb-3" role="tablist" aria-label="Executive workspace pillars">
         <li class="nav-item" role="presentation"><button class="nav-link active py-1 px-3" data-bs-toggle="pill" data-bs-target="#pillar-vendors" type="button" role="tab"><i class="fa-solid fa-id-card me-1"></i>1 · Vendor Qualification</button></li>
-        <li class="nav-item" role="presentation"><button class="nav-link py-1 px-3" data-bs-toggle="pill" data-bs-target="#pillar-sourcing" type="button" role="tab"><i class="fa-solid fa-gavel me-1"></i>2 · Sourcing &amp; RFQ</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link py-1 px-3" data-bs-toggle="pill" data-bs-target="#pillar-sourcing" type="button" role="tab"><i class="fa-solid fa-gavel me-1"></i>2 · Sourcing &amp; RFQ{% if ready_prs_count > 0 %} <span class="badge bg-warning text-dark rounded-pill ms-1">{{ ready_prs_count }}</span>{% endif %}</button></li>
         <li class="nav-item" role="presentation"><button class="nav-link py-1 px-3" data-bs-toggle="pill" data-bs-target="#pillar-eval" type="button" role="tab"><i class="fa-solid fa-scale-balanced me-1"></i>3 · Evaluation &amp; Award</button></li>
         <li class="nav-item" role="presentation"><button class="nav-link py-1 px-3" data-bs-toggle="pill" data-bs-target="#pillar-po" type="button" role="tab"><i class="fa-solid fa-cart-shopping me-1"></i>4 · PO Execution</button></li>
     </ul>
