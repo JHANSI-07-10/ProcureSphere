@@ -264,9 +264,13 @@ def home_view(request):  # noqa: C901
             .order_by("-updated_at")[:8]
         )
         avg_scorecard = VendorScorecard.objects.aggregate(avg=Avg("composite_score"))["avg"]
+        ready_prs_count = PurchaseRequisition.objects.filter(
+            status=PurchaseRequisition.STATUS_APPROVED
+        ).count()
         context = {
             "sourcing": get_sourcing_dashboard_metrics(),
             "governance": get_governance_metrics(),
+            "ready_prs_count": ready_prs_count,
             "open_pos": PurchaseOrder.objects.filter(
                 status__in=[
                     PurchaseOrder.STATUS_ISSUED,

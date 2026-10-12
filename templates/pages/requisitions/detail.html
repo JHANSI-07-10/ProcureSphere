@@ -29,26 +29,29 @@
         <h2 class="fw-bold text-dark mb-1">{{ pr.pr_number }}</h2>
         <p class="text-muted mb-0">{{ pr.title }}</p>
     </div>
-    
+
     <div class="d-flex gap-2">
-        {% if pr.status == 'DRAFT' and pr.requester == request.user and role_code in 'REQUESTER,SUPER_ADMIN' %}
-        <a href="{% url 'requisition_edit' pr.pk %}" class="btn btn-outline-secondary rounded-pill px-4 fw-semibold">
-            <i class="fa-solid fa-pen me-2"></i>Edit
-        </a>
-        <form method="POST" action="{% url 'requisition_submit' pr.pk %}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-success rounded-pill shadow-sm px-4 fw-semibold">
-                <i class="fa-solid fa-paper-plane me-2"></i>Submit for Approval
+        {% if pr.requester == request.user and role_code in 'REQUESTER,SUPER_ADMIN' %}
+            {% if pr.status == 'DRAFT' %}
+            <a href="{% url 'requisition_edit' pr.pk %}" class="btn btn-outline-secondary rounded-pill px-4 fw-semibold">
+                <i class="fa-solid fa-pen me-2"></i>Edit
+            </a>
+            <form method="POST" action="{% url 'requisition_submit' pr.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success rounded-pill shadow-sm px-4 fw-semibold">
+                    <i class="fa-solid fa-paper-plane me-2"></i>Submit for Approval
+                </button>
+            </form>
+            {% endif %}
+            {% if pr.status in 'DRAFT,SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' %}
+            <button type="button" class="btn btn-outline-danger rounded-pill px-4 fw-semibold" data-bs-toggle="modal" data-bs-target="#cancelConfirmModal">
+                <i class="fa-solid fa-ban me-2"></i>Cancel PR
             </button>
-        </form>
+            {% endif %}
         {% endif %}
-        {% if pr.status in 'DRAFT,SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' and pr.requester == request.user and role_code in 'REQUESTER,SUPER_ADMIN' %}
-        <button type="button" class="btn btn-outline-danger rounded-pill px-4 fw-semibold" data-bs-toggle="modal" data-bs-target="#cancelConfirmModal">
-            <i class="fa-solid fa-ban me-2"></i>Cancel PR
-        </button>
-        {% endif %}
+
         {% if pr.status == 'SUBMITTED' or pr.status == 'MANAGER_REVIEW' %}
-            {% if role_code == 'DEPT_APPROVER' or role_code == 'PROC_MGR' or role_code == 'SUPER_ADMIN' %}
+        {% if role_code in 'DEPT_APPROVER,PROC_MGR,SUPER_ADMIN' %}
         <form method="POST" action="{% url 'requisition_approve' pr.pk %}" class="d-inline-flex gap-2">
             {% csrf_token %}
             <button type="submit" class="btn btn-success rounded-pill shadow-sm px-4 fw-bold">
@@ -61,9 +64,9 @@
                 <i class="fa-solid fa-times me-2"></i>Reject PR
             </button>
         </form>
-            {% endif %}
+        {% endif %}
         {% elif pr.status == 'BUDGET_REVIEW' %}
-            {% if role_code == 'FINANCE_AP' or role_code == 'SUPER_ADMIN' %}
+        {% if role_code in 'FINANCE_AP,SUPER_ADMIN' %}
         <form method="POST" action="{% url 'requisition_approve' pr.pk %}" class="d-inline-flex gap-2">
             {% csrf_token %}
             <button type="submit" class="btn btn-warning rounded-pill shadow-sm px-4 fw-bold text-dark">
@@ -76,7 +79,7 @@
                 <i class="fa-solid fa-times me-2"></i>Reject Exception
             </button>
         </form>
-            {% endif %}
+        {% endif %}
         {% endif %}
     </div>
 </div>
@@ -84,11 +87,40 @@
 {% if messages %}
 <div class="mb-4">
     {% for message in messages %}
-    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show"
+        role="alert">
+        <i
+            class="fa-solid {% if message.tags == 'error' %}fa-circle-xmark{% elif message.tags == 'warning' %}fa-triangle-exclamation{% else %}fa-circle-check{% endif %} me-2"></i>
         {{ message }}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     {% endfor %}
+</div>
+{% endif %}
+
+<!-- Budget Alert Banner -->
+{% if is_budget_exceeded or pr.status == 'BUDGET_REVIEW' %}
+<div class="alert alert-danger border border-danger shadow-sm rounded-4 mb-4 p-4 d-flex align-items-start gap-3">
+    <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center p-3 fs-3 flex-shrink-0 shadow-sm"
+        style="width: 52px; height: 52px;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+    </div>
+    <div class="flex-grow-1">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h5 class="fw-bold text-danger mb-0">Budget Alert: Requisition Exceeds Cost Center Budget</h5>
+            <span class="badge bg-danger rounded-pill px-2 py-1">Budget Overrun</span>
+        </div>
+        <p class="mb-2 text-dark">
+            This requisition's total amount of <strong>${{ pr.total_amount|floatformat:2 }}</strong> exceeds the
+            available budget
+            {% if available_budget != None %}(<strong>${{ available_budget|floatformat:2 }}</strong> remaining){% endif %}
+            for Cost Center <strong>{{ pr.cost_center.code }} - {{ pr.cost_center.name }}</strong>.
+        </p>
+        <div class="small text-muted">
+            <i class="fa-solid fa-shield-halved me-1 text-danger"></i> Requires Finance & AP budget exception approval
+            before proceeding.
+        </div>
+    </div>
 </div>
 {% endif %}
 
@@ -97,87 +129,91 @@
 <div class="card border-0 shadow-sm rounded-4 mb-4">
     <div class="card-body p-4 p-md-5">
         <div class="position-relative d-flex justify-content-between align-items-center">
-            
+
             <!-- Background Line -->
-            <div class="position-absolute bg-light" style="height: 4px; top: 20px; left: 10%; right: 10%; z-index: 1;"></div>
-            
+            <div class="position-absolute bg-light" style="height: 4px; top: 20px; left: 10%; right: 10%; z-index: 1;">
+            </div>
+
             <!-- Active Fill Line (Calculated based on status) -->
             {% if pr.status == 'DRAFT' %}
-                <div class="position-absolute bg-primary" style="height: 4px; top: 20px; left: 10%; right: 90%; z-index: 2;"></div>
+            <div class="position-absolute bg-primary"
+                style="height: 4px; top: 20px; left: 10%; right: 90%; z-index: 2;"></div>
             {% elif pr.status in 'SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' %}
-                <div class="position-absolute bg-primary" style="height: 4px; top: 20px; left: 10%; right: 65%; z-index: 2;"></div>
+            <div class="position-absolute bg-primary"
+                style="height: 4px; top: 20px; left: 10%; right: 63%; z-index: 2;"></div>
             {% elif pr.status == 'APPROVED' %}
-                <div class="position-absolute bg-primary" style="height: 4px; top: 20px; left: 10%; right: 35%; z-index: 2;"></div>
+            <div class="position-absolute bg-primary"
+                style="height: 4px; top: 20px; left: 10%; right: 37%; z-index: 2;"></div>
             {% elif pr.status in 'SOURCING,PO_ISSUED' %}
-                <!-- Check if all POs are completed -->
-                <div class="position-absolute bg-primary" style="height: 4px; top: 20px; left: 10%; right: 10%; z-index: 2;"></div>
+            <div class="position-absolute bg-primary"
+                style="height: 4px; top: 20px; left: 10%; right: 10%; z-index: 2;"></div>
             {% endif %}
 
             <!-- Step 1: Draft -->
-            <div class="position-relative text-center" style="z-index: 3; width: 120px;">
-                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm" style="width: 44px; height: 44px;">
+            <div class="position-relative text-center" style="z-index: 3; width: 140px;">
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm"
+                    style="width: 44px; height: 44px;">
                     <i class="fa-solid fa-pen-ruler"></i>
                 </div>
                 <span class="fw-bold small text-dark d-block">Draft</span>
             </div>
-            
+
             <!-- Step 2: Pending Review -->
-            <div class="position-relative text-center" style="z-index: 3; width: 120px;">
-                {% if pr.status in 'DRAFT' %}
-                    <div class="bg-light text-muted rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 border border-2 border-white shadow-sm" style="width: 44px; height: 44px;">
-                        <i class="fa-solid fa-clock-rotate-left"></i>
-                    </div>
-                    <span class="small text-muted d-block fw-semibold">Pending Review</span>
+            <div class="position-relative text-center" style="z-index: 3; width: 140px;">
+                {% if pr.status == 'DRAFT' %}
+                <div class="bg-light text-muted rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 border border-2 border-white shadow-sm"
+                    style="width: 44px; height: 44px;">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+                <span class="small text-muted d-block fw-semibold">Pending Review</span>
                 {% else %}
-                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm" style="width: 44px; height: 44px;">
-                        <i class="fa-solid fa-clock-rotate-left"></i>
-                    </div>
-                    <span class="fw-bold small text-dark d-block">Pending Review</span>
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm"
+                    style="width: 44px; height: 44px;">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+                <span class="fw-bold small text-dark d-block">Pending Review</span>
                 {% endif %}
             </div>
 
             <!-- Step 3: Approved -->
-            <div class="position-relative text-center" style="z-index: 3; width: 120px;">
+            <div class="position-relative text-center" style="z-index: 3; width: 140px;">
                 {% if pr.status in 'DRAFT,SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' %}
-                    <div class="bg-light text-muted rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 border border-2 border-white shadow-sm" style="width: 44px; height: 44px;">
-                        <i class="fa-solid fa-check-double"></i>
-                    </div>
-                    <span class="small text-muted d-block fw-semibold">Approved</span>
+                <div class="bg-light text-muted rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 border border-2 border-white shadow-sm"
+                    style="width: 44px; height: 44px;">
+                    <i class="fa-solid fa-check-double"></i>
+                </div>
+                <span class="small text-muted d-block fw-semibold">Approved</span>
                 {% else %}
-                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm" style="width: 44px; height: 44px;">
-                        <i class="fa-solid fa-check-double"></i>
-                    </div>
-                    <span class="fw-bold small text-dark d-block">Approved</span>
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm"
+                    style="width: 44px; height: 44px;">
+                    <i class="fa-solid fa-check-double"></i>
+                </div>
+                <span class="fw-bold small text-dark d-block">Approved</span>
                 {% endif %}
             </div>
 
-            <!-- Step 4: Sourcing/PO -->
-            <div class="position-relative text-center" style="z-index: 3; width: 120px;">
-                {% if pr.status in 'DRAFT,SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW,APPROVED' %}
-                    <div class="bg-light text-muted rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 border border-2 border-white shadow-sm" style="width: 44px; height: 44px;">
-                        <i class="fa-solid fa-file-invoice-dollar"></i>
-                    </div>
-                    <span class="small text-muted d-block fw-semibold">Sourcing / PO</span>
+            <!-- Step 4: Procure Executive -->
+            <div class="position-relative text-center" style="z-index: 3; width: 140px;">
+                {% if pr.status in 'DRAFT,SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' %}
+                <div class="bg-light text-muted rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 border border-2 border-white shadow-sm"
+                    style="width: 44px; height: 44px;">
+                    <i class="fa-solid fa-user-tie"></i>
+                </div>
+                <span class="small text-muted d-block fw-semibold">Procure Executive</span>
+                {% elif pr.status == 'APPROVED' %}
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm"
+                    style="width: 44px; height: 44px;">
+                    <i class="fa-solid fa-user-tie"></i>
+                </div>
+                <span class="fw-bold small text-dark d-block">Procure Executive</span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill" style="font-size: 0.65rem;">Ready for Sourcing</span>
                 {% else %}
-                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm" style="width: 44px; height: 44px;">
-                        <i class="fa-solid fa-file-invoice-dollar"></i>
-                    </div>
-                    <span class="fw-bold small text-dark d-block">Sourcing / PO</span>
-                {% endif %}
-            </div>
-
-            <!-- Step 5: Completed -->
-            <div class="position-relative text-center" style="z-index: 3; width: 120px;">
-                {% if pr.status != 'COMPLETED' %}  <!-- Simplified condition -->
-                    <div class="bg-light text-muted rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 border border-2 border-white shadow-sm" style="width: 44px; height: 44px;">
-                        <i class="fa-solid fa-boxes-stacked"></i>
-                    </div>
-                    <span class="small text-muted d-block fw-semibold">Completed</span>
-                {% else %}
-                    <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm" style="width: 44px; height: 44px;">
-                        <i class="fa-solid fa-boxes-stacked"></i>
-                    </div>
-                    <span class="fw-bold small text-dark d-block">Completed</span>
+                <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm"
+                    style="width: 44px; height: 44px;">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <span class="fw-bold small text-dark d-block">Procure Executive</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 0.65rem;">Sourced / PO</span>
                 {% endif %}
             </div>
 
@@ -189,7 +225,8 @@
     <i class="fa-solid fa-triangle-exclamation fs-2 me-4"></i>
     <div>
         <h5 class="fw-bold mb-1">Requisition Rejected</h5>
-        <p class="mb-0">This requisition was rejected during the approval process. Please check the Approval History below for details.</p>
+        <p class="mb-0">This requisition was rejected during the approval process. Please check the Approval History
+            below for details.</p>
     </div>
 </div>
 {% elif pr.status == 'CANCELLED' %}
@@ -246,7 +283,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Justification -->
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
@@ -259,7 +296,8 @@
 
         <!-- Attachments — always show so approvers can confirm docs were reviewed -->
         <div class="card border-0 shadow-sm rounded-4 mb-4">
-            <div class="card-header bg-white border-bottom-0 pt-4 pb-2 px-4 d-flex align-items-center justify-content-between">
+            <div
+                class="card-header bg-white border-bottom-0 pt-4 pb-2 px-4 d-flex align-items-center justify-content-between">
                 <h5 class="fw-bold text-dark mb-0">
                     <i class="fa-solid fa-paperclip text-primary me-2"></i>Supporting Documents
                 </h5>
@@ -269,21 +307,25 @@
                 {% if pr.attachments.exists %}
                 <ul class="list-group list-group-flush">
                     {% for attachment in pr.attachments.all %}
-                    <li class="list-group-item px-0 border-bottom py-3 d-flex align-items-center justify-content-between">
+                    <li
+                        class="list-group-item px-0 border-bottom py-3 d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center overflow-hidden">
                             {% with ext=attachment.file_extension %}
                             {% if ext == 'pdf' %}
-                                <div class="bg-danger-subtle rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 me-3" style="width:44px;height:44px;">
-                                    <i class="fa-solid fa-file-pdf text-danger fs-4"></i>
-                                </div>
+                            <div class="bg-danger-subtle rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 me-3"
+                                style="width:44px;height:44px;">
+                                <i class="fa-solid fa-file-pdf text-danger fs-4"></i>
+                            </div>
                             {% else %}
-                                <div class="bg-primary-subtle rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 me-3" style="width:44px;height:44px;">
-                                    <i class="fa-solid fa-file-word text-primary fs-4"></i>
-                                </div>
+                            <div class="bg-primary-subtle rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 me-3"
+                                style="width:44px;height:44px;">
+                                <i class="fa-solid fa-file-word text-primary fs-4"></i>
+                            </div>
                             {% endif %}
                             {% endwith %}
                             <div class="overflow-hidden">
-                                <div class="fw-semibold text-dark text-truncate" style="max-width:220px;" title="{{ attachment.title }}">{{ attachment.title }}</div>
+                                <div class="fw-semibold text-dark text-truncate" style="max-width:220px;"
+                                    title="{{ attachment.title }}">{{ attachment.title }}</div>
                                 <div class="text-muted small d-flex align-items-center gap-2 mt-1">
                                     <span><i class="fa-solid fa-weight-hanging fa-xs me-1"></i>{{ attachment.file_size_display }}</span>
                                     {% if attachment.uploaded_by %}
@@ -295,10 +337,9 @@
                                 </div>
                             </div>
                         </div>
-                        <a href="{{ attachment.file.url }}"
-                           target="_blank"
-                           class="btn btn-sm btn-outline-primary rounded-pill px-3 ms-3 flex-shrink-0"
-                           title="Download {{ attachment.title }}">
+                        <a href="{{ attachment.file.url }}" target="_blank"
+                            class="btn btn-sm btn-outline-primary rounded-pill px-3 ms-3 flex-shrink-0"
+                            title="Download {{ attachment.title }}">
                             <i class="fa-solid fa-download me-1"></i>Download
                         </a>
                     </li>
@@ -313,57 +354,62 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-4">
         <!-- Status Panel -->
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-body p-4">
                 <h6 class="text-uppercase text-muted fw-bold mb-3 small">Current Status</h6>
-                
+
                 <div class="d-flex align-items-center mb-3">
                     {% if pr.status == 'DRAFT' %}
-                        <div class="bg-secondary rounded-circle text-white d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
-                            <i class="fa-solid fa-pen-ruler"></i>
-                        </div>
-                        <div>
-                            <h5 class="mb-0 fw-bold">Draft</h5>
-                            <span class="text-muted small">Not yet submitted</span>
-                        </div>
+                    <div class="bg-secondary rounded-circle text-white d-flex align-items-center justify-content-center me-3"
+                        style="width: 48px; height: 48px;">
+                        <i class="fa-solid fa-pen-ruler"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0 fw-bold">Draft</h5>
+                        <span class="text-muted small">Not yet submitted</span>
+                    </div>
                     {% elif pr.status == 'SUBMITTED' or pr.status == 'MANAGER_REVIEW' or pr.status == 'BUDGET_REVIEW' %}
-                        <div class="bg-warning rounded-circle text-dark d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
-                            <i class="fa-solid fa-clock-rotate-left"></i>
-                        </div>
-                        <div>
-                            <h5 class="mb-0 fw-bold">Pending Review</h5>
-                            <span class="text-muted small">{{ pr.get_status_display }}</span>
-                        </div>
+                    <div class="bg-warning rounded-circle text-dark d-flex align-items-center justify-content-center me-3"
+                        style="width: 48px; height: 48px;">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0 fw-bold">Pending Review</h5>
+                        <span class="text-muted small">{{ pr.get_status_display }}</span>
+                    </div>
                     {% elif pr.status == 'APPROVED' %}
-                        <div class="bg-success rounded-circle text-white d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
-                            <i class="fa-solid fa-check"></i>
-                        </div>
-                        <div>
-                            <h5 class="mb-0 fw-bold">Approved</h5>
-                            <span class="text-muted small">Ready for Sourcing/PO</span>
-                        </div>
+                    <div class="bg-success rounded-circle text-white d-flex align-items-center justify-content-center me-3"
+                        style="width: 48px; height: 48px;">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0 fw-bold">Approved</h5>
+                        <span class="text-muted small">Ready for Sourcing/PO</span>
+                    </div>
                     {% elif pr.status == 'REJECTED' %}
-                        <div class="bg-danger rounded-circle text-white d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
-                            <i class="fa-solid fa-xmark"></i>
-                        </div>
-                        <div>
-                            <h5 class="mb-0 fw-bold">Rejected</h5>
-                            <span class="text-muted small">Review comments for details</span>
-                        </div>
+                    <div class="bg-danger rounded-circle text-white d-flex align-items-center justify-content-center me-3"
+                        style="width: 48px; height: 48px;">
+                        <i class="fa-solid fa-xmark"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0 fw-bold">Rejected</h5>
+                        <span class="text-muted small">Review comments for details</span>
+                    </div>
                     {% else %}
-                        <div class="bg-info rounded-circle text-dark d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
-                            <i class="fa-solid fa-info"></i>
-                        </div>
-                        <div>
-                            <h5 class="mb-0 fw-bold">{{ pr.get_status_display }}</h5>
-                            <span class="text-muted small">In progress</span>
-                        </div>
+                    <div class="bg-info rounded-circle text-dark d-flex align-items-center justify-content-center me-3"
+                        style="width: 48px; height: 48px;">
+                        <i class="fa-solid fa-info"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0 fw-bold">{{ pr.get_status_display }}</h5>
+                        <span class="text-muted small">In progress</span>
+                    </div>
                     {% endif %}
                 </div>
-                
+
                 <hr>
                 <div class="mb-2">
                     <span class="text-muted small d-block">Department</span>
@@ -379,31 +425,44 @@
                 </div>
 
                 {% if available_budget != None %}
-                <div class="mt-3 p-3 bg-light rounded-3 border border-success-subtle">
-                    <div class="text-muted small fw-bold text-uppercase"><i class="fa-solid fa-wallet text-success me-1"></i> Available Budget Remaining</div>
-                    <div class="fs-4 fw-bold text-success mt-1">${{ available_budget|floatformat:2 }}</div>
+                <div class="mt-3 p-3 rounded-3 border {% if is_budget_exceeded %}border-danger bg-danger-subtle text-danger-emphasis{% else %}border-success-subtle bg-light{% endif %}">
+                    <div class="small fw-bold text-uppercase {% if is_budget_exceeded %}text-danger{% else %}text-success{% endif %}">
+                        <i class="fa-solid {% if is_budget_exceeded %}fa-triangle-exclamation text-danger{% else %}fa-wallet text-success{% endif %} me-1"></i>
+                        Available Budget Remaining
+                    </div>
+                    <div class="fs-4 fw-bold {% if is_budget_exceeded %}text-danger{% else %}text-success{% endif %} mt-1">
+                        ${{ available_budget|floatformat:2 }}
+                    </div>
+                    {% if is_budget_exceeded %}
+                    <div class="small text-danger fw-semibold mt-1">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Budget Exceeded by ${{ pr.total_amount|floatformat:2 }}
+                    </div>
+                    {% else %}
                     <div class="small text-muted">Cost Center funds available for new PRs</div>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
         </div>
-        
+
         <!-- Approval Action Decision Card -->
         {% if pr.status == 'SUBMITTED' or pr.status == 'MANAGER_REVIEW' %}
-            {% if role_code == 'DEPT_APPROVER' or role_code == 'PROC_MGR' or role_code == 'SUPER_ADMIN' %}
+        {% if role_code in 'DEPT_APPROVER,PROC_MGR,SUPER_ADMIN' %}
         <div class="card border-primary border-2 shadow-sm rounded-4 mb-4 bg-primary bg-opacity-10">
             <div class="card-body p-4">
                 <h6 class="fw-bold text-dark mb-2">
                     <i class="fa-solid fa-stamp text-primary me-2"></i>Approval Action Decision
                 </h6>
-                <p class="small text-muted mb-3">Review business justification and budget impact, then record your decision.</p>
+                <p class="small text-muted mb-3">Review business justification and budget impact, then record your
+                    decision.</p>
 
                 <div class="d-grid gap-2">
                     <form method="POST" action="{% url 'requisition_approve' pr.pk %}">
                         {% csrf_token %}
                         <div class="mb-3">
                             <label class="form-label small fw-semibold text-dark">Decision Comments</label>
-                            <textarea name="comments" class="form-control form-control-sm" rows="2" placeholder="Optional comments or notes..."></textarea>
+                            <textarea name="comments" class="form-control form-control-sm" rows="2"
+                                placeholder="Optional comments or notes..."></textarea>
                         </div>
                         <button type="submit" class="btn btn-success fw-bold shadow-sm rounded-pill py-2 w-100">
                             <i class="fa-solid fa-check me-2"></i> Approve Requisition
@@ -411,63 +470,72 @@
                     </form>
                     <form method="POST" action="{% url 'requisition_reject' pr.pk %}">
                         {% csrf_token %}
-                        <input type="hidden" name="comments" value="Rejected via dashboard" class="reject-comments-mirror">
-                        <button type="submit" class="btn btn-outline-danger fw-bold rounded-pill py-2 w-100 mt-2" onclick="document.querySelector('.reject-comments-mirror').value = this.closest('.d-grid').querySelector('textarea[name=comments]').value || 'Rejected'">
+                        <input type="hidden" name="comments" value="Rejected via dashboard"
+                            class="reject-comments-mirror">
+                        <button type="submit" class="btn btn-outline-danger fw-bold rounded-pill py-2 w-100 mt-2"
+                            onclick="document.querySelector('.reject-comments-mirror').value = this.closest('.d-grid').querySelector('textarea[name=comments]').value || 'Rejected'">
                             <i class="fa-solid fa-xmark me-2"></i> Reject Requisition
                         </button>
                     </form>
                 </div>
             </div>
         </div>
-            {% endif %}
-        {% elif pr.status == 'BUDGET_REVIEW' %}
-            {% if role_code == 'FINANCE_AP' or role_code == 'SUPER_ADMIN' %}
-            <div class="card border-warning border-2 shadow-sm rounded-4 mb-4 bg-warning bg-opacity-10">
-                <div class="card-body p-4">
-                    <h6 class="fw-bold text-dark mb-2">
-                        <i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>Budget Exception Review
-                    </h6>
-                    <p class="small text-muted mb-3">This PR exceeds the available budget limit for its Cost Center. As a Finance user, you must review and explicitly approve this overspend.</p>
-
-                    <div class="d-grid gap-2">
-                        <form method="POST" action="{% url 'requisition_approve' pr.pk %}">
-                            {% csrf_token %}
-                            <div class="mb-3">
-                                <label class="form-label small fw-semibold text-dark">Exception Comments</label>
-                                <textarea name="comments" class="form-control form-control-sm" rows="2" placeholder="Required justification for budget overrun..."></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-warning text-dark fw-bold shadow-sm rounded-pill py-2 w-100">
-                                <i class="fa-solid fa-check-double me-2"></i> Approve Budget Exception
-                            </button>
-                        </form>
-                        <form method="POST" action="{% url 'requisition_reject' pr.pk %}">
-                            {% csrf_token %}
-                            <input type="hidden" name="comments" value="Rejected via dashboard" class="reject-comments-mirror-2">
-                            <button type="submit" class="btn btn-outline-danger fw-bold rounded-pill py-2 w-100 mt-2" onclick="document.querySelector('.reject-comments-mirror-2').value = this.closest('.d-grid').querySelector('textarea[name=comments]').value || 'Budget Rejected'">
-                                <i class="fa-solid fa-xmark me-2"></i> Reject Exception
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            {% else %}
-            <div class="card border-warning shadow-sm rounded-4 mb-4">
-                <div class="card-body p-4 d-flex align-items-center">
-                    <i class="fa-solid fa-lock fs-2 text-warning me-4"></i>
-                    <div>
-                        <h6 class="fw-bold text-dark mb-1">Awaiting Finance Exception Approval</h6>
-                        <p class="small text-muted mb-0">This PR has exceeded its budget allocation and is currently pending a manual exception review by the Finance & AP team.</p>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
         {% endif %}
-        
+        {% elif pr.status == 'BUDGET_REVIEW' %}
+        {% if role_code in 'FINANCE_AP,SUPER_ADMIN' %}
+        <div class="card border-warning border-2 shadow-sm rounded-4 mb-4 bg-warning bg-opacity-10">
+            <div class="card-body p-4">
+                <h6 class="fw-bold text-dark mb-2">
+                    <i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>Budget Exception Review
+                </h6>
+                <p class="small text-muted mb-3">This PR exceeds the available budget limit for its Cost Center. As a
+                    Finance user, you must review and explicitly approve this overspend.</p>
+
+                <div class="d-grid gap-2">
+                    <form method="POST" action="{% url 'requisition_approve' pr.pk %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-dark">Exception Comments</label>
+                            <textarea name="comments" class="form-control form-control-sm" rows="2"
+                                placeholder="Required justification for budget overrun..."></textarea>
+                        </div>
+                        <button type="submit"
+                            class="btn btn-warning text-dark fw-bold shadow-sm rounded-pill py-2 w-100">
+                            <i class="fa-solid fa-check-double me-2"></i> Approve Budget Exception
+                        </button>
+                    </form>
+                    <form method="POST" action="{% url 'requisition_reject' pr.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="comments" value="Rejected via dashboard"
+                            class="reject-comments-mirror-2">
+                        <button type="submit" class="btn btn-outline-danger fw-bold rounded-pill py-2 w-100 mt-2"
+                            onclick="document.querySelector('.reject-comments-mirror-2').value = this.closest('.d-grid').querySelector('textarea[name=comments]').value || 'Budget Rejected'">
+                            <i class="fa-solid fa-xmark me-2"></i> Reject Exception
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="card border-warning shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4 d-flex align-items-center">
+                <i class="fa-solid fa-lock fs-2 text-warning me-4"></i>
+                <div>
+                    <h6 class="fw-bold text-dark mb-1">Awaiting Finance Exception Approval</h6>
+                    <p class="small text-muted mb-0">This PR has exceeded its budget allocation and is currently pending
+                        a manual exception review by the Finance & AP team.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+
         <!-- PO Tracking -->
         {% if pr.purchase_orders.exists %}
         <div class="card border-0 shadow-sm rounded-4 mb-4 border-top border-4 border-success">
             <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
-                <h5 class="fw-bold text-dark mb-0"><i class="fa-solid fa-file-invoice-dollar text-success me-2"></i> Purchase Orders</h5>
+                <h5 class="fw-bold text-dark mb-0"><i class="fa-solid fa-file-invoice-dollar text-success me-2"></i>
+                    Purchase Orders</h5>
             </div>
             <div class="card-body p-4">
                 {% for po in pr.purchase_orders.all %}
@@ -493,18 +561,20 @@
                 {% if approval_history %}
                 <div class="position-relative">
                     <!-- Vertical Line -->
-                    <div class="position-absolute h-100 border-start border-2 border-primary" style="left: 11px; top: 0; opacity: 0.2;"></div>
-                    
+                    <div class="position-absolute h-100 border-start border-2 border-primary"
+                        style="left: 11px; top: 0; opacity: 0.2;"></div>
+
                     {% for action in approval_history %}
                     <div class="position-relative mb-4 ps-4">
-                        <div class="position-absolute bg-primary rounded-circle border border-2 border-white shadow-sm" style="width: 16px; height: 16px; left: 4px; top: 4px;"></div>
-                        
+                        <div class="position-absolute bg-primary rounded-circle border border-2 border-white shadow-sm"
+                            style="width: 16px; height: 16px; left: 4px; top: 4px;"></div>
+
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <span class="fw-bold text-dark">{{ action.get_action_display }}</span>
                             <span class="small text-muted">{{ action.created_at|date:"M d, Y" }}</span>
                         </div>
                         <div class="small text-muted mb-1">By <strong>{{ action.actor.get_full_name|default:action.actor.email }}</strong></div>
-                        
+
                         {% if action.comments %}
                         <div class="p-2 bg-light rounded-3 mt-2 small text-dark border-start border-3 border-secondary">
                             "{{ action.comments }}"
@@ -518,12 +588,13 @@
                 {% endif %}
             </div>
         </div>
-        
+
     </div>
 </div>
 
 <!-- User-Friendly Cancel Confirmation Modal -->
-<div class="modal fade" id="cancelConfirmModal" tabindex="-1" aria-labelledby="cancelConfirmModalLabel" aria-hidden="true">
+<div class="modal fade" id="cancelConfirmModal" tabindex="-1" aria-labelledby="cancelConfirmModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-header border-bottom-0 bg-warning text-dark rounded-top-4 p-4">
@@ -533,12 +604,14 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4 text-center">
-                <div class="bg-warning-subtle text-warning rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 64px; height: 64px;">
+                <div class="bg-warning-subtle text-warning rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
+                    style="width: 64px; height: 64px;">
                     <i class="fa-solid fa-ban fs-2 text-dark"></i>
                 </div>
                 <h5 class="fw-bold text-dark mb-2">Cancel Requisition {{ pr.pr_number }}?</h5>
                 <p class="text-muted mb-0">
-                    Are you sure you want to cancel this purchase requisition? This action will stop all approval workflows.
+                    Are you sure you want to cancel this purchase requisition? This action will stop all approval
+                    workflows.
                 </p>
             </div>
             <div class="modal-footer border-top-0 p-4 justify-content-center gap-2">
