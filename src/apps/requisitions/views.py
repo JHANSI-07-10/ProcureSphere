@@ -206,10 +206,16 @@ def create_view(request):
 
             if action_type == "submit" or "submit" in request.POST:
                 submit_purchase_requisition_service(requisition=pr, user=user)
-                messages.success(
-                    request,
-                    f"Purchase Requisition {pr.pr_number} created and submitted for approval successfully!",
-                )
+                if pr.status == PurchaseRequisition.STATUS_BUDGET_REVIEW:
+                    messages.warning(
+                        request,
+                        f"Budget Alert: Requisition {pr.pr_number} exceeds available budget for Cost Center '{cost_center.code}' and has been routed for Budget Exception Review.",
+                    )
+                else:
+                    messages.success(
+                        request,
+                        f"Purchase Requisition {pr.pr_number} created and submitted for approval successfully!",
+                    )
             else:
                 messages.success(
                     request, f"Purchase Requisition {pr.pr_number} created in Draft status."
@@ -415,6 +421,10 @@ def detail_view(request, pk):
         fiscal_period__is_closed=False,
     ).first()
     available_budget = active_budget.available_amount if active_budget else None
+    is_budget_exceeded = bool(
+        pr.status == PurchaseRequisition.STATUS_BUDGET_REVIEW
+        or (available_budget is not None and pr.total_amount > available_budget)
+    )
 
     base_layout = (
         "manager/base_manager.html"
@@ -446,6 +456,7 @@ def detail_view(request, pk):
             "role_code": role_code,
             "approval_history": approval_history,
             "available_budget": available_budget,
+            "is_budget_exceeded": is_budget_exceeded,
             "base_layout": base_layout,
         },
     )
@@ -469,9 +480,15 @@ def submit_view(request, pk):
 
     try:
         submit_purchase_requisition_service(requisition=pr, user=request.user)
-        messages.success(
-            request, f"Requisition {pr.pr_number} submitted for approval successfully."
-        )
+        if pr.status == PurchaseRequisition.STATUS_BUDGET_REVIEW:
+            messages.warning(
+                request,
+                f"Budget Alert: Requisition {pr.pr_number} exceeds available budget for Cost Center '{pr.cost_center.code}' and has been routed for Budget Exception Review.",
+            )
+        else:
+            messages.success(
+                request, f"Requisition {pr.pr_number} submitted for approval successfully."
+            )
     except Exception as e:
         messages.error(request, f"Error submitting requisition: {str(e)}")
 

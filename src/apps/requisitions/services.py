@@ -150,14 +150,33 @@ def submit_purchase_requisition_service(
         if dept_approvers.exists():
             approvers = dept_approvers
 
-    for approver in approvers:
-        Notification.objects.create(
-            recipient=approver,
-            notification_type=Notification.TYPE_APPROVAL_REQUIRED,
-            title=f"New PR Approval Request: {requisition.pr_number}",
-            message=f"Requisition {requisition.pr_number} ({requisition.title}) amounting to ${requisition.total_amount} requires your department approval review.",
-            target_url=f"/requisitions/{requisition.id}/",
-        )
+    if requisition.status == PurchaseRequisition.STATUS_BUDGET_REVIEW:
+        finance_users = User.objects.filter(role__code=Role.FINANCE_AP)
+        for fin_user in finance_users:
+            Notification.objects.create(
+                recipient=fin_user,
+                notification_type=Notification.TYPE_APPROVAL_REQUIRED,
+                title=f"Budget Alert: PR {requisition.pr_number} Exceeds Budget",
+                message=f"Requisition {requisition.pr_number} (${requisition.total_amount:,.2f}) exceeds available budget for Cost Center {requisition.cost_center.code} and requires budget exception approval.",
+                target_url=f"/requisitions/{requisition.id}/",
+            )
+        for approver in approvers:
+            Notification.objects.create(
+                recipient=approver,
+                notification_type=Notification.TYPE_APPROVAL_REQUIRED,
+                title=f"Budget Alert: PR {requisition.pr_number} Exceeds Budget",
+                message=f"Requisition {requisition.pr_number} (${requisition.total_amount:,.2f}) exceeds available budget for Cost Center {requisition.cost_center.code} and is queued for budget exception review.",
+                target_url=f"/requisitions/{requisition.id}/",
+            )
+    else:
+        for approver in approvers:
+            Notification.objects.create(
+                recipient=approver,
+                notification_type=Notification.TYPE_APPROVAL_REQUIRED,
+                title=f"New PR Approval Request: {requisition.pr_number}",
+                message=f"Requisition {requisition.pr_number} ({requisition.title}) amounting to ${requisition.total_amount:,.2f} requires your department approval review.",
+                target_url=f"/requisitions/{requisition.id}/",
+            )
 
     return requisition
 
@@ -202,6 +221,22 @@ def approve_purchase_requisition_service(
         new_state=requisition.status,
         comments=comments or "Requisition approved.",
     )
+
+    try:
+        from apps.accounts.models import Role, User
+        from apps.notifications.services import create_notification_service
+
+        proc_execs = User.objects.filter(role__code=Role.PROC_EXEC, is_active=True)
+        for pe in proc_execs:
+            create_notification_service(
+                recipient=pe,
+                title="Approved PR Ready for Sourcing",
+                message=f"Requisition {requisition.pr_number} has been approved by {approver.email} and is ready on your Sourcing Intake.",
+                notification_type="IN_APP",
+                action_url=f"/requisitions/{requisition.id}/",
+            )
+    except Exception:
+        pass
 
     return requisition
 
