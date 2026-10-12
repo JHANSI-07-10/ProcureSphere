@@ -1,18 +1,64 @@
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db.models import Count, Q, Sum
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import SAFE_METHODS, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 
+from apps.accounts.models import Role
 from apps.accounts.permissions import IsProcurementManager
-from apps.audit.permissions import AuditorReadOnlyPermission
 from apps.invoices.models import SupplierInvoice
 
 from .models import DeliverySchedule, POAmendment, POLine, PurchaseOrder
-from .services import cancel_purchase_order_governance_service
+from .services import (
+    acknowledge_purchase_order_service,
+    amend_purchase_order_service,
+    cancel_purchase_order_governance_service,
+)
+
+
+class CanManagePurchaseOrder(BasePermission):
+    """
+    Enforces RBAC for Purchase Orders:
+    - Safe methods (GET, HEAD, OPTIONS): Authenticated users (internal or vendor scoped).
+    - Vendors can ONLY acknowledge their own orders via POST /acknowledge/.
+    - Requesters and Auditors cannot create, update, amend, or cancel POs (403).
+    - Creation/Update/Cancel restricted to PROC_EXEC, PROC_MGR, SUPER_ADMIN.
+    """
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        if getattr(request.user, "role_code", None) == Role.AUDITOR:
+            return request.method in SAFE_METHODS
+
+        is_vendor = (
+            getattr(request.user, "is_vendor", False)
+            or getattr(request.user, "role_code", None) == Role.VENDOR_USER
+        )
+
+        if is_vendor:
+            if request.method in SAFE_METHODS:
+                return True
+            if view.action == "acknowledge":
+                return True
+            return False
+
+        if getattr(request.user, "role_code", None) == Role.REQUESTER:
+            return request.method in SAFE_METHODS
+
+        if request.method in SAFE_METHODS:
+            return True
+
+        return request.user.is_superuser or request.user.role_code in [
+            Role.SUPER_ADMIN,
+            Role.PROC_MGR,
+            Role.PROC_EXEC,
+        ]
 
 
 class POLineSerializer(serializers.ModelSerializer):
@@ -168,6 +214,38 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
             "delivery_schedules",
             "invoices",
         ]
+        read_only_fields = [
+            "status",
+            "version",
+            "subtotal",
+            "tax_amount",
+            "total_amount",
+            "acknowledged_at",
+            "acknowledged_by",
+            "created_at",
+            "updated_at",
+        ]
+
+    def create(self, validated_data):
+        lines_data = self.initial_data.get("lines", [])
+        po = super().create(validated_data)
+        if lines_data and isinstance(lines_data, list):
+            subtotal = Decimal("0.00")
+            for item in lines_data:
+                line = POLine.objects.create(
+                    po=po,
+                    item_description=item.get("item_description", "Item"),
+                    quantity=Decimal(str(item.get("quantity", "1"))),
+                    unit_price=Decimal(str(item.get("unit_price", "0.00"))),
+                    unit_of_measure=item.get("unit_of_measure", "EA"),
+                )
+                subtotal += line.line_total
+            tax = subtotal * Decimal("0.10")
+            po.subtotal = subtotal
+            po.tax_amount = tax
+            po.total_amount = subtotal + tax
+            po.save(update_fields=["subtotal", "tax_amount", "total_amount"])
+        return po
 
     def get_vendor_risk_level(self, obj):
         latest_risk = obj.vendor.risk_records.order_by("-created_at").first()
@@ -243,7 +321,7 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
         .order_by("-created_at")
     )
     serializer_class = PurchaseOrderSerializer
-    permission_classes = [IsAuthenticated, AuditorReadOnlyPermission]
+    permission_classes = [IsAuthenticated, CanManagePurchaseOrder]
     filterset_fields = ["status", "vendor", "cost_center"]
     search_fields = [
         "po_number",
@@ -285,6 +363,15 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
         # Filter by status query param
         status_param = self.request.query_params.get("status", "").strip().upper()
         if status_param:
+            valid_statuses = [choice[0] for choice in PurchaseOrder.STATUS_CHOICES]
+            if status_param not in valid_statuses:
+                raise serializers.ValidationError(
+                    {
+                        "status": [
+                            f"Invalid status '{status_param}'. Valid choices are: {', '.join(valid_statuses)}"
+                        ]
+                    }
+                )
             qs = qs.filter(status=status_param)
 
         # Filter by acknowledgement_status query param
@@ -421,7 +508,12 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
 
         if not reason:
             return Response(
-                {"detail": "Cancellation justification reason is mandatory."},
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "Cancellation justification reason is mandatory.",
+                    }
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -437,8 +529,92 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_200_OK,
             )
+        except ValidationError as e:
+            msg = e.messages if hasattr(e, "messages") else [str(e)]
+            return Response(
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": msg[0] if isinstance(msg, list) else str(e),
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except Exception as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": str(e)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"], url_path="acknowledge")
+    def acknowledge(self, request, pk=None):
+        po = self.get_object()
+        notes = request.data.get("acknowledgement_notes", request.data.get("notes", ""))
+        try:
+            updated_po = acknowledge_purchase_order_service(
+                po=po, vendor_user=request.user, acknowledgement_notes=notes
+            )
+            return Response(self.get_serializer(updated_po).data, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            msg = e.messages if hasattr(e, "messages") else [str(e)]
+            return Response(
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": msg[0] if isinstance(msg, list) else str(e),
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"], url_path="amend")
+    def amend(self, request, pk=None):
+        po = self.get_object()
+        reason = str(request.data.get("reason", "")).strip()
+        if not reason:
+            return Response(
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "Amendment justification reason is required.",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        raw_lines = request.data.get("lines")
+        if raw_lines and isinstance(raw_lines, list):
+            lines = raw_lines
+        else:
+            lines = [
+                {
+                    "item_description": line.item_description,
+                    "quantity": line.quantity,
+                    "unit_price": line.unit_price,
+                    "unit_of_measure": line.unit_of_measure,
+                }
+                for line in po.lines.all()
+            ]
+        try:
+            amend_purchase_order_service(
+                po=po,
+                reason=reason,
+                updated_line_items=lines,
+                requested_by_user=request.user,
+            )
+            po.refresh_from_db()
+            return Response(self.get_serializer(po).data, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            msg = e.messages if hasattr(e, "messages") else [str(e)]
+            return Response(
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": msg[0] if isinstance(msg, list) else str(e),
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
 
 router = DefaultRouter()

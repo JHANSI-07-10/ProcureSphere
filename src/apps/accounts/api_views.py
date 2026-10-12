@@ -31,8 +31,54 @@ class SessionLoginView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Check if client/user is already locked out by Axes
+        try:
+            from axes.handlers.proxy import AxesProxyHandler
+
+            if not AxesProxyHandler.is_allowed(request, {"username": email}):
+                return Response(
+                    {
+                        "error": {
+                            "code": "ACCOUNT_LOCKED",
+                            "message": "Too many failed login attempts. Please try again later.",
+                            "details": {"retry_after_seconds": 180},
+                        }
+                    },
+                    status=status.HTTP_429_TOO_MANY_REQUESTS,
+                )
+        except Exception:
+            pass
+
         user = authenticate(request, username=email, password=password)
         if user is None:
+            if getattr(request, "axes_locked_out", False):
+                return Response(
+                    {
+                        "error": {
+                            "code": "ACCOUNT_LOCKED",
+                            "message": "Too many failed login attempts. Account is locked temporarily.",
+                            "details": {"retry_after_seconds": 180},
+                        }
+                    },
+                    status=status.HTTP_429_TOO_MANY_REQUESTS,
+                )
+            try:
+                from axes.handlers.proxy import AxesProxyHandler
+
+                if not AxesProxyHandler.is_allowed(request, {"username": email}):
+                    return Response(
+                        {
+                            "error": {
+                                "code": "ACCOUNT_LOCKED",
+                                "message": "Too many failed login attempts. Account is locked temporarily.",
+                                "details": {"retry_after_seconds": 180},
+                            }
+                        },
+                        status=status.HTTP_429_TOO_MANY_REQUESTS,
+                    )
+            except Exception:
+                pass
+
             return Response(
                 {
                     "error": {
@@ -105,7 +151,16 @@ class SessionLogoutView(views.APIView):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        from .permissions import IsNotVendorUser, IsSuperAdmin
+
+        if self.action == "me":
+            return [IsAuthenticated()]
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAuthenticated(), IsSuperAdmin()]
+        # Listing or retrieving users is restricted to internal users (vendors blocked)
+        return [IsAuthenticated(), IsNotVendorUser()]
 
     def get_queryset(self):
         return get_all_users()
@@ -114,6 +169,20 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action == "create":
             return UserCreateSerializer
         return UserSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.id == request.user.id:
+            return Response(
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "Users cannot delete their own account.",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
     def me(self, request):
@@ -124,7 +193,11 @@ class UserViewSet(viewsets.ModelViewSet):
 class RoleViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        from .permissions import IsNotVendorUser
+
+        return [IsAuthenticated(), IsNotVendorUser()]
 
     def get_queryset(self):
         return get_all_roles()

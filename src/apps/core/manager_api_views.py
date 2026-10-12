@@ -1462,11 +1462,19 @@ class ManagerSupplierPerformanceAPIView(APIView):
                 "vendor_category": sc.vendor.category.name if sc.vendor.category else "General",
                 "vendor_status": sc.vendor.status,
                 "evaluation_period": sc.evaluation_period,
-                "delivery_score": float(sc.delivery_score),
-                "quality_score": float(sc.quality_score),
-                "price_score": float(sc.price_score),
-                "compliance_score": float(sc.compliance_score),
-                "composite_score": float(sc.composite_score),
+                "delivery_score": (
+                    float(sc.delivery_score) if sc.delivery_score is not None else None
+                ),
+                "quality_score": (
+                    float(sc.quality_score) if sc.quality_score is not None else None
+                ),
+                "price_score": float(sc.price_score) if sc.price_score is not None else None,
+                "compliance_score": (
+                    float(sc.compliance_score) if sc.compliance_score is not None else None
+                ),
+                "composite_score": (
+                    float(sc.composite_score) if sc.composite_score is not None else None
+                ),
                 "performance_status": (
                     "EXCELLENT"
                     if sc.composite_score >= Decimal("85.00")
@@ -1579,11 +1587,19 @@ class ManagerSupplierPerformanceDetailAPIView(APIView):
             {
                 "id": str(sc.id),
                 "evaluation_period": sc.evaluation_period,
-                "delivery_score": float(sc.delivery_score),
-                "quality_score": float(sc.quality_score),
-                "price_score": float(sc.price_score),
-                "compliance_score": float(sc.compliance_score),
-                "composite_score": float(sc.composite_score),
+                "delivery_score": (
+                    float(sc.delivery_score) if sc.delivery_score is not None else None
+                ),
+                "quality_score": (
+                    float(sc.quality_score) if sc.quality_score is not None else None
+                ),
+                "price_score": float(sc.price_score) if sc.price_score is not None else None,
+                "compliance_score": (
+                    float(sc.compliance_score) if sc.compliance_score is not None else None
+                ),
+                "composite_score": (
+                    float(sc.composite_score) if sc.composite_score is not None else None
+                ),
                 "performance_status": (
                     "EXCELLENT"
                     if sc.composite_score >= Decimal("85.00")

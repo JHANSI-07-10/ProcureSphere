@@ -116,6 +116,7 @@ def approvals_inbox_view(request):
     history_prs = history_prs.order_by("-updated_at")
 
     base_layout = _get_base_layout(role_code)
+    has_budget_overrun = pending_prs.filter(status="BUDGET_REVIEW").exists()
 
     context = {
         "pending_prs": pending_prs,
@@ -125,6 +126,7 @@ def approvals_inbox_view(request):
         "base_layout": base_layout,
         "search_q": search_q,
         "status_filter": status_filter,
+        "has_budget_overrun": has_budget_overrun,
     }
     return render(request, "pages/approvals/inbox.html", context)
 

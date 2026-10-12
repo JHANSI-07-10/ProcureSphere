@@ -28,9 +28,12 @@ class Budget(TimeStampedModel):
 
     @property
     def available_amount(self):
-        return self.allocated_amount - (
+        diff = self.allocated_amount - (
             self.reserved_amount + self.committed_amount + self.actual_amount
         )
+        if not self.allow_overspend:
+            return max(Decimal("0.00"), diff)
+        return diff
 
 
 class BudgetReservation(TimeStampedModel):

@@ -41,6 +41,18 @@
     {% endfor %}
 {% endif %}
 
+{% if active_tab != 'history' and has_budget_overrun %}
+<div class="alert alert-danger border border-danger shadow-sm rounded-4 mb-4 p-3 d-flex align-items-center gap-3">
+    <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center p-2 fs-4 flex-shrink-0" style="width: 44px; height: 44px;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+    </div>
+    <div class="flex-grow-1">
+        <h6 class="fw-bold text-danger mb-0">Budget Alert: Over-Budget Requisitions In Pending Queue</h6>
+        <p class="mb-0 text-muted small">One or more requisitions in your approval queue exceed their cost center budget allocation and require budget exception review.</p>
+    </div>
+</div>
+{% endif %}
+
 <!-- Search & Filter Bar -->
 <div class="card border-0 shadow-sm rounded-4 mb-4">
     <div class="card-body p-3">
@@ -155,17 +167,30 @@
                                 <div class="text-muted small"><code>{{ pr.pr_number }}</code> &bull; Submitted {{ pr.created_at|date:"M d, Y" }}</div>
                             </td>
                             <td><span class="small text-dark fw-semibold">{{ pr.requester.email }}</span></td>
-                            <td class="text-end fw-bold text-navy">${{ pr.total_amount|floatformat:2 }}</td>
+                            <td class="text-end fw-bold text-navy">
+                                ${{ pr.total_amount|floatformat:2 }}
+                                {% if pr.status == 'BUDGET_REVIEW' %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0 small d-block mt-1" style="font-size: 0.68rem;">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i>Over Budget
+                                </span>
+                                {% endif %}
+                            </td>
                             <td class="text-center">
+                                {% if pr.status == 'BUDGET_REVIEW' %}
+                                <span class="badge bg-danger text-white rounded-pill px-3 py-1">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i> Budget Review
+                                </span>
+                                {% else %}
                                 <span class="badge bg-warning text-dark rounded-pill px-3 py-1">
                                     <i class="fa-solid fa-clock me-1"></i> {{ pr.get_status_display }}
                                 </span>
+                                {% endif %}
                             </td>
                             <td class="text-center">
                                 {% if pr.status == 'MANAGER_REVIEW' %}
                                     <span class="text-muted small"><i class="fa-solid fa-user-tie me-1"></i> Department Approver</span>
                                 {% elif pr.status == 'BUDGET_REVIEW' %}
-                                    <span class="text-muted small"><i class="fa-solid fa-calculator me-1"></i> Finance / Budget</span>
+                                    <span class="text-danger small fw-semibold"><i class="fa-solid fa-calculator me-1"></i> Finance / Budget Exception</span>
                                 {% else %}
                                     <span class="text-muted small"><i class="fa-solid fa-user-tie me-1"></i> Routing...</span>
                                 {% endif %}
