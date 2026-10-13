@@ -121,7 +121,20 @@
                                 <div class="fw-bold text-dark text-truncate" style="max-width: 240px;">
                                     <a href="{% url 'requisition_detail' pr.pk %}" class="text-decoration-none text-navy" title="{{ pr.title }}">{{ pr.title }}</a>
                                 </div>
-                                <div class="text-muted small"><code>{{ pr.pr_number }}</code> &bull; Submitted {{ pr.created_at|date:"M d, Y" }}</div>
+                                <div class="text-muted small">
+                                    <code>{{ pr.pr_number }}</code> &bull; Submitted {{ pr.created_at|date:"M d, Y" }}
+                                    {% if pr.attachments.all %}
+                                        <div class="mt-1 d-flex flex-wrap gap-1">
+                                            {% for att in pr.attachments.all %}
+                                                <a href="{% url 'requisition_attachment_download' pr.pk att.pk %}?action=download" 
+                                                   class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill text-decoration-none py-1 px-2" 
+                                                   title="Download {{ att.title }} ({{ att.file_size_display }})">
+                                                    <i class="fa-solid fa-paperclip me-1"></i>{{ att.title|truncatechars:18 }}
+                                                </a>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
                             </td>
                             <td>
                                 <div class="fw-semibold text-dark small text-truncate" style="max-width: 160px;" title="{{ pr.requester.email }}">{{ pr.requester.email }}</div>

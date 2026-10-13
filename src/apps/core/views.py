@@ -306,7 +306,7 @@ def home_view(request):  # noqa: C901
             dept_prs = PurchaseRequisition.objects.filter(department=user_department)
             pending_prs_qs = dept_prs.filter(
                 status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]
-            ).order_by("-updated_at")
+            ).order_by("-updated_at").prefetch_related("attachments")
 
             from apps.budgets.models import Budget
             from apps.organization.models import CostCenter, FiscalPeriod
