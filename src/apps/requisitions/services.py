@@ -245,10 +245,15 @@ def approve_purchase_requisition_service(
 def reject_purchase_requisition_service(
     *, requisition: PurchaseRequisition, approver: User, comments: str
 ) -> PurchaseRequisition:
-    """
-    Rejects a PR and transitions state to REJECTED.
-    """
-    if not comments:
+    allowed_statuses = [
+        PurchaseRequisition.STATUS_SUBMITTED,
+        PurchaseRequisition.STATUS_MANAGER_REVIEW,
+        PurchaseRequisition.STATUS_BUDGET_REVIEW,
+    ]
+    if requisition.status not in allowed_statuses:
+        raise ValidationError(f"Cannot reject requisition in status '{requisition.status}'.")
+
+    if not comments or not comments.strip():
         raise ValidationError("Rejection justification comments are mandatory.")
 
     previous_status = requisition.status

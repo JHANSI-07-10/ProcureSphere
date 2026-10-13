@@ -161,13 +161,34 @@
             <!-- Attachments -->
             <div class="card border-0 shadow-sm rounded-4 mb-4">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
-                    <h5 class="fw-bold text-dark mb-0">Supporting Documents</h5>
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="fa-solid fa-paperclip text-primary me-2"></i>Supporting Documents
+                    </h5>
                 </div>
                 <div class="card-body p-4">
+                    {% if pr.attachments.exists %}
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-secondary small">Attachments (Quotes, Specs)</label>
-                        <input type="file" name="attachments" class="form-control bg-light border-0" multiple>
-                        <div class="form-text">You can select multiple files.</div>
+                        <label class="form-label fw-bold text-secondary small">Current Attached Documents</label>
+                        <ul class="list-group list-group-flush mb-2">
+                            {% for attachment in pr.attachments.all %}
+                            <li class="list-group-item px-0 border-bottom py-2 d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center">
+                                    <i class="fa-solid {% if attachment.file_extension == 'pdf' %}fa-file-pdf text-danger{% else %}fa-file-word text-primary{% endif %} me-2"></i>
+                                    <span class="small fw-semibold text-dark">{{ attachment.title }}</span>
+                                    <span class="badge bg-light text-muted border ms-2 small">{{ attachment.file_size_display }}</span>
+                                </div>
+                                <a href="{% url 'requisition_attachment_download' pr.pk attachment.pk %}?action=download" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0 small">
+                                    <i class="fa-solid fa-download me-1"></i>Download
+                                </a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    <div class="mb-0">
+                        <label class="form-label fw-bold text-secondary small">Upload Additional Documents (PDF, DOC, DOCX &bull; Max 10MB)</label>
+                        <input type="file" name="attachments" class="form-control bg-light border-0" multiple accept=".pdf,.doc,.docx">
+                        <div class="form-text">You can select multiple files to append.</div>
                     </div>
                 </div>
             </div>

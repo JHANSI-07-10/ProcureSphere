@@ -147,20 +147,26 @@
                     <div id="attachment_dropzone"
                          class="border border-2 border-dashed rounded-4 text-center p-4 mb-3 position-relative"
                          style="border-color: #dee2e6 !important; background: #f8f9fc; cursor: pointer; transition: all 0.2s;"
-                         onclick="document.getElementById('attachment_input').click()"
+                         onclick="document.getElementById('attachment_picker').click()"
                          ondragover="handleDragOver(event)"
                          ondragleave="handleDragLeave(event)"
                          ondrop="handleDrop(event)">
                         <i class="fa-solid fa-cloud-arrow-up fs-2 text-primary mb-2 d-block"></i>
                         <p class="fw-semibold text-dark mb-1">Click to browse or drag & drop</p>
                         <p class="text-muted small mb-0">PDF, DOC, DOCX only &bull; Max 10MB per file</p>
+                        <!-- Picker input used solely to open file dialogue and capture additions -->
                         <input type="file"
-                               id="attachment_input"
-                               name="attachments"
+                               id="attachment_picker"
                                multiple
                                accept=".pdf,.doc,.docx"
                                class="d-none"
                                onchange="handleFileSelect(event)">
+                        <!-- Actual form submission input whose .files is kept synced with selectedFiles -->
+                        <input type="file"
+                               id="attachment_input"
+                               name="attachments"
+                               multiple
+                               class="d-none">
                     </div>
 
                     <!-- File List Preview -->
@@ -240,6 +246,9 @@
             window.setButtonLoading(draftBtn, 'Saving Draft...');
         }
         form.removeEventListener('submit', validateBudgetOnSubmit);
+        if (typeof syncAttachmentInput === 'function') {
+            syncAttachmentInput();
+        }
         if (form.requestSubmit) {
             form.requestSubmit();
         } else {
@@ -337,7 +346,10 @@
         }
     }
 
-    document.getElementById('pr_create_form').addEventListener('submit', validateBudgetOnSubmit);
+    document.getElementById('pr_create_form').addEventListener('submit', function(e) {
+        syncAttachmentInput();
+        validateBudgetOnSubmit(e);
+    });
 
     document.addEventListener('DOMContentLoaded', function() {
         updateBudgetNotice();
@@ -357,6 +369,13 @@
         if (bytes < 1024) return bytes + ' B';
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
         return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function syncAttachmentInput() {
+        const input = document.getElementById('attachment_input');
+        if (input) {
+            input.files = selectedFiles.files;
+        }
     }
 
     function renderFileList() {
@@ -379,8 +398,8 @@
                 </button>`;
             list.appendChild(li);
         }
-        // Sync to hidden input
-        document.getElementById('attachment_input').files = selectedFiles.files;
+        // Sync to hidden form input
+        syncAttachmentInput();
     }
 
     function addFiles(files) {
@@ -410,8 +429,11 @@
     }
 
     function handleFileSelect(event) {
-        addFiles(event.target.files);
-        event.target.value = ''; // reset so same file can be re-added after removal
+        if (event.target.files && event.target.files.length > 0) {
+            addFiles(event.target.files);
+        }
+        // Clears only the browse picker input so re-selecting works without clearing attachment_input
+        event.target.value = '';
     }
 
     function handleDragOver(e) {
@@ -430,7 +452,9 @@
     function handleDrop(e) {
         e.preventDefault();
         handleDragLeave(e);
-        addFiles(e.dataTransfer.files);
+        if (e.dataTransfer && e.dataTransfer.files) {
+            addFiles(e.dataTransfer.files);
+        }
     }
 </script>
 {% endblock %}
