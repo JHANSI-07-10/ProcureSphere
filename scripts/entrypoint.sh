@@ -5,8 +5,8 @@ if [ "$1" = 'python' ] && [ "$2" = 'manage.py' ] && [ "$3" = 'runserver' ] || [[
     echo "Running database migrations..."
     python manage.py migrate --noinput
 
-    # echo "Collecting static files..."
-    # python manage.py collectstatic --noinput
+    echo "Collecting static files..."
+    python manage.py collectstatic --noinput
 fi
 
 echo "Starting the application..."
