@@ -636,3 +636,84 @@ def delete_view(request, pk):
         return redirect("requisitions_list")
     messages.error(request, "Cannot delete requisition.")
     return redirect("requisition_detail", pk=pr.pk)
+
+
+@login_required(login_url="/login/")
+def attachment_download_view(request, pk, attachment_id):
+    """
+    Securely serves / downloads a PR supporting document attachment with RBAC,
+    department/organization scoping, and audit logging.
+    """
+    import mimetypes
+    import os
+    from django.core.exceptions import PermissionDenied
+    from django.http import FileResponse
+    from apps.audit.models import AuditLog
+
+    user = request.user
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
+    )
+
+    pr = get_object_or_404(PurchaseRequisition, pk=pk)
+
+    # Scoping check
+    if role_code == Role.REQUESTER and pr.requester != user:
+        raise PermissionDenied("You do not have permission to access attachments for this requisition.")
+
+    if not user.is_superuser and role_code not in [
+        Role.FINANCE_AP,
+        Role.AUDITOR,
+        Role.PROC_MGR,
+        Role.PROC_EXEC,
+        Role.SUPER_ADMIN,
+    ]:
+        user_dept = getattr(user, "department", None)
+        user_org = getattr(user_dept, "organization", None) if user_dept else None
+        pr_org = getattr(getattr(pr, "department", None), "organization", None)
+        if user_org and pr_org and user_org.id != pr_org.id:
+            raise PermissionDenied("You do not have permission to view requisitions from another organization.")
+        if role_code == Role.DEPT_APPROVER and user_dept and pr.department and user_dept.id != pr.department.id:
+            raise PermissionDenied("You do not have permission to access attachments for another department's requisition.")
+
+    attachment = get_object_or_404(PRAttachment, pk=attachment_id, requisition=pr)
+
+    if (
+        not attachment.file
+        or not hasattr(attachment.file, "path")
+        or not os.path.exists(attachment.file.path)
+    ):
+        messages.error(request, "Requested supporting document file was not found on storage.")
+        return redirect("requisition_detail", pk=pr.pk)
+
+    action = request.GET.get("action", "download")
+    as_attachment = (action != "view")
+
+    AuditLog.objects.create(
+        actor=user,
+        action=AuditLog.ACTION_EXPORT,
+        target_model="PRAttachment",
+        target_object_id=str(attachment.id),
+        new_state={
+            "pr_number": pr.pr_number,
+            "attachment_title": attachment.title,
+            "file_name": os.path.basename(attachment.file.name),
+            "access_type": action,
+        },
+    )
+
+    content_type, _ = mimetypes.guess_type(attachment.file.path)
+    if not content_type:
+        content_type = "application/octet-stream"
+
+    filename = os.path.basename(attachment.file.name)
+    response = FileResponse(
+        open(attachment.file.path, "rb"),
+        as_attachment=as_attachment,
+        filename=filename if as_attachment else None,
+        content_type=content_type,
+    )
+    if not as_attachment:
+        response["Content-Disposition"] = f'inline; filename="{filename}"'
+    return response
+
