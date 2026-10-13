@@ -4,36 +4,38 @@
 
 {% block navbar %}
 <!-- Top Navigation Bar for Vendor Portal -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-2 border-bottom border-secondary border-opacity-25">
-    <div class="container-fluid px-3 px-lg-4">
-        <button class="navbar-toggler border-0 me-2 d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#vendorSidebar" aria-controls="vendorSidebar">
-            <i class="fa-solid fa-bars text-white fs-4"></i>
-        </button>
-        <a href="/vendor/" class="navbar-brand d-flex align-items-center text-white me-4">
-            <div class="brand-icon-box me-2" style="width: 32px; height: 32px; background: rgba(0, 176, 185, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
-                <i class="fa-solid fa-handshake text-cyan"></i>
-            </div>
-            <span class="fs-5 fw-bold tracking-tight">ProcureSphere <span class="text-cyan">360</span></span>
-            <span class="badge bg-secondary bg-opacity-50 text-light ms-2 px-2 py-1 small rounded-pill">Vendor Portal</span>
-        </a>
+<nav class="navbar navbar-dark bg-dark shadow-sm py-2 border-bottom border-secondary border-opacity-25 sticky-top">
+    <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
+        <div class="d-flex align-items-center overflow-hidden me-2">
+            <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#vendorSidebar" aria-controls="vendorSidebar" aria-label="Toggle navigation">
+                <i class="fa-solid fa-bars text-white fs-4"></i>
+            </button>
+            <a href="/vendor/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
+                <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 176, 185, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-handshake text-cyan"></i>
+                </div>
+                <span class="fs-6 fs-sm-5 fw-bold tracking-tight text-truncate">ProcureSphere <span class="text-cyan">360</span></span>
+                <span class="badge bg-secondary bg-opacity-50 text-light ms-2 px-2 py-1 small rounded-pill d-none d-sm-inline-block">Vendor Portal</span>
+            </a>
+        </div>
 
-        <div class="ms-auto d-flex align-items-center gap-3">
+        <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
             <!-- Vendor Entity Pill -->
             {% if vendor %}
-            <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-2 text-white">
+            <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white">
                 <i class="fa-solid fa-building text-cyan me-2 fs-5"></i>
                 <div class="text-start lh-sm">
-                    <span class="fw-semibold small d-block mb-1">{{ vendor.legal_name|truncatechars:45 }}</span>
+                    <span class="fw-semibold small d-block mb-1">{{ vendor.legal_name|truncatechars:35 }}</span>
                     <span class="text-muted d-block" style="font-size: 0.7rem; line-height: 1;">{{ vendor.vendor_number }} &bull; {{ vendor.tax_identification_number }}</span>
                 </div>
-                <span class="badge ms-3 rounded-pill {% if vendor.status == 'ACTIVE' %}bg-success{% elif vendor.status == 'KYC_REVIEW' or vendor.status == 'SUBMITTED' %}bg-warning text-dark{% elif vendor.status == 'APPROVED' %}bg-info text-dark{% elif vendor.status == 'SUSPENDED' or vendor.status == 'REJECTED' %}bg-danger{% else %}bg-secondary{% endif %}" style="font-size: 0.65rem;">
+                <span class="badge ms-2 rounded-pill {% if vendor.status == 'ACTIVE' %}bg-success{% elif vendor.status == 'KYC_REVIEW' or vendor.status == 'SUBMITTED' %}bg-warning text-dark{% elif vendor.status == 'APPROVED' %}bg-info text-dark{% elif vendor.status == 'SUSPENDED' or vendor.status == 'REJECTED' %}bg-danger{% else %}bg-secondary{% endif %}" style="font-size: 0.65rem;">
                     {{ vendor.status }}
                 </span>
             </div>
             {% endif %}
 
             <!-- Notifications Icon -->
-            <a href="/vendor/notifications/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Notifications">
+            <a href="/vendor/notifications/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Notifications">
                 <i class="fa-solid fa-bell fs-5"></i>
                 {% if metrics.unread_notifications and metrics.unread_notifications > 0 %}
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
@@ -44,13 +46,13 @@
 
             <!-- User Profile & Sign Out -->
             {% if user.is_authenticated %}
-            <div class="d-flex align-items-center gap-3">
-                <div class="d-none d-lg-block text-end lh-sm">
+            <div class="d-flex align-items-center gap-2">
+                <div class="d-none d-lg-block text-end lh-sm me-1">
                     <div class="fw-semibold text-white small mb-1">{{ user.email }}</div>
                     <div class="text-muted d-block" style="font-size: 0.7rem; line-height: 1;">Authorized Representative</div>
                 </div>
                 <div class="dropdown">
-                    <button class="btn btn-dark border border-secondary border-opacity-50 rounded-circle text-white d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;" type="button" data-bs-toggle="dropdown">
+                    <button class="btn btn-dark border border-secondary border-opacity-50 rounded-circle text-white d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fa-solid fa-user-tie text-cyan"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 bg-dark text-white">
@@ -74,11 +76,13 @@
             width: 260px !important;
             flex-shrink: 0 !important;
             position: sticky !important;
-            top: 0;
-            height: calc(100vh - 58px);
+            top: 58px !important;
+            height: calc(100vh - 58px) !important;
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: rgba(255,255,255,0.15) transparent;
+            z-index: 1000;
+            align-self: flex-start;
         }
         .vendor-sidebar-desktop::-webkit-scrollbar {
             width: 4px;
@@ -163,9 +167,9 @@
         flex-shrink: 0;
     }
 </style>
-<div class="d-flex align-items-start" style="min-height: calc(100vh - 58px);">
+<div class="d-flex align-items-start w-100" style="min-height: calc(100vh - 58px); max-width: 100vw;">
     <!-- Sidebar Navigation -->
-    <aside class="offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white vendor-sidebar-desktop" tabindex="-1" id="vendorSidebar" aria-labelledby="vendorSidebarLabel">
+    <aside class="offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white vendor-sidebar-desktop" tabindex="-1" id="vendorSidebar" aria-labelledby="vendorSidebarLabel" style="max-width: 85vw;">
         <div class="offcanvas-header d-lg-none border-bottom border-secondary border-opacity-25">
             <h5 class="offcanvas-title fw-bold text-white" id="vendorSidebarLabel"><i class="fa-solid fa-handshake text-cyan me-2"></i>Vendor Portal</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#vendorSidebar" aria-label="Close"></button>
@@ -269,7 +273,7 @@
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-grow-1 p-3 p-md-4 bg-light overflow-auto" style="min-width: 0;">
+    <main class="flex-grow-1 p-2 p-sm-3 p-md-4 bg-light w-100" style="min-width: 0; max-width: 100vw; overflow-x: hidden;">
         <!-- Alert Messages -->
         {% if messages %}
         <div class="mb-4">
