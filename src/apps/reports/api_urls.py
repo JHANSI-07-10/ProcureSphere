@@ -16,6 +16,7 @@ from .services import (
     get_invoice_exception_aging_report,
     get_po_status_report,
     get_pr_aging_report,
+    get_receipt_delivery_performance_summary,
     get_receipt_rejection_report,
     get_sourcing_cycle_time_report,
     get_spend_analytics_report,
@@ -149,7 +150,37 @@ def po_status_report_view(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated, IsNotVendorUser])
 def receipt_rejection_report_view(request):
-    return Response(get_receipt_rejection_report(), status=status.HTTP_200_OK)
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+    vendor = request.GET.get("vendor")
+    po_number = request.GET.get("po_number")
+    status_param = request.GET.get("status")
+    return Response(
+        get_receipt_rejection_report(
+            start_date=start_date,
+            end_date=end_date,
+            vendor=vendor,
+            po_number=po_number,
+            inspection_status=status_param,
+        ),
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def receipt_delivery_summary_view(request):
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+    vendor = request.GET.get("vendor")
+    return Response(
+        get_receipt_delivery_performance_summary(
+            start_date=start_date,
+            end_date=end_date,
+            vendor=vendor,
+        ),
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(["GET"])
@@ -219,6 +250,11 @@ urlpatterns = router.urls + [
     path("sourcing-cycle/", sourcing_cycle_report_view, name="report-sourcing-cycle"),
     path("po-status/", po_status_report_view, name="report-po-status"),
     path("receipt-rejection/", receipt_rejection_report_view, name="report-receipt-rejection"),
+    path(
+        "receipt-delivery-summary/",
+        receipt_delivery_summary_view,
+        name="report-receipt-delivery-summary",
+    ),
     path("invoice-exceptions/", invoice_exception_report_view, name="report-invoice-exceptions"),
     path("contract-expiry/", contract_expiry_report_view, name="report-contract-expiry"),
     path(

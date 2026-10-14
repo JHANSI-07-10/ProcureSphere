@@ -118,6 +118,8 @@ def audit_log_view(request):
         base_layout = "layouts/procurement_base.html"
     elif role_code in ["AUDITOR", "SUPER_ADMIN"]:
         base_layout = "layouts/auditor_base.html"
+    elif role_code in ["STORES_RECEIVER", "STORES"]:
+        base_layout = "layouts/stores_base.html"
 
     context = {
         "logs": data.get("logs", []),

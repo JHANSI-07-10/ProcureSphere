@@ -42,7 +42,16 @@ def tolerance_settings_view(request):
 
 @login_required(login_url="/login/")
 def invoice_detail_view(request, invoice_id):
-    invoice = get_object_or_404(SupplierInvoice, id=invoice_id)
+    invoice = get_object_or_404(
+        SupplierInvoice.objects.select_related("vendor", "po").prefetch_related(
+            "lines__po_line",
+            "exceptions",
+            "po__receipts__received_by",
+            "po__receipts__lines__inspection",
+            "po__receipts__lines__po_line",
+        ),
+        id=invoice_id,
+    )
     return render(request, "pages/invoices/detail.html", {"invoice": invoice})
 
 

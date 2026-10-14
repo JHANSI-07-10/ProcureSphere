@@ -359,7 +359,7 @@ def test_6_invalid_cross_grn_or_cross_po_stock_handoff_is_blocked(stock_handoff_
 
 
 @pytest.mark.django_db
-def test_7_unauthorized_roles_cannot_perform_stock_handoff(stock_handoff_setup, client):
+def test_7_unauthorized_roles_cannot_perform_stock_handoff(stock_handoff_setup, client, db_roles):
     """7. Unauthorized roles cannot perform the Stores Receiver stock-handoff action."""
     po = stock_handoff_setup["po"]
     receiver = stock_handoff_setup["receiver"]
@@ -378,20 +378,42 @@ def test_7_unauthorized_roles_cannot_perform_stock_handoff(stock_handoff_setup, 
         ],
     )
 
-    # Service-level check
-    with pytest.raises(ValidationError) as exc:
-        handoff_goods_to_stock_service(
-            receipt=grn,
-            handed_off_by=buyer,
-        )
-    assert "Unauthorized" in str(exc.value)
+    staff_ordinary = User.objects.create_user(
+        email="staff_stock_block@hpe.com",
+        password="Password123!",
+        role=db_roles[Role.REQUESTER],
+        is_staff=True,
+    )
 
-    # View-level check: buyer logs in
-    client.force_login(buyer)
-    url = reverse("receipt_stock_handoff", kwargs={"grn_id": grn.id})
-    resp = client.get(url)
-    assert resp.status_code == 302
-    assert resp.url == reverse("receipt_detail", kwargs={"grn_id": grn.id})
+    for unauth_user in [buyer, staff_ordinary]:
+        # Service-level check
+        with pytest.raises(ValidationError) as exc:
+            handoff_goods_to_stock_service(
+                receipt=grn,
+                handed_off_by=unauth_user,
+            )
+        assert "Unauthorized" in str(exc.value)
+
+        # View-level check
+        client.force_login(unauth_user)
+        url = reverse("receipt_stock_handoff", kwargs={"grn_id": grn.id})
+        resp = client.get(url)
+        assert resp.status_code == 302
+        assert resp.url == reverse("receipt_detail", kwargs={"grn_id": grn.id})
+
+    # Super Admin can perform stock handoff
+    admin = User.objects.create_user(
+        email="admin_handoff_ok@hpe.com",
+        password="Password123!",
+        role=db_roles[Role.SUPER_ADMIN],
+        is_superuser=True,
+    )
+    rec_admin = handoff_goods_to_stock_service(
+        receipt=grn,
+        handed_off_by=admin,
+        storage_location="ADMIN-BAY",
+    )
+    assert rec_admin.stock_handoff_status == "HANDED_OFF"
 
 
 @pytest.mark.django_db

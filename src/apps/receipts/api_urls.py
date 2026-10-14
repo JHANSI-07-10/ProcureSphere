@@ -125,12 +125,48 @@ class GoodsReceiptSerializer(serializers.ModelSerializer):
         return receipt
 
 
+class GoodsReceiptPermission(IsAuthenticated):
+    """
+    Enforces RBAC on Goods Receipt API:
+    - Vendor users denied access to internal goods receipt endpoints.
+    - Read (SAFE_METHODS): Stores Receiver, Super Admin, Auditor, Procurement Executive/Manager, Finance.
+    - State modifications (POST, PUT, PATCH, DELETE): Stores Receiver or Super Admin only.
+    """
+
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        if request.user.is_superuser:
+            return True
+
+        role_code = getattr(request.user, "role_code", None) or (
+            request.user.role.code if hasattr(request.user, "role") and request.user.role else None
+        )
+
+        if role_code == Role.VENDOR_USER:
+            return False
+
+        if request.method in SAFE_METHODS:
+            return role_code in [
+                Role.STORES_RECEIVER,
+                Role.SUPER_ADMIN,
+                Role.AUDITOR,
+                Role.PROC_EXEC,
+                Role.PROC_MGR,
+                Role.FINANCE_AP,
+            ]
+
+        return role_code in [Role.STORES_RECEIVER, Role.SUPER_ADMIN]
+
+
 class GoodsReceiptViewSet(viewsets.ModelViewSet):
     queryset = (
-        GoodsReceipt.objects.select_related("po", "received_by").prefetch_related("lines").all()
+        GoodsReceipt.objects.select_related("po", "received_by")
+        .prefetch_related("lines")
+        .order_by("-created_at")
     )
     serializer_class = GoodsReceiptSerializer
-    permission_classes = [IsAuthenticated, CanManageGoodsReceipt]
+    permission_classes = [GoodsReceiptPermission]
 
     def get_queryset(self):
         user = self.request.user
