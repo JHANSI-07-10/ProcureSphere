@@ -1,15 +1,31 @@
+import logging
+import secrets
+import string
+
+from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.models import User
+from apps.accounts.models import Role, User
 from apps.audit.models import AuditLog
 from apps.audit.services import create_audit_log_service
 from apps.core.validators import validate_file_upload
 from apps.notifications.models import Notification
 from apps.notifications.services import notify_vendor_users
 
-from .models import Vendor, VendorCategory, VendorDocument, VendorRiskRecord
+from .brevo_email import build_credentials_html
+from .models import (
+    Vendor,
+    VendorCategory,
+    VendorCredentialDispatch,
+    VendorDocument,
+    VendorRiskRecord,
+)
+from .permissions import can_operate_governance
+
+logger = logging.getLogger(__name__)
 
 
 @transaction.atomic
@@ -411,3 +427,118 @@ def upload_vendor_document_service(
         },
     )
     return doc
+
+
+CREDENTIAL_ISSUE_BLOCKED = {Vendor.STATUS_SUSPENDED, Vendor.STATUS_REJECTED}
+
+
+def _generate_temporary_password(length: int = 14) -> str:
+    alphabet = string.ascii_letters + string.digits
+    while True:
+        pwd = "".join(secrets.choice(alphabet) for _ in range(length))
+        if (
+            any(c.islower() for c in pwd)
+            and any(c.isupper() for c in pwd)
+            and any(c.isdigit() for c in pwd)
+        ):
+            return pwd
+
+
+def _credentials_email_body(*, vendor: Vendor, email: str, password: str) -> str:
+    links = "\n".join(f"  - {url}" for url in settings.VENDOR_PORTAL_LOGIN_URLS)
+    lines = [
+        f"Dear {vendor.legal_name},",
+        "",
+        "You have been registered as a supplier on ProcureSphere 360.",
+        "",
+        f"Vendor number: {vendor.vendor_number}",
+        f"Login ID: {email}",
+        f"Temporary password: {password}",
+        "",
+        "Sign in here:",
+        links,
+        "",
+        "You will be asked to set your own password at first login. After that, complete",
+        "your KYC details and upload the requested documents for review.",
+        "",
+        "If you did not expect this email, please ignore it and contact the procurement team.",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def issue_vendor_credentials_service(
+    *, vendor: Vendor, issued_by: User
+) -> VendorCredentialDispatch:
+    """
+    Creates (or resets) the vendor's portal login with a temporary password and emails the
+    credentials plus portal login link(s) to the vendor's registered email.
+
+    The password exists only in memory for the email; it is never stored or audited.
+    Raises ValidationError on rule violations or if the email could not be delivered
+    (the dispatch is still recorded as FAILED so the executive can retry).
+    """
+    if not can_operate_governance(issued_by):
+        raise PermissionDenied("Only Procurement Executives/Managers can issue vendor credentials.")
+    if vendor.status in CREDENTIAL_ISSUE_BLOCKED:
+        raise ValidationError(
+            f"Credentials cannot be issued to a {vendor.get_status_display()} vendor."
+        )
+
+    email = User.objects.normalize_email(vendor.email)
+    password = _generate_temporary_password()
+
+    with transaction.atomic():
+        existing = User.objects.select_for_update().filter(email__iexact=email).first()
+        if existing and existing.vendor_id != vendor.id:
+            raise ValidationError(f"A different account already uses {email}.")
+        role = Role.objects.get(code=Role.VENDOR_USER)
+        if existing:
+            existing.set_password(password)
+            existing.must_change_password = True
+            existing.is_active = True
+            existing.save(update_fields=["password", "must_change_password", "is_active"])
+            user, action = existing, "credentials_reset"
+        else:
+            user = User.objects.create_user(
+                email, password, role=role, vendor=vendor, must_change_password=True
+            )
+            action = "credentials_created"
+        dispatch = VendorCredentialDispatch.objects.create(
+            vendor=vendor, user=user, sent_to=email, created_by=issued_by
+        )
+        create_audit_log_service(
+            actor=issued_by,
+            action=AuditLog.ACTION_UPDATE,
+            target_model="Vendor",
+            target_object_id=str(vendor.id),
+            new_state={"event": action, "login_id": email, "vendor_number": vendor.vendor_number},
+        )
+
+    try:
+        send_mail(
+            subject=f"ProcureSphere 360 - Your Supplier Portal Access ({vendor.vendor_number})",
+            message=_credentials_email_body(vendor=vendor, email=email, password=password),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            html_message=build_credentials_html(
+                vendor_name=vendor.legal_name,
+                vendor_number=vendor.vendor_number,
+                email=email,
+                password=password,
+            ),
+            fail_silently=False,
+        )
+    except Exception as exc:  # SMTP / network failure: keep evidence, let the executive retry
+        logger.exception("Vendor credential email failed for vendor %s", vendor.vendor_number)
+        dispatch.status = VendorCredentialDispatch.STATUS_FAILED
+        dispatch.error = str(exc)[:500]
+        dispatch.save(update_fields=["status", "error", "updated_at"])
+        raise ValidationError(
+            f"Account created but the email to {email} could not be sent. "
+            f"Use Resend to retry. Reason: {exc}"
+        ) from exc
+
+    dispatch.status = VendorCredentialDispatch.STATUS_SENT
+    dispatch.sent_at = timezone.now()
+    dispatch.save(update_fields=["status", "sent_at", "updated_at"])
+    return dispatch

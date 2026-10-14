@@ -12,7 +12,7 @@
         </div>
         <div class="col-lg-4 text-lg-end d-flex flex-wrap gap-2 justify-content-lg-end">
             <a href="{% url 'sourcing_create' %}" class="btn btn-warning text-dark rounded-pill fw-bold px-4"><i class="fa-solid fa-plus me-1"></i>New RFQ / RFP</a>
-            <a href="{% url 'vendor_create' %}" class="btn btn-outline-light rounded-pill px-4">Register Vendor</a>
+            <button class="btn btn-outline-light rounded-pill px-4" hx-get="{% url 'vendors_register_modal' %}" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container"><i class="fa-solid fa-user-plus me-1"></i>Register Vendor</button>
         </div>
     </div>
 </div>
@@ -45,7 +45,7 @@
                     data-bs-toggle="modal" data-bs-target="#modal-container">
                 <i class="fa-solid fa-plus me-1"></i>New RFQ / RFP
             </button>
-            <a href="{% url 'vendor_create' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Register Vendor</a>
+            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" hx-get="{% url 'vendors_register_modal' %}" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container"><i class="fa-solid fa-user-plus me-1"></i>Register Vendor</button>
         </div>
     </div>
     <ul class="nav nav-pills small gap-1 flex-wrap mb-3" role="tablist" aria-label="Executive workspace pillars">

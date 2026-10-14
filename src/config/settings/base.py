@@ -84,6 +84,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "axes.middleware.AxesMiddleware",
+    "apps.accounts.middleware.ForcePasswordChangeMiddleware",
 ]
 
 
@@ -247,3 +248,25 @@ X_FRAME_OPTIONS = "DENY"
 
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
+
+
+# Email (Brevo SMTP relay in staging/prod; console backend in dev)
+EMAIL_HOST = env("EMAIL_HOST", default="smtp-relay.brevo.com")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_TIMEOUT = 15
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ProcureSphere 360 <no-reply@localhost>")
+
+# Login URLs placed in vendor credential emails (comma separated, one line per environment)
+VENDOR_PORTAL_LOGIN_URLS = env.list(
+    "VENDOR_PORTAL_LOGIN_URLS", default=["http://localhost:8000/login/"]
+)
+
+# ---------------------------------------------------------------------------
+# Brevo Transactional Email API (used for vendor credential emails)
+# ---------------------------------------------------------------------------
+BREVO_API_KEY = env("BREVO_API_KEY", default="")
+BREVO_SENDER_EMAIL = env("BREVO_SENDER_EMAIL", default="no-reply@procuresphere.com")
+BREVO_SENDER_NAME = env("BREVO_SENDER_NAME", default="ProcureSphere 360")
