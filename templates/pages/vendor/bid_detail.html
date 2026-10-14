@@ -14,9 +14,9 @@
     </nav>
 
     <!-- Header & Action Buttons -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
-        <div>
-            <div class="d-flex align-items-center gap-2 mb-1">
+    <div class="d-flex flex-wrap justify-content-between align-items-start align-items-md-center mb-3 mb-md-4 gap-3">
+        <div class="w-100 w-md-auto">
+            <div class="d-flex flex-wrap align-items-center gap-1 gap-sm-2 mb-2">
                 <span class="badge bg-dark">{{ event.event_type }}</span>
                 <span class="badge {% if bid.status == 'SUBMITTED' %}bg-success{% elif bid.status == 'AMENDED' %}bg-info text-dark{% elif bid.status == 'DRAFT' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
                     {{ bid.get_status_display }}
@@ -28,78 +28,78 @@
                 </span>
                 {% endif %}
             </div>
-            <h3 class="fw-bold text-dark mb-0">{{ bid.bid_number }} &bull; {{ event.title }}</h3>
-            <span class="font-monospace text-muted small">Event Ref: {{ event.event_number }}</span>
+            <h3 class="fw-bold text-dark mb-1 fs-5 fs-md-3 text-break">{{ bid.bid_number }} &bull; {{ event.title }}</h3>
+            <span class="font-monospace text-muted small d-block">Event Ref: {{ event.event_number }}</span>
         </div>
 
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2 w-100 w-md-auto">
             {% if can_amend %}
-            <a href="{% url 'vendor_bid_amend' bid_id=bid.id %}" class="btn btn-primary btn-sm rounded-pill px-4 shadow-sm">
+            <a href="{% url 'vendor_bid_amend' bid_id=bid.id %}" class="btn btn-primary btn-sm rounded-pill px-3 px-sm-4 shadow-sm flex-fill flex-md-grow-0 text-center">
                 <i class="fa-solid fa-code-compare me-1"></i> Amend Submitted Bid
             </a>
             {% elif bid.status == 'DRAFT' and is_event_open %}
-            <a href="{% url 'vendor_bid_create' event_id=event.id %}" class="btn btn-warning btn-sm rounded-pill px-4 fw-semibold shadow-sm">
+            <a href="{% url 'vendor_bid_create' event_id=event.id %}" class="btn btn-warning btn-sm rounded-pill px-3 px-sm-4 fw-semibold shadow-sm flex-fill flex-md-grow-0 text-center">
                 <i class="fa-solid fa-pen-to-square me-1"></i> Complete & Submit Draft
             </a>
             {% else %}
-            <button class="btn btn-secondary btn-sm rounded-pill px-3" disabled title="Amendments are only permissible while the bid window is open.">
+            <button class="btn btn-secondary btn-sm rounded-pill px-3 flex-fill flex-md-grow-0" disabled title="Amendments are only permissible while the bid window is open.">
                 <i class="fa-solid fa-lock me-1"></i> Amendments Closed
             </button>
             {% endif %}
 
-            <a href="{% url 'vendor_sourcing_detail' event_id=event.id %}" class="btn btn-outline-dark btn-sm rounded-pill px-3">
+            <a href="{% url 'vendor_sourcing_detail' event_id=event.id %}" class="btn btn-outline-dark btn-sm rounded-pill px-3 flex-fill flex-md-grow-0 text-center">
                 <i class="fa-solid fa-gavel me-1"></i> View Sourcing Event
             </a>
         </div>
     </div>
 
     <!-- Overview KPI Grid -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="stat-card glass-card h-100">
-                <span class="text-muted small fw-semibold text-uppercase">Total Quoted Bid</span>
-                <div class="fs-3 fw-bold text-success mt-1">${{ bid.total_bid_amount|floatformat:2 }}</div>
-                <small class="text-muted">Itemized in commercial envelope</small>
+    <div class="row g-2 g-md-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="stat-card glass-card h-100 p-3">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Total Quoted Bid</span>
+                <div class="fs-5 fs-sm-4 fs-md-3 fw-bold text-success text-break">${{ bid.total_bid_amount|floatformat:2 }}</div>
+                <small class="text-muted d-none d-sm-block" style="font-size: 0.72rem;">Commercial envelope</small>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stat-card glass-card h-100">
-                <span class="text-muted small fw-semibold text-uppercase">Current Version</span>
-                <div class="fs-3 fw-bold text-primary mt-1">V{{ bid.version }}</div>
-                <small class="text-muted">
+        <div class="col-6 col-lg-3">
+            <div class="stat-card glass-card h-100 p-3">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Current Version</span>
+                <div class="fs-5 fs-sm-4 fs-md-3 fw-bold text-primary">V{{ bid.version }}</div>
+                <small class="text-muted d-none d-sm-block" style="font-size: 0.72rem;">
                     {% if versions.count > 1 %}
-                        {{ versions.count }} versions archived
+                        {{ versions.count }} archived
                     {% else %}
                         Original submission
                     {% endif %}
                 </small>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stat-card glass-card h-100">
-                <span class="text-muted small fw-semibold text-uppercase">Submission Timestamp</span>
-                <div class="fs-6 fw-bold text-dark mt-1">
+        <div class="col-6 col-lg-3">
+            <div class="stat-card glass-card h-100 p-3">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Submission Time</span>
+                <div class="fs-6 fs-md-5 fw-bold text-dark text-break">
                     {% if bid.submitted_at %}
-                        {{ bid.submitted_at|date:"M d, Y H:i T" }}
+                        {{ bid.submitted_at|date:"M d, H:i" }}
                     {% else %}
                         <span class="text-warning">In Draft</span>
                     {% endif %}
                 </div>
-                <small class="text-muted">Server audit logged</small>
+                <small class="text-muted d-none d-sm-block" style="font-size: 0.72rem;">Server audit logged</small>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stat-card glass-card h-100">
-                <span class="text-muted small fw-semibold text-uppercase">Event Deadline</span>
-                <div class="fs-6 fw-bold text-danger mt-1">{{ event.bid_end_date|date:"M d, Y H:i T" }}</div>
-                <small class="{% if is_event_open %}text-success fw-semibold{% else %}text-muted{% endif %}">
-                    {% if is_event_open %}&bull; Open for modifications{% else %}&bull; Closed{% endif %}
+        <div class="col-6 col-lg-3">
+            <div class="stat-card glass-card h-100 p-3">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Event Deadline</span>
+                <div class="fs-6 fs-md-5 fw-bold text-danger text-break">{{ event.bid_end_date|date:"M d, H:i" }}</div>
+                <small class="{% if is_event_open %}text-success fw-semibold{% else %}text-muted{% endif %} d-block" style="font-size: 0.72rem;">
+                    {% if is_event_open %}&bull; Open{% else %}&bull; Closed{% endif %}
                 </small>
             </div>
         </div>
     </div>
 
-    <div class="row g-4 mb-4">
+    <div class="row g-3 g-md-4 mb-4">
         <!-- Technical Response -->
         <div class="col-lg-6">
             <div class="card glass-card border-0 shadow-sm h-100">
@@ -108,17 +108,17 @@
                         <i class="fa-solid fa-microchip text-info me-2"></i> Technical Response Envelope
                     </h6>
                 </div>
-                <div class="card-body p-4">
+                <div class="card-body p-3 p-md-4">
                     <div class="mb-4">
                         <label class="text-muted small fw-semibold text-uppercase">Proposal Summary</label>
-                        <div class="p-3 bg-light rounded border text-dark mt-1">
+                        <div class="p-3 bg-light rounded border text-dark mt-1 text-break">
                             {{ bid.proposal_summary|linebreaksbr|default:"No executive summary provided." }}
                         </div>
                     </div>
 
                     <div>
                         <label class="text-muted small fw-semibold text-uppercase">Detailed Technical Proposal</label>
-                        <div class="p-3 bg-light rounded border text-dark mt-1" style="max-height: 250px; overflow-y: auto;">
+                        <div class="p-3 bg-light rounded border text-dark mt-1 text-break" style="max-height: 250px; overflow-y: auto;">
                             {{ bid.technical_proposal|linebreaksbr|default:"No technical proposal text provided." }}
                         </div>
                     </div>
@@ -134,34 +134,34 @@
                         <i class="fa-solid fa-calculator text-success me-2"></i> Commercial Response Envelope
                     </h6>
                 </div>
-                <div class="card-body p-4">
+                <div class="card-body p-3 p-md-4">
                     {% if bid.commercial_proposal %}
                     <div class="mb-3">
                         <label class="text-muted small fw-semibold text-uppercase">Commercial Terms</label>
-                        <div class="p-3 bg-light rounded border text-dark small">
+                        <div class="p-3 bg-light rounded border text-dark small text-break">
                             {{ bid.commercial_proposal|linebreaksbr }}
                         </div>
                     </div>
                     {% endif %}
 
                     <label class="text-muted small fw-semibold text-uppercase mb-2">Itemized BOQ Line Items</label>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered align-middle mb-0">
+                    <div class="table-responsive" style="-webkit-overflow-scrolling: touch;">
+                        <table class="table table-sm table-bordered align-middle mb-0" style="min-width: 360px;">
                             <thead class="table-light small text-uppercase text-secondary">
                                 <tr>
                                     <th>Item</th>
                                     <th class="text-end">Qty</th>
-                                    <th class="text-end">Unit Price</th>
-                                    <th class="text-end">Total Price</th>
+                                    <th class="text-end text-nowrap">Unit Price</th>
+                                    <th class="text-end text-nowrap">Total Price</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for line in bid.lines.all %}
                                 <tr>
-                                    <td class="fw-semibold text-dark">{{ line.item_description }}</td>
-                                    <td class="text-end font-monospace">{{ line.quantity }}</td>
-                                    <td class="text-end font-monospace">${{ line.quoted_unit_price|floatformat:2 }}</td>
-                                    <td class="text-end font-monospace fw-bold text-success">${{ line.quoted_total_price|floatformat:2 }}</td>
+                                    <td class="fw-semibold text-dark text-break">{{ line.item_description }}</td>
+                                    <td class="text-end font-monospace text-nowrap">{{ line.quantity }}</td>
+                                    <td class="text-end font-monospace text-nowrap">${{ line.quoted_unit_price|floatformat:2 }}</td>
+                                    <td class="text-end font-monospace fw-bold text-success text-nowrap">${{ line.quoted_total_price|floatformat:2 }}</td>
                                 </tr>
                                 {% empty %}
                                 <tr>
@@ -172,7 +172,7 @@
                             <tfoot class="table-light">
                                 <tr>
                                     <th colspan="3" class="text-end fw-bold">Grand Total:</th>
-                                    <th class="text-end font-monospace fs-6 text-success fw-bold">${{ bid.total_bid_amount|floatformat:2 }}</th>
+                                    <th class="text-end font-monospace fs-6 text-success fw-bold text-nowrap">${{ bid.total_bid_amount|floatformat:2 }}</th>
                                 </tr>
                             </tfoot>
                         </table>
@@ -183,7 +183,7 @@
     </div>
 
     <!-- Attachments & Version History -->
-    <div class="row g-4">
+    <div class="row g-3 g-md-4">
         <!-- Supporting Attachments -->
         <div class="col-lg-5">
             <div class="card glass-card border-0 shadow-sm h-100">
@@ -192,17 +192,17 @@
                         <i class="fa-solid fa-paperclip text-warning me-2"></i> Bid Attachments
                     </h6>
                 </div>
-                <div class="card-body p-4">
+                <div class="card-body p-3 p-md-4">
                     {% if bid.attachments.all %}
                     <div class="d-flex flex-column gap-2">
                         {% for att in bid.attachments.all %}
-                        <div class="p-2 px-3 bg-light rounded border d-flex justify-content-between align-items-center">
-                            <div>
+                        <div class="p-2 px-3 bg-light rounded border d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <div class="text-truncate" style="max-width: 100%;">
                                 <i class="fa-regular fa-file-pdf text-danger me-2"></i>
-                                <span class="fw-semibold text-dark small">{{ att.title }}</span>
-                                <span class="badge bg-secondary ms-2" style="font-size: 0.65rem;">{{ att.get_document_type_display }}</span>
+                                <span class="fw-semibold text-dark small text-truncate">{{ att.title }}</span>
+                                <span class="badge bg-secondary ms-1 d-inline-block" style="font-size: 0.65rem;">{{ att.get_document_type_display }}</span>
                             </div>
-                            <a href="{% url 'vendor_document_download' doc_type='bid' doc_id=att.id %}" class="btn btn-sm btn-link text-decoration-none">
+                            <a href="{% url 'vendor_document_download' doc_type='bid' doc_id=att.id %}" class="btn btn-sm btn-link text-decoration-none p-0">
                                 <i class="fa-solid fa-download me-1"></i> Download
                             </a>
                         </div>
@@ -221,7 +221,7 @@
         <!-- Section 8: Bid Version History (Immutable Snapshots) -->
         <div class="col-lg-7">
             <div class="card glass-card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-bottom border-light py-3 d-flex justify-content-between align-items-center">
+                <div class="card-header bg-white border-bottom border-light py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <h6 class="mb-0 fw-bold text-dark">
                         <i class="fa-solid fa-code-branch text-primary me-2"></i> Bid Version History (Immutable Snapshots)
                     </h6>
@@ -229,21 +229,21 @@
                 </div>
                 <div class="card-body p-0">
                     {% if versions %}
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
+                    <div class="table-responsive" style="-webkit-overflow-scrolling: touch;">
+                        <table class="table table-hover align-middle mb-0" style="min-width: 480px;">
                             <thead class="table-light small text-uppercase text-secondary">
                                 <tr>
-                                    <th class="ps-4">Version</th>
+                                    <th class="ps-3 ps-md-4">Version</th>
                                     <th>Status</th>
-                                    <th>Total Quoted</th>
-                                    <th>Submission Time</th>
-                                    <th class="pe-4">Amendment Justification</th>
+                                    <th class="text-nowrap">Total Quoted</th>
+                                    <th class="text-nowrap">Submission Time</th>
+                                    <th class="pe-3 pe-md-4">Amendment Justification</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for v in versions %}
                                 <tr>
-                                    <td class="ps-4 fw-bold">
+                                    <td class="ps-3 ps-md-4 fw-bold">
                                         <span class="badge {% if v.version_number == bid.version %}bg-primary{% else %}bg-secondary{% endif %}">
                                             V{{ v.version_number }}
                                         </span>
@@ -253,9 +253,9 @@
                                             {{ v.status }}
                                         </span>
                                     </td>
-                                    <td class="font-monospace fw-semibold text-dark">${{ v.total_bid_amount|floatformat:2 }}</td>
-                                    <td class="small text-muted">{{ v.submitted_at|date:"M d, Y H:i"|default:"N/A" }}</td>
-                                    <td class="small text-dark pe-4">
+                                    <td class="font-monospace fw-semibold text-dark text-nowrap">${{ v.total_bid_amount|floatformat:2 }}</td>
+                                    <td class="small text-muted text-nowrap">{{ v.submitted_at|date:"M d, Y H:i"|default:"N/A" }}</td>
+                                    <td class="small text-dark pe-3 pe-md-4 text-break">
                                         {% if v.amendment_reason %}
                                             {{ v.amendment_reason }}
                                         {% else %}

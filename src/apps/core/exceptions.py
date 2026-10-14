@@ -50,16 +50,26 @@ def custom_exception_handler(exc, context):
     if response is not None:
         status_code = response.status_code
 
+        request = context.get("request") if context else None
+        is_unauthenticated = isinstance(exc, NotAuthenticated) or (
+            request and (not getattr(request, "user", None) or not request.user.is_authenticated)
+        )
+
         # Derive semantic error code based on exception and status code
         if isinstance(exc, (Http404, NotFound)) or status_code == status.HTTP_404_NOT_FOUND:
             error_code = "NOT_FOUND"
+        elif is_unauthenticated and status_code in (
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
+        ):
+            error_code = "NOT_AUTHENTICATED"
         elif isinstance(exc, PermissionDenied) or status_code == status.HTTP_403_FORBIDDEN:
             error_code = "PERMISSION_DENIED"
         elif (
             isinstance(exc, (NotAuthenticated, AuthenticationFailed))
             or status_code == status.HTTP_401_UNAUTHORIZED
         ):
-            error_code = "AUTHENTICATION_FAILED"
+            error_code = "NOT_AUTHENTICATED"
         elif isinstance(exc, Throttled) or status_code == status.HTTP_429_TOO_MANY_REQUESTS:
             error_code = "THROTTLED"
         elif isinstance(exc, DRFValidationError) or status_code == status.HTTP_400_BAD_REQUEST:

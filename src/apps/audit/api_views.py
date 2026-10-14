@@ -393,6 +393,7 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
             export_format=data["export_format"],
             filters=data.get("filters", {}),
             actor=request.user,
+            request=request,
         )
 
         response = HttpResponse(
@@ -412,7 +413,12 @@ def auditor_dashboard_summary_api_view(request):
     """
     Returns executive auditor dashboard KPIs, compliance alerts, and activity distribution.
     """
-    period_days = int(request.query_params.get("period_days", 30))
+    try:
+        period_days = int(request.query_params.get("period_days", 30))
+        if period_days <= 0:
+            period_days = 30
+    except (ValueError, TypeError):
+        period_days = 30
     data = get_auditor_dashboard_data(period_days=period_days)
     data["recent_logs"] = AuditLogListSerializer(data["recent_logs"], many=True).data
     data["recent_approvals"] = [
@@ -581,6 +587,7 @@ def auditor_export_api_view(request):
         export_format=data["export_format"],
         filters=data.get("filters", {}),
         actor=request.user,
+        request=request,
     )
 
     response = HttpResponse(

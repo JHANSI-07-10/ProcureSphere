@@ -68,6 +68,23 @@ class CanCreateExportJob(permissions.BasePermission):
         return True
 
 
+class CanViewSpendAnalytics(permissions.BasePermission):
+    """
+    Restricts organisation-wide spend analytics to executive, finance, and auditing roles.
+    Requesters and external vendors are strictly prohibited (403).
+    """
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
+        role_code = getattr(request.user, "role_code", None)
+        if role_code in [Role.REQUESTER, Role.VENDOR_USER]:
+            return False
+        return True
+
+
 class ExportJobSerializer(serializers.ModelSerializer):
     requested_by = serializers.PrimaryKeyRelatedField(read_only=True)
 
@@ -130,7 +147,7 @@ def pr_aging_report_view(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsNotVendorUser])
+@permission_classes([IsAuthenticated, CanViewSpendAnalytics])
 def spend_analytics_report_view(request):
     return Response(get_spend_analytics_report(), status=status.HTTP_200_OK)
 
