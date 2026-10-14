@@ -1476,12 +1476,16 @@ class ManagerSupplierPerformanceAPIView(APIView):
                     float(sc.composite_score) if sc.composite_score is not None else None
                 ),
                 "performance_status": (
-                    "EXCELLENT"
-                    if sc.composite_score >= Decimal("85.00")
+                    "NOT_EVALUATED"
+                    if sc.composite_score is None
                     else (
-                        "SATISFACTORY"
-                        if sc.composite_score >= Decimal("70.00")
-                        else "ATTENTION_REQUIRED"
+                        "EXCELLENT"
+                        if sc.composite_score >= Decimal("85.00")
+                        else (
+                            "SATISFACTORY"
+                            if sc.composite_score >= Decimal("70.00")
+                            else "ATTENTION_REQUIRED"
+                        )
                     )
                 ),
                 "evaluator_comments": sc.evaluator_comments,
@@ -1601,12 +1605,16 @@ class ManagerSupplierPerformanceDetailAPIView(APIView):
                     float(sc.composite_score) if sc.composite_score is not None else None
                 ),
                 "performance_status": (
-                    "EXCELLENT"
-                    if sc.composite_score >= Decimal("85.00")
+                    "NOT_EVALUATED"
+                    if sc.composite_score is None
                     else (
-                        "SATISFACTORY"
-                        if sc.composite_score >= Decimal("70.00")
-                        else "ATTENTION_REQUIRED"
+                        "EXCELLENT"
+                        if sc.composite_score >= Decimal("85.00")
+                        else (
+                            "SATISFACTORY"
+                            if sc.composite_score >= Decimal("70.00")
+                            else "ATTENTION_REQUIRED"
+                        )
                     )
                 ),
                 "evaluator_comments": sc.evaluator_comments,

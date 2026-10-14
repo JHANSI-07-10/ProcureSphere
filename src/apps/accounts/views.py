@@ -44,6 +44,8 @@ def portal_login_view(request):
                     "email": user.email,
                     "role": user.role_code if hasattr(user, "role_code") else None,
                 },
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
             )
 
             next_url = request.GET.get("next") or "/"

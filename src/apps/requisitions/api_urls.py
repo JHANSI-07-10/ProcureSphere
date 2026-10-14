@@ -13,10 +13,36 @@ from .models import PRAttachment, PRLine, PurchaseRequisition
 
 
 class PRLineSerializer(serializers.ModelSerializer):
+    estimated_unit_price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+    unit_price = serializers.DecimalField(
+        max_digits=12, decimal_places=2, required=False, write_only=True
+    )
+
     class Meta:
         model = PRLine
-        fields = "__all__"
-        read_only_fields = ["id", "requisition", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "requisition",
+            "item_description",
+            "quantity",
+            "unit_of_measure",
+            "estimated_unit_price",
+            "unit_price",
+            "estimated_total",
+            "specifications",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "requisition", "estimated_total", "created_at", "updated_at"]
+
+    def validate(self, attrs):
+        if "unit_price" in attrs and "estimated_unit_price" not in attrs:
+            attrs["estimated_unit_price"] = attrs.pop("unit_price")
+        elif "unit_price" in attrs:
+            attrs.pop("unit_price")
+        if "estimated_unit_price" not in attrs:
+            raise serializers.ValidationError({"estimated_unit_price": "This field is required."})
+        return attrs
 
 
 class PRAttachmentSerializer(serializers.ModelSerializer):
@@ -59,7 +85,13 @@ class PurchaseRequisitionSerializer(serializers.ModelSerializer):
         total = Decimal("0.00")
         for item in lines_data:
             qty = Decimal(str(item.get("quantity", 1)))
-            price = Decimal(str(item.get("unit_price", 0)))
+            price = Decimal(
+                str(
+                    item.get("estimated_unit_price")
+                    if item.get("estimated_unit_price") is not None
+                    else item.get("unit_price", 0)
+                )
+            )
             line_tot = qty * price
             total += line_tot
             PRLine.objects.create(
@@ -67,8 +99,9 @@ class PurchaseRequisitionSerializer(serializers.ModelSerializer):
                 item_description=item.get("item_description", "Line Item"),
                 quantity=qty,
                 unit_of_measure=item.get("unit_of_measure", "EA"),
-                unit_price=price,
-                line_total=line_tot,
+                estimated_unit_price=price,
+                estimated_total=line_tot,
+                specifications=item.get("specifications", ""),
             )
 
         if total > Decimal("0.00"):
@@ -76,6 +109,43 @@ class PurchaseRequisitionSerializer(serializers.ModelSerializer):
             pr.save(update_fields=["total_amount"])
 
         return pr
+
+    def update(self, instance, validated_data):
+        lines_data = self.initial_data.get("line_items", self.initial_data.get("lines", None))
+        validated_data.pop("lines", None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if lines_data is not None:
+            instance.lines.all().delete()
+            total = Decimal("0.00")
+            for item in lines_data:
+                qty = Decimal(str(item.get("quantity", 1)))
+                price = Decimal(
+                    str(
+                        item.get("estimated_unit_price")
+                        if item.get("estimated_unit_price") is not None
+                        else item.get("unit_price", 0)
+                    )
+                )
+                line_tot = qty * price
+                total += line_tot
+                PRLine.objects.create(
+                    requisition=instance,
+                    item_description=item.get("item_description", "Line Item"),
+                    quantity=qty,
+                    unit_of_measure=item.get("unit_of_measure", "EA"),
+                    estimated_unit_price=price,
+                    estimated_total=line_tot,
+                    specifications=item.get("specifications", ""),
+                )
+            if total > Decimal("0.00"):
+                instance.total_amount = total
+                instance.save(update_fields=["total_amount"])
+
+        return instance
 
 
 class CanCreateRequisitionPermission(permissions.BasePermission):
@@ -100,6 +170,16 @@ class CanCreateRequisitionPermission(permissions.BasePermission):
         if request.method in ["POST", "PUT", "PATCH", "DELETE"]:
             if request.user.is_superuser:
                 return True
+            action = getattr(view, "action", None)
+            if action in ["approve", "reject"]:
+                return role_code in [
+                    Role.DEPT_APPROVER,
+                    Role.PROC_MGR,
+                    Role.FINANCE_AP,
+                    Role.SUPER_ADMIN,
+                ]
+            if action in ["submit", "cancel"]:
+                return role_code in [Role.REQUESTER, Role.PROC_MGR, Role.SUPER_ADMIN]
             return role_code in [Role.REQUESTER, Role.SUPER_ADMIN]
 
         return True
@@ -176,8 +256,90 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
         pr = self.get_object()
         from apps.requisitions.services import submit_purchase_requisition_service
 
-        updated_pr = submit_purchase_requisition_service(pr=pr, user=request.user)
+        updated_pr = submit_purchase_requisition_service(requisition=pr, user=request.user)
         return Response(self.get_serializer(updated_pr).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="approve")
+    def approve(self, request, pk=None):
+        pr = self.get_object()
+        user = request.user
+        role_code = getattr(user, "role_code", None) or (
+            user.role.code if hasattr(user, "role") and user.role else None
+        )
+        if pr.requester_id == user.id and not user.is_superuser:
+            raise permissions.exceptions.PermissionDenied(
+                "Self-approval is strictly prohibited: Requesters cannot approve their own Purchase Requisitions."
+            )
+        if not user.is_superuser and role_code not in [
+            Role.DEPT_APPROVER,
+            Role.PROC_MGR,
+            Role.FINANCE_AP,
+            Role.SUPER_ADMIN,
+        ]:
+            raise permissions.exceptions.PermissionDenied(
+                "You do not have permission to approve Purchase Requisitions."
+            )
+        from apps.requisitions.services import approve_purchase_requisition_service
+
+        comments = request.data.get("comments", "")
+        updated_pr = approve_purchase_requisition_service(
+            requisition=pr, approver=user, comments=comments
+        )
+        return Response(self.get_serializer(updated_pr).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="reject")
+    def reject(self, request, pk=None):
+        pr = self.get_object()
+        user = request.user
+        role_code = getattr(user, "role_code", None) or (
+            user.role.code if hasattr(user, "role") and user.role else None
+        )
+        if not user.is_superuser and role_code not in [
+            Role.DEPT_APPROVER,
+            Role.PROC_MGR,
+            Role.FINANCE_AP,
+            Role.SUPER_ADMIN,
+        ]:
+            raise permissions.exceptions.PermissionDenied(
+                "You do not have permission to reject Purchase Requisitions."
+            )
+        comments = (request.data.get("comments") or "").strip()
+        if not comments:
+            raise serializers.ValidationError(
+                {"comments": "Rejection comments/justification are mandatory."}
+            )
+        from apps.requisitions.services import reject_purchase_requisition_service
+
+        updated_pr = reject_purchase_requisition_service(
+            requisition=pr, approver=user, comments=comments
+        )
+        return Response(self.get_serializer(updated_pr).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="cancel")
+    def cancel(self, request, pk=None):
+        pr = self.get_object()
+        user = request.user
+        role_code = getattr(user, "role_code", None) or (
+            user.role.code if hasattr(user, "role") and user.role else None
+        )
+        if pr.requester_id != user.id and not user.is_superuser and role_code != Role.PROC_MGR:
+            raise permissions.exceptions.PermissionDenied(
+                "Only the original requester or a procurement manager can cancel this requisition."
+            )
+        if pr.status in [
+            PurchaseRequisition.STATUS_PO_ISSUED,
+            PurchaseRequisition.STATUS_CANCELLED,
+            PurchaseRequisition.STATUS_SOURCING,
+        ]:
+            raise serializers.ValidationError(
+                {"status": f"Cannot cancel requisition in '{pr.status}' status."}
+            )
+        from apps.requisitions.services import release_budget_reservation_service
+
+        pr.status = PurchaseRequisition.STATUS_CANCELLED
+        pr.save(update_fields=["status", "updated_at"])
+        release_budget_reservation_service(requisition=pr, user=user, reason="PR cancelled by user")
+        return Response(self.get_serializer(pr).data, status=status.HTTP_200_OK)
 
 
 router = DefaultRouter()

@@ -39,8 +39,12 @@ def auditor_dashboard_view(request):
     Supplies core executive KPIs, activity trend charts, action distribution,
     open anomalies, and recent audit activity feed.
     """
-    _enforce_auditor_access(request)
-    period_days = int(request.GET.get("period_days", 30))
+    try:
+        period_days = int(request.GET.get("period_days", 30))
+        if period_days <= 0:
+            period_days = 30
+    except (ValueError, TypeError):
+        period_days = 30
     dashboard_data = get_auditor_dashboard_data(period_days=period_days)
     vendor_compliance = get_vendor_compliance_audit(limit=10)
     approval_history = get_approval_history_audit(limit=10)
@@ -92,8 +96,20 @@ def audit_log_view(request):
     model_filter = (
         request.GET.get("model", "").strip() or request.GET.get("target_model", "").strip()
     )
-    page = int(request.GET.get("page", 1))
-    limit = int(request.GET.get("limit", 50))
+    try:
+        page = max(1, int(request.GET.get("page", 1)))
+    except (ValueError, TypeError):
+        page = 1
+
+    try:
+        limit = int(request.GET.get("limit", 50))
+        if limit <= 0:
+            limit = 50
+        elif limit > 500:
+            limit = 500
+    except (ValueError, TypeError):
+        limit = 50
+
     offset = (page - 1) * limit
 
     data = get_audit_logs(

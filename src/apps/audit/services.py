@@ -837,6 +837,7 @@ def export_auditor_data_service(  # noqa: C901
     export_format: str = "csv",
     filters: Optional[Dict[str, Any]] = None,
     actor: Optional[Any] = None,
+    request: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
     Generates structured export data (CSV or JSON) for Auditor Dashboard domains,
@@ -1147,7 +1148,22 @@ def export_auditor_data_service(  # noqa: C901
             )
 
     # Render CSV / JSON
-    if export_format in ["csv", "xlsx"]:
+    # Render CSV / XLSX / JSON
+    if export_format == "xlsx":
+        import openpyxl
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Audit Export"
+        ws.append(headers)
+        for row in data_payload:
+            ws.append([row.get(h, "") for h in headers])
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        content = buffer.getvalue()
+        content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        file_extension = "xlsx"
+    elif export_format == "csv":
         output = io.StringIO()
         writer = csv.DictWriter(output, fieldnames=headers)
         writer.writeheader()
@@ -1171,6 +1187,10 @@ def export_auditor_data_service(  # noqa: C901
         file_extension = "json"
 
     # Immutable export audit log creation
+    ip_addr = request.META.get("REMOTE_ADDR") if request else None
+    req_id = getattr(request, "request_id", None) or (
+        request.META.get("HTTP_X_REQUEST_ID") if request else None
+    )
     create_audit_log_service(
         actor=actor,
         action=AuditLog.ACTION_EXPORT,
@@ -1182,6 +1202,8 @@ def export_auditor_data_service(  # noqa: C901
             "record_count": len(data_payload),
             "filters": {k: str(v) for k, v in filters.items()},
         },
+        ip_address=ip_addr,
+        request_id=req_id,
     )
 
     return {
