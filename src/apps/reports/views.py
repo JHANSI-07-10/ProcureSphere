@@ -75,6 +75,16 @@ def dashboard_view(request):
             "desc": "RFQ/RFP duration and supplier participation",
         },
         {
+            "id": "po_status",
+            "name": "PO Status & Lifecycle Register",
+            "desc": "Purchase order status, amendments, and delivery schedule progression",
+        },
+        {
+            "id": "receipt_rejection",
+            "name": "Receipt, Rejection & Delivery Performance",
+            "desc": "Goods receipt intake, quality rejection rates, and vendor on-time delivery metrics",
+        },
+        {
             "id": "invoice_exception_aging",
             "name": "Match Exception Aging",
             "desc": "Aging report of open 3-way match exceptions",
@@ -101,6 +111,19 @@ def dashboard_view(request):
         },
     ]
 
+    user = request.user
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if getattr(user, "role", None) else ""
+    )
+    role_code = str(role_code).upper()
+
+    base_layout = "layouts/finance_base.html"
+    if role_code in ["AUDITOR", "COMPLIANCE_AUDITOR", "AUDIT"]:
+        base_layout = "audit/base_auditor.html"
+    elif role_code in ["PROCUREMENT_MANAGER", "PROC_MGR", "MANAGER", "LEGAL_MGR"]:
+        base_layout = "manager/base_manager.html"
+    elif role_code in ["STORES_RECEIVER", "STORES"]:
+        base_layout = "layouts/stores_base.html"
     role_code = _get_role_code(request.user)
     base_layout = _resolve_base_layout(role_code)
 

@@ -362,3 +362,258 @@ def test_grn_detail_view_displays_complete_information(client, inspection_setup)
     assert inspection_setup["po"].po_number.encode() in response.content
     assert b"Damaged power socket" in response.content
     assert b"Quality Inspection" in response.content
+
+
+@pytest.mark.django_db
+def test_unauthorized_roles_cannot_perform_inspection(inspection_setup, db_roles):
+    """RBAC: Requester, Auditor, and Vendor users cannot execute record_inspection_service."""
+    grn = inspection_setup["grn"]
+    line1 = grn.lines.first()
+
+    requester = User.objects.create_user(
+        email="requester_unauth@hpe.com",
+        password="Password123!",
+        role=db_roles[Role.REQUESTER],
+    )
+    auditor = User.objects.create_user(
+        email="auditor_unauth@hpe.com",
+        password="Password123!",
+        role=db_roles[Role.AUDITOR],
+    )
+    vendor_user = User.objects.create_user(
+        email="vendor_unauth@hpe.com",
+        password="Password123!",
+        role=db_roles[Role.VENDOR_USER],
+    )
+
+    staff_ordinary = User.objects.create_user(
+        email="staff_unauth_insp@hpe.com",
+        password="Password123!",
+        role=db_roles[Role.REQUESTER],
+        is_staff=True,
+    )
+
+    for unauth_user in [requester, auditor, vendor_user, staff_ordinary]:
+        with pytest.raises(ValidationError) as exc:
+            record_inspection_service(
+                receipt=grn,
+                inspected_by=unauth_user,
+                inspection_items=[
+                    {
+                        "receipt_line_id": str(line1.id),
+                        "passed": True,
+                        "inspection_notes": "Unauthorized attempt",
+                    }
+                ],
+            )
+        assert "Unauthorized: Only Stores Receiver or Super Admin" in str(exc.value)
+
+    # Super Admin can perform quality inspections
+    admin = User.objects.create_user(
+        email="admin_insp_ok@hpe.com",
+        password="Password123!",
+        role=db_roles[Role.SUPER_ADMIN],
+        is_superuser=True,
+    )
+    rec = record_inspection_service(
+        receipt=grn,
+        inspected_by=admin,
+        inspection_items=[
+            {
+                "receipt_line_id": str(line1.id),
+                "passed": True,
+                "inspection_notes": "Super admin inspection passed",
+            }
+        ],
+    )
+    assert rec.overall_inspection_status in ["PASSED", "INSPECTED", "PARTIALLY_INSPECTED"]
+
+
+@pytest.mark.django_db
+def test_auditor_and_unauthorized_roles_blocked_from_inspection_view(
+    client, inspection_setup, db_roles
+):
+    """RBAC View: Unauthorized roles and ordinary staff accessing /receipts/<id>/inspect/ are blocked."""
+    grn = inspection_setup["grn"]
+    line1 = grn.lines.first()
+
+    auditor = User.objects.create_user(
+        email="auditor_view@hpe.com",
+        password="Password123!",
+        role=db_roles[Role.AUDITOR],
+    )
+    staff_ordinary = User.objects.create_user(
+        email="staff_view_insp@hpe.com",
+        password="Password123!",
+        role=db_roles[Role.REQUESTER],
+        is_staff=True,
+    )
+
+    for unauth_user in [auditor, staff_ordinary]:
+        client.force_login(unauth_user)
+
+        # GET request
+        response = client.get(f"/receipts/{grn.id}/inspect/", follow=True)
+        assert response.status_code == 200
+        assert any(
+            "Only Stores Receiver or Super Admin can perform quality inspections" in m.message
+            for m in response.context["messages"]
+        )
+
+        # POST request attempt
+        post_data = {
+            f"passed_{line1.id}": "true",
+            f"inspection_notes_{line1.id}": "Tampering attempt",
+        }
+        response_post = client.post(f"/receipts/{grn.id}/inspect/", post_data, follow=True)
+        assert response_post.status_code == 200
+        assert any(
+            "Only Stores Receiver or Super Admin can perform quality inspections" in m.message
+            for m in response_post.context["messages"]
+        )
+
+
+@pytest.mark.django_db
+def test_rejection_without_reason_is_rejected_in_view(client, inspection_setup):
+    """Validation: Rejecting an item without a reason in UI triggers a validation error."""
+    receiver = inspection_setup["receiver"]
+    grn = inspection_setup["grn"]
+    line1 = grn.lines.first()
+
+    client.force_login(receiver)
+    post_data = {
+        f"passed_{line1.id}": "false",
+        f"inspection_notes_{line1.id}": "Failed test",
+        f"rejected_quantity_{line1.id}": "2.00",
+        f"rejection_reason_{line1.id}": "",  # Empty rejection reason
+    }
+
+    response = client.post(f"/receipts/{grn.id}/inspect/", post_data)
+    assert response.status_code == 200
+    assert b"Rejection reason is required" in response.content
+    assert not RejectionRecord.objects.filter(receipt_line=line1).exists()
+
+
+@pytest.mark.django_db
+def test_rejection_without_reason_or_notes_rejected_in_service(inspection_setup):
+    """Validation: Calling service with rejected quantity but no reason or notes raises ValidationError."""
+    receiver = inspection_setup["receiver"]
+    grn = inspection_setup["grn"]
+    line1 = grn.lines.first()
+
+    with pytest.raises(ValidationError) as exc:
+        record_inspection_service(
+            receipt=grn,
+            inspected_by=receiver,
+            inspection_items=[
+                {
+                    "receipt_line_id": str(line1.id),
+                    "passed": False,
+                    "rejected_quantity": Decimal("2.00"),
+                    "rejection_reason": "",
+                    "inspection_notes": "",
+                }
+            ],
+        )
+    assert "Rejection reason is required" in str(exc.value)
+
+
+@pytest.mark.django_db
+def test_inspection_audit_log_captures_previous_and_new_state(inspection_setup):
+    """Audit: Inspection updates create an AuditLog capturing both previous_state and new_state."""
+    from apps.audit.models import AuditLog
+
+    receiver = inspection_setup["receiver"]
+    grn = inspection_setup["grn"]
+    line1 = grn.lines.first()
+
+    record_inspection_service(
+        receipt=grn,
+        inspected_by=receiver,
+        inspection_items=[
+            {
+                "receipt_line_id": str(line1.id),
+                "passed": False,
+                "rejected_quantity": Decimal("1.50"),
+                "rejection_reason": "Broken heat sink",
+                "inspection_notes": "Hardware defect identified",
+                "returned_to_vendor": True,
+            }
+        ],
+    )
+
+    audit = AuditLog.objects.filter(
+        target_model="GoodsReceipt", target_object_id=str(grn.id)
+    ).first()
+    assert audit is not None
+    assert audit.actor == receiver
+    assert audit.action == AuditLog.ACTION_UPDATE
+    assert audit.previous_state is not None
+    assert "overall_inspection_status" in audit.previous_state
+    assert audit.new_state is not None
+    assert audit.new_state["overall_inspection_status"] == "FAILED"
+
+    # Line details in new_state
+    line_snapshot = [
+        line_item for line_item in audit.new_state["lines"] if line_item["line_id"] == str(line1.id)
+    ][0]
+    assert line_snapshot["quantity_rejected"] == "1.50"
+    assert line_snapshot["rejection_reason"] == "Broken heat sink"
+    assert line_snapshot["inspection_notes"] == "Hardware defect identified"
+
+
+@pytest.mark.django_db
+def test_atomic_rollback_on_multi_line_inspection_error(inspection_setup):
+    """Transactional Integrity: If one line in batch inspection fails, all line changes roll back."""
+    receiver = inspection_setup["receiver"]
+    grn = inspection_setup["grn"]
+    lines = list(grn.lines.all())
+    line1 = lines[0]
+    line2 = lines[1]
+
+    # Batch with line1 valid, but line2 invalid (negative quantity)
+    with pytest.raises(ValidationError):
+        record_inspection_service(
+            receipt=grn,
+            inspected_by=receiver,
+            inspection_items=[
+                {
+                    "receipt_line_id": str(line1.id),
+                    "passed": True,
+                    "inspection_notes": "Line 1 should rollback",
+                },
+                {
+                    "receipt_line_id": str(line2.id),
+                    "passed": False,
+                    "rejected_quantity": Decimal("-5.00"),  # Invalid negative
+                },
+            ],
+        )
+
+    # Verify line1 was rolled back and has no inspection record
+    line1.refresh_from_db()
+    assert not InspectionRecord.objects.filter(receipt_line=line1).exists()
+    assert line1.inspection_status == "PENDING"
+
+
+@pytest.mark.django_db
+def test_cannot_inspect_nonexistent_receipt_line_raises_validation_error(inspection_setup):
+    """Validation: Passing a non-existent receipt_line_id raises a clear ValidationError."""
+    import uuid
+
+    receiver = inspection_setup["receiver"]
+    grn = inspection_setup["grn"]
+
+    with pytest.raises(ValidationError) as exc:
+        record_inspection_service(
+            receipt=grn,
+            inspected_by=receiver,
+            inspection_items=[
+                {
+                    "receipt_line_id": str(uuid.uuid4()),
+                    "passed": True,
+                    "inspection_notes": "Ghost line",
+                }
+            ],
+        )
+    assert "does not exist" in str(exc.value)

@@ -1,0 +1,217 @@
+{% extends base_layout|default:'base.html' %}
+
+{% block title %}Receipt, Rejection & Delivery Performance Report — ProcureSphere 360{% endblock %}
+{% block page_heading %}Receipt, Rejection & Delivery Performance{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <a href="{% url 'receipt_dashboard' %}" class="text-decoration-none text-muted mb-2 d-inline-block">
+                <i class="fa-solid fa-arrow-left me-1"></i> Back to Stores Dashboard
+            </a>
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <span class="badge bg-primary px-3 py-2 text-uppercase">
+                    <i class="fa-solid fa-chart-line me-1"></i> Performance Analytics
+                </span>
+                <h2 class="fw-bold text-dark mb-0">Receipt, Rejection & Delivery Performance</h2>
+            </div>
+            <p class="text-muted small mt-1 mb-0">Operational report tracking supplier intake quality, rejection percentages, and delivery timeliness.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="?export=CSV{% if filters.start_date %}&start_date={{ filters.start_date }}{% endif %}{% if filters.end_date %}&end_date={{ filters.end_date }}{% endif %}{% if filters.vendor %}&vendor={{ filters.vendor }}{% endif %}{% if filters.po_number %}&po_number={{ filters.po_number }}{% endif %}" class="btn btn-outline-success">
+                <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+            </a>
+            <a href="?export=XLSX{% if filters.start_date %}&start_date={{ filters.start_date }}{% endif %}{% if filters.end_date %}&end_date={{ filters.end_date }}{% endif %}{% if filters.vendor %}&vendor={{ filters.vendor }}{% endif %}{% if filters.po_number %}&po_number={{ filters.po_number }}{% endif %}" class="btn btn-outline-primary">
+                <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-xl-2">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body p-3">
+                    <div class="text-muted small text-uppercase fw-semibold mb-1">Total GRNs</div>
+                    <div class="h3 fw-bold text-dark mb-0">{{ summary.total_grns|default:0 }}</div>
+                    <div class="text-muted small mt-1">{{ summary.total_lines|default:0 }} line items</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-2">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body p-3">
+                    <div class="text-muted small text-uppercase fw-semibold mb-1">Total Received</div>
+                    <div class="h3 fw-bold text-primary mb-0">{{ summary.total_qty_received|default:"0.00"|floatformat:2 }}</div>
+                    <div class="text-muted small mt-1">Units received</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-2">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body p-3">
+                    <div class="text-muted small text-uppercase fw-semibold mb-1">Accepted Qty</div>
+                    <div class="h3 fw-bold text-success mb-0">{{ summary.total_qty_accepted|default:"0.00"|floatformat:2 }}</div>
+                    <div class="text-muted small mt-1">Passed inspection</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-2">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body p-3">
+                    <div class="text-muted small text-uppercase fw-semibold mb-1">Rejected Qty</div>
+                    <div class="h3 fw-bold text-danger mb-0">{{ summary.total_qty_rejected|default:"0.00"|floatformat:2 }}</div>
+                    <div class="text-danger small mt-1">{{ summary.overall_rejection_rate_percent|default:"0.0" }}% defect rate</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-2">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body p-3">
+                    <div class="text-muted small text-uppercase fw-semibold mb-1">On-Time Rate</div>
+                    <div class="h3 fw-bold text-info mb-0">{{ summary.on_time_delivery_rate_percent|default:"100.0" }}%</div>
+                    <div class="text-muted small mt-1">Delivery compliance</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-2">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body p-3">
+                    <div class="text-muted small text-uppercase fw-semibold mb-1">Vendor Returns</div>
+                    <div class="h3 fw-bold text-warning mb-0">{{ summary.returns_dispatched|default:0 }}</div>
+                    <div class="text-muted small mt-1">{{ summary.returns_pending|default:0 }} pending dispatch</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-3">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-12 col-sm-6 col-md-3">
+                    <label class="form-label small fw-semibold text-muted mb-1">Start Date</label>
+                    <input type="date" name="start_date" value="{{ filters.start_date }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                    <label class="form-label small fw-semibold text-muted mb-1">End Date</label>
+                    <input type="date" name="end_date" value="{{ filters.end_date }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                    <label class="form-label small fw-semibold text-muted mb-1">Vendor Name</label>
+                    <input type="text" name="vendor" value="{{ filters.vendor }}" placeholder="Search vendor..." class="form-control form-control-sm">
+                </div>
+                <div class="col-12 col-sm-6 col-md-2">
+                    <label class="form-label small fw-semibold text-muted mb-1">PO Number</label>
+                    <input type="text" name="po_number" value="{{ filters.po_number }}" placeholder="PO-..." class="form-control form-control-sm">
+                </div>
+                <div class="col-12 col-md-1 d-flex gap-1">
+                    <button type="submit" class="btn btn-sm btn-primary w-100">
+                        <i class="fa-solid fa-filter me-1"></i> Filter
+                    </button>
+                    {% if filters.start_date or filters.end_date or filters.vendor or filters.po_number %}
+                    <a href="{% url 'receipt_delivery_performance_report' %}" class="btn btn-sm btn-outline-secondary" title="Clear Filters">
+                        <i class="fa-solid fa-xmark"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Report Table -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light text-muted small text-uppercase">
+                        <tr>
+                            <th class="ps-3 py-3">GRN #</th>
+                            <th>PO #</th>
+                            <th>Vendor</th>
+                            <th>Item Description</th>
+                            <th>Delivery Note</th>
+                            <th>Received Date</th>
+                            <th>Expected Date</th>
+                            <th>Delivery Status</th>
+                            <th class="text-end">Received</th>
+                            <th class="text-end">Accepted</th>
+                            <th class="text-end">Rejected</th>
+                            <th class="text-center">QC Status</th>
+                            <th class="text-center pe-3">Return Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="small">
+                        {% for row in report_lines %}
+                        <tr>
+                            <td class="ps-3 fw-bold font-monospace text-primary">{{ row.grn_number }}</td>
+                            <td class="font-monospace text-dark">{{ row.po_number }}</td>
+                            <td>{{ row.vendor }}</td>
+                            <td class="text-truncate" style="max-width: 180px;" title="{{ row.item_description }}">{{ row.item_description }}</td>
+                            <td>{{ row.delivery_note_number }}</td>
+                            <td>{{ row.received_date }}</td>
+                            <td>{{ row.expected_delivery_date }}</td>
+                            <td>
+                                {% if row.delivery_performance == "ON_TIME" %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                    <i class="fa-solid fa-check me-1"></i> On Time
+                                </span>
+                                {% elif row.delivery_performance == "LATE" %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i> Late (+{{ row.days_variance }}d)
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary px-2 py-1">
+                                    {{ row.delivery_performance }}
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end fw-semibold">{{ row.qty_received|floatformat:2 }}</td>
+                            <td class="text-end text-success fw-semibold">{{ row.qty_accepted|floatformat:2 }}</td>
+                            <td class="text-end text-danger fw-semibold">
+                                {% if row.qty_rejected > 0 %}
+                                {{ row.qty_rejected|floatformat:2 }}
+                                <span class="badge bg-danger text-white rounded-pill ms-1" style="font-size: 0.65rem;">{{ row.rejection_rate_percent }}%</span>
+                                {% else %}
+                                0.00
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if row.inspection_status == "PASSED" %}
+                                <span class="badge bg-success px-2 py-1">Passed</span>
+                                {% elif row.inspection_status == "REJECTED" or row.inspection_status == "FAILED" %}
+                                <span class="badge bg-danger px-2 py-1" title="{{ row.rejection_reason }}">Rejected</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark px-2 py-1">{{ row.inspection_status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center pe-3">
+                                {% if row.return_status == "RETURNED" %}
+                                <span class="badge bg-info text-dark px-2 py-1"><i class="fa-solid fa-truck me-1"></i> Dispatched</span>
+                                {% elif row.return_status == "PENDING_RETURN" %}
+                                <span class="badge bg-warning text-dark px-2 py-1">Pending Return</span>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="13" class="text-center py-5 text-muted">
+                                <div class="py-4">
+                                    <i class="fa-solid fa-boxes-packing fa-3x text-muted mb-3 d-block opacity-50"></i>
+                                    <div class="h5 text-muted">No Receipt Records Found</div>
+                                    <p class="small text-muted mb-0">No goods receipts match the specified filters or date criteria.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

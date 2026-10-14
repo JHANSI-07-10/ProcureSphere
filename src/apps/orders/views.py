@@ -68,7 +68,13 @@ def detail_view(request, pk):
     po = get_object_or_404(
         PurchaseOrder.objects.select_related(
             "vendor", "cost_center", "requisition", "acknowledged_by"
-        ).prefetch_related("lines", "delivery_schedules", "amendments"),
+        ).prefetch_related(
+            "lines",
+            "delivery_schedules",
+            "amendments",
+            "receipts__received_by",
+            "receipts__lines__inspection",
+        ),
         pk=pk,
     )
 
@@ -107,7 +113,8 @@ def detail_view(request, pk):
             "can_amend": can_amend,
             "amend_form": POAmendForm(po=po) if can_amend else None,
             "role_code": role_code,
-            "is_stores_receiver": role_code == Role.STORES_RECEIVER,
+            "is_stores_receiver": role_code in (Role.STORES_RECEIVER, Role.SUPER_ADMIN)
+            or user.is_superuser,
             "is_receivable": po.status in RECEIVABLE_PO_STATUSES,
         },
     )

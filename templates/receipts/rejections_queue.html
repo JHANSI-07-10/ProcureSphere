@@ -1,6 +1,7 @@
-{% extends 'base.html' %}
+{% extends base_layout|default:'base.html' %}
 
 {% block title %}Rejections & Returns Queue — ProcureSphere 360{% endblock %}
+{% block page_heading %}Rejections & Vendor Returns Queue{% endblock %}
 
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
@@ -170,10 +171,67 @@
                     </td>
                     <td class="pe-4 py-3 text-end">
                         <div class="d-flex justify-content-end align-items-center gap-2">
+                            {% if line.latest_rejection and not line.latest_rejection.returned_to_vendor %}
+                            <button type="button" class="btn btn-sm btn-danger rounded-pill px-3 fw-semibold text-white shadow-xs" data-bs-toggle="modal" data-bs-target="#returnModal{{ line.latest_rejection.id }}">
+                                <i class="fa-solid fa-truck-arrow-right me-1"></i> Return
+                            </button>
+                            {% endif %}
                             <a href="{% url 'receipt_detail' grn_id=line.receipt.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold">
                                 View GRN
                             </a>
                         </div>
+
+                        {% if line.latest_rejection and not line.latest_rejection.returned_to_vendor %}
+                        <!-- Vendor Return Modal -->
+                        <div class="modal fade" id="returnModal{{ line.latest_rejection.id }}" tabindex="-1" aria-labelledby="returnModalLabel{{ line.latest_rejection.id }}" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <form method="POST" action="{% url 'record_vendor_return' rejection_id=line.latest_rejection.id %}" class="modal-content border-0 shadow rounded-4 text-start">
+                                    {% csrf_token %}
+                                    <div class="modal-header border-bottom bg-danger bg-opacity-10">
+                                        <h5 class="modal-title fw-bold text-danger" id="returnModalLabel{{ line.latest_rejection.id }}">
+                                            <i class="fa-solid fa-truck-arrow-right me-2"></i> Process Return to Vendor
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body p-4">
+                                        <div class="mb-3">
+                                            <div class="small text-muted fw-semibold text-uppercase">Shipment &amp; Item Reference</div>
+                                            <div class="fw-bold text-dark">{{ line.po_line.item_description }}</div>
+                                            <div class="small font-monospace text-primary">GRN: {{ line.receipt.grn_number }} &bull; PO: {{ line.receipt.po.po_number }}</div>
+                                            <div class="small text-muted">Vendor: {{ line.receipt.po.vendor.legal_name }}</div>
+                                        </div>
+
+                                        <div class="alert alert-danger py-2 px-3 small rounded-3 mb-3">
+                                            <span class="fw-bold">Defect / Rejection Reason:</span> {{ line.latest_rejection.rejection_reason }}
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-bold text-dark">Return Quantity (Max: {{ line.latest_rejection.rejected_quantity }})</label>
+                                            <input type="number" step="0.01" min="0.01" max="{{ line.latest_rejection.rejected_quantity }}"
+                                                   name="return_quantity" value="{{ line.latest_rejection.rejected_quantity }}" class="form-control" required>
+                                            <div class="form-text small">Accepted warehouse stock is guaranteed unchanged by returns.</div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-bold text-dark">Carrier / Tracking Reference <span class="text-danger">*</span></label>
+                                            <input type="text" name="tracking_reference" class="form-control" placeholder="e.g. DHL-WAYBILL-998811 or RMA-HPE-4421" required>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-bold text-dark">Return / Dispatch Notes</label>
+                                            <textarea name="return_notes" class="form-control" rows="2" placeholder="e.g. Dispatched via courier; vendor credit note requested..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer border-top bg-light">
+                                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">
+                                            <i class="fa-solid fa-check me-1"></i> Confirm Dispatch
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        {% endif %}
                     </td>
                 </tr>
                 {% empty %}

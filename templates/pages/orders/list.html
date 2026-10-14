@@ -1,6 +1,7 @@
-{% extends 'base.html' %}
+{% extends base_layout|default:'base.html' %}
 
-{% block title %}Purchase Orders — ProcureSphere 360{% endblock %}
+{% block title %}{% if is_stores_receiver %}Receivable Purchase Orders — Stores Desk{% else %}Purchase Orders Register — ProcureSphere 360{% endif %}{% endblock %}
+{% block page_heading %}{% if is_stores_receiver %}Receivable Purchase Orders{% else %}Purchase Orders Register{% endif %}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
