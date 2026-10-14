@@ -16,8 +16,10 @@ from apps.receipts.models import (
     RejectionRecord,
 )
 from apps.receipts.services import (
+    correct_receipt_line_quantity_service,
     create_goods_receipt_service,
     handoff_goods_to_stock_service,
+    process_vendor_return_service,
     record_inspection_service,
 )
 
@@ -82,6 +84,16 @@ def _filter_receipts_queryset(
 
 @login_required(login_url="/login/")
 def receipts_list_view(request):
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if hasattr(request.user, "role") and request.user.role else None
+    )
+    if role_code == Role.VENDOR_USER:
+        messages.error(
+            request,
+            "Access Denied: Vendor users cannot access internal stores receiving queues.",
+        )
+        return redirect("vendor_dashboard")
+
     search_query = request.GET.get("q", "").strip()
     status_filter = request.GET.get("status", "").strip().upper()
     po_filter = request.GET.get("po", "").strip()
@@ -166,6 +178,20 @@ def receipt_detail_view(request, grn_id):
         ),
         id=grn_id,
     )
+    from apps.audit.models import AuditLog
+
+    line_ids = [str(line.id) for line in grn.lines.all()]
+    rej_ids = [str(rej.id) for line in grn.lines.all() for rej in line.rejections.all()]
+    audit_logs = (
+        AuditLog.objects.filter(
+            Q(target_model="GoodsReceipt", target_object_id=str(grn.id))
+            | Q(target_model="ReceiptLine", target_object_id__in=line_ids)
+            | Q(target_model="RejectionRecord", target_object_id__in=rej_ids)
+        )
+        .select_related("actor")
+        .order_by("-timestamp")
+    )
+
     return render(
         request,
         "receipts/receipt_detail.html",
@@ -173,6 +199,7 @@ def receipt_detail_view(request, grn_id):
             "grn": grn,
             "po": grn.po,
             "lines": grn.lines.all(),
+            "audit_logs": audit_logs,
         },
     )
 
@@ -212,7 +239,10 @@ def _parse_single_inspection_line(request, line):
         qty_rejected = line.quantity_received
 
     if qty_rejected > Decimal("0.00") and not rejection_reason:
-        rejection_reason = notes or f"Defective/Damaged items ({qty_rejected} rejected)"
+        return (
+            None,
+            f"Rejection reason is required when rejecting items for '{line.po_line.item_description}'.",
+        )
 
     item_data = {
         "receipt_line_id": line_id_str,
@@ -247,6 +277,27 @@ def receipt_inspect_view(request, grn_id):
         ),
         id=grn_id,
     )
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if hasattr(request.user, "role") and request.user.role else None
+    )
+    is_authorized = request.user.is_superuser or role_code in [
+        Role.STORES_RECEIVER,
+        Role.SUPER_ADMIN,
+    ]
+    if role_code == Role.VENDOR_USER:
+        messages.error(
+            request,
+            "Access Denied: Vendor users cannot perform quality inspections.",
+        )
+        return redirect("vendor_dashboard")
+
+    if not is_authorized:
+        messages.error(
+            request,
+            "Permission Denied: Only Stores Receiver or Super Admin can perform quality inspections.",
+        )
+        return redirect("receipt_detail", grn_id=grn.id)
+
     lines = grn.lines.all()
 
     if request.method == "POST":
@@ -346,6 +397,27 @@ def _extract_receipt_form_data(request, lines):
 
 @login_required(login_url="/login/")
 def receipt_create_view(request, po_id):
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if hasattr(request.user, "role") and request.user.role else None
+    )
+    is_authorized = request.user.is_superuser or role_code in [
+        Role.STORES_RECEIVER,
+        Role.SUPER_ADMIN,
+    ]
+    if role_code == Role.VENDOR_USER:
+        messages.error(
+            request,
+            "Access Denied: Vendor users cannot create goods receipts.",
+        )
+        return redirect("vendor_dashboard")
+
+    if not is_authorized:
+        messages.error(
+            request,
+            "Permission Denied: Only Stores Receiver or Super Admin can create goods receipts.",
+        )
+        return redirect("receipts_list")
+
     po = get_object_or_404(
         PurchaseOrder.objects.select_related("vendor", "cost_center").prefetch_related("lines"),
         id=po_id,
@@ -454,12 +526,20 @@ def receipt_create_view(request, po_id):
 
 @login_required(login_url="/login/")
 def receipt_stock_handoff_view(request, grn_id):
-    role_code = request.user.role_code
-    is_authorized = (
-        request.user.is_superuser
-        or role_code in [Role.STORES_RECEIVER, Role.SUPER_ADMIN]
-        or getattr(request.user, "is_staff", False)
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if hasattr(request.user, "role") and request.user.role else None
     )
+    is_authorized = request.user.is_superuser or role_code in [
+        Role.STORES_RECEIVER,
+        Role.SUPER_ADMIN,
+    ]
+    if role_code == Role.VENDOR_USER:
+        messages.error(
+            request,
+            "Access Denied: Vendor users cannot hand off goods to stock.",
+        )
+        return redirect("vendor_dashboard")
+
     if not is_authorized:
         messages.error(request, "Access denied: Only Stores Receiver can hand off goods to stock.")
         return redirect("receipt_detail", grn_id=grn_id)
@@ -524,6 +604,16 @@ def receipt_inspection_queue_view(request):
     Dedicated operational queue for Quality Inspection.
     Displays all GRNs requiring or undergoing inspection, item breakdowns, and direct Inspect actions.
     """
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if hasattr(request.user, "role") and request.user.role else None
+    )
+    if role_code == Role.VENDOR_USER:
+        messages.error(
+            request,
+            "Access Denied: Vendor users cannot access internal stores inspection queues.",
+        )
+        return redirect("vendor_dashboard")
+
     search_query = request.GET.get("q", "").strip()
     status_filter = request.GET.get("status", "").strip().upper()
 
@@ -599,6 +689,16 @@ def receipt_stock_handoff_queue_view(request):
     Dedicated operational queue for Stock Handoff.
     Shows GRNs and receipt lines eligible for warehouse stock posting, excluding rejected quantities.
     """
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if hasattr(request.user, "role") and request.user.role else None
+    )
+    if role_code == Role.VENDOR_USER:
+        messages.error(
+            request,
+            "Access Denied: Vendor users cannot access internal stock handoff queues.",
+        )
+        return redirect("vendor_dashboard")
+
     search_query = request.GET.get("q", "").strip()
     status_filter = request.GET.get("status", "").strip().upper()
 
@@ -683,6 +783,16 @@ def receipt_rejections_queue_view(request):
     Dedicated operational queue for Rejections & Returns.
     Displays all rejected receipt lines, rejection reasons, return-to-vendor status, and PO links.
     """
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if hasattr(request.user, "role") and request.user.role else None
+    )
+    if role_code == Role.VENDOR_USER:
+        messages.error(
+            request,
+            "Access Denied: Vendor users cannot access internal rejection queues.",
+        )
+        return redirect("vendor_dashboard")
+
     search_query = request.GET.get("q", "").strip()
     status_filter = request.GET.get("status", "").strip().upper()
 
@@ -746,5 +856,378 @@ def receipt_rejections_queue_view(request):
             "total_rejected_lines": total_rejected_lines,
             "returned_count": returned_count,
             "pending_return_count": pending_return_count,
+        },
+    )
+
+
+@login_required(login_url="/login/")
+def record_vendor_return_view(request, rejection_id):
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if hasattr(request.user, "role") and request.user.role else None
+    )
+    is_authorized = request.user.is_superuser or role_code in [
+        Role.STORES_RECEIVER,
+        Role.SUPER_ADMIN,
+    ]
+    if not is_authorized:
+        messages.error(
+            request,
+            "Permission Denied: Only Stores Receiver or Super Admin can process vendor returns.",
+        )
+        return redirect("receipts_rejections_queue")
+
+    rejection = get_object_or_404(
+        RejectionRecord.objects.select_related(
+            "receipt_line__receipt__po", "receipt_line__po_line"
+        ),
+        id=rejection_id,
+    )
+
+    if request.method == "POST":
+        tracking_reference = request.POST.get("tracking_reference", "").strip()
+        return_notes = request.POST.get("return_notes", "").strip()
+        return_qty_raw = request.POST.get("return_quantity", "").strip()
+        return_qty = Decimal(return_qty_raw) if return_qty_raw else None
+
+        try:
+            process_vendor_return_service(
+                returned_by=request.user,
+                rejection_record=rejection,
+                return_quantity=return_qty,
+                tracking_reference=tracking_reference,
+                return_notes=return_notes,
+            )
+            messages.success(
+                request,
+                f"Vendor return recorded successfully for line '{rejection.receipt_line.po_line.item_description}'.",
+            )
+        except ValidationError as ve:
+            messages.error(request, ve.message if hasattr(ve, "message") else str(ve))
+        except Exception as e:
+            messages.error(request, f"Error processing vendor return: {str(e)}")
+
+        next_url = request.POST.get("next")
+        if next_url and next_url.startswith("/"):
+            return redirect(next_url)
+
+    return redirect("receipts_rejections_queue")
+
+
+@login_required(login_url="/login/")
+def receipt_line_correct_view(request, line_id):
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if hasattr(request.user, "role") and request.user.role else None
+    )
+    is_authorized = request.user.is_superuser or role_code in [
+        Role.STORES_RECEIVER,
+        Role.SUPER_ADMIN,
+    ]
+    if not is_authorized:
+        messages.error(
+            request,
+            "Permission Denied: Only Stores Receiver or Super Admin can correct receipt quantities.",
+        )
+        return redirect("receipts_list")
+
+    line = get_object_or_404(
+        ReceiptLine.objects.select_related("receipt__po", "po_line"),
+        id=line_id,
+    )
+
+    if request.method == "POST":
+        new_qty_recv_raw = request.POST.get("quantity_received", "").strip()
+        new_qty_acc_raw = request.POST.get("quantity_accepted", "").strip()
+        reason = request.POST.get("reason", "").strip()
+        notes = request.POST.get("notes", "").strip()
+
+        try:
+            new_qty_recv = Decimal(new_qty_recv_raw)
+            new_qty_acc = Decimal(new_qty_acc_raw) if new_qty_acc_raw else None
+            correct_receipt_line_quantity_service(
+                receipt_line=line,
+                corrected_by=request.user,
+                new_quantity_received=new_qty_recv,
+                new_quantity_accepted=new_qty_acc,
+                reason=reason,
+                correction_notes=notes,
+            )
+            messages.success(
+                request,
+                f"Quantity correction applied successfully to line '{line.po_line.item_description}'.",
+            )
+        except ValidationError as ve:
+            messages.error(request, ve.message if hasattr(ve, "message") else str(ve))
+        except Exception as e:
+            messages.error(request, f"Error applying quantity correction: {str(e)}")
+
+    return redirect("receipt_detail", grn_id=line.receipt_id)
+
+
+def get_stores_dashboard_data(user=None):
+    """
+    Computes mutually exclusive, database-backed operational metrics for Stores/Receiver desk.
+    """
+    from apps.audit.models import AuditLog
+    from apps.orders.models import PurchaseOrder
+    from apps.receipts.models import (
+        GoodsReceipt,
+        InspectionRecord,
+        RejectionRecord,
+        StockHandoffRecord,
+    )
+
+    all_grns = list(
+        GoodsReceipt.objects.select_related("po__vendor", "received_by")
+        .prefetch_related(
+            "lines__po_line",
+            "lines__inspection",
+            "lines__rejections",
+            "lines__stock_handoff",
+        )
+        .order_by("-received_date")
+    )
+    total_grns = len(all_grns)
+
+    pending_inspections = sum(1 for g in all_grns if g.overall_inspection_status == "PENDING")
+    passed_receipts = sum(1 for g in all_grns if g.overall_inspection_status == "PASSED")
+    failed_receipts = sum(
+        1 for g in all_grns if g.overall_inspection_status in ["FAILED", "REJECTED"]
+    )
+    partially_inspected_receipts = sum(
+        1 for g in all_grns if g.overall_inspection_status == "PARTIALLY_INSPECTED"
+    )
+
+    pending_deliveries = PurchaseOrder.objects.filter(
+        status__in=[
+            PurchaseOrder.STATUS_ISSUED,
+            PurchaseOrder.STATUS_ACKNOWLEDGED,
+            PurchaseOrder.STATUS_PARTIAL_RECEIPT,
+        ]
+    ).count()
+    partially_received_pos = PurchaseOrder.objects.filter(
+        status=PurchaseOrder.STATUS_PARTIAL_RECEIPT
+    ).count()
+    completed_pos = PurchaseOrder.objects.filter(status=PurchaseOrder.STATUS_COMPLETED).count()
+
+    all_rejections = list(
+        RejectionRecord.objects.select_related("receipt_line__receipt", "receipt_line__po_line")
+    )
+    total_rejections = len(all_rejections)
+    returned_to_vendor_count = sum(1 for r in all_rejections if r.returned_to_vendor)
+    pending_vendor_returns_count = sum(1 for r in all_rejections if not r.returned_to_vendor)
+
+    stock_handoffs_count = StockHandoffRecord.objects.count()
+    eligible_handoff_grns = [
+        g
+        for g in all_grns
+        if any(line.quantity_accepted > Decimal("0.00") for line in g.lines.all())
+    ]
+    pending_stock_handoff_grns = sum(
+        1 for g in eligible_handoff_grns if g.stock_handoff_status == "PENDING_HANDOFF"
+    )
+    completed_stock_handoff_grns = sum(
+        1 for g in eligible_handoff_grns if g.stock_handoff_status == "HANDED_OFF"
+    )
+
+    quantity_corrections_count = (
+        AuditLog.objects.filter(
+            target_model="ReceiptLine",
+            action=AuditLog.ACTION_UPDATE,
+        )
+        .filter(new_state__action="QUANTITY_CORRECTION")
+        .count()
+    )
+
+    total_inspections = InspectionRecord.objects.count()
+
+    metrics = {
+        "total_grns": total_grns,
+        "pending_inspections": pending_inspections,
+        "passed_receipts": passed_receipts,
+        "failed_receipts": failed_receipts,
+        "partially_inspected_receipts": partially_inspected_receipts,
+        "total_inspections": total_inspections,
+        "pending_deliveries": pending_deliveries,
+        "partially_received_pos": partially_received_pos,
+        "completed_pos": completed_pos,
+        "total_rejections": total_rejections,
+        "returned_to_vendor_count": returned_to_vendor_count,
+        "pending_vendor_returns_count": pending_vendor_returns_count,
+        "stock_handoffs_count": stock_handoffs_count,
+        "pending_stock_handoff_grns": pending_stock_handoff_grns,
+        "completed_stock_handoff_grns": completed_stock_handoff_grns,
+        "quantity_corrections_count": quantity_corrections_count,
+    }
+
+    recent_grns = all_grns[:10]
+
+    return {
+        "metrics": metrics,
+        "recent_grns": recent_grns,
+    }
+
+
+@login_required(login_url="/login/")
+def receipt_dashboard_view(request):
+    """
+    Dedicated dashboard view for Stores / Receiver module.
+    Renders live database-backed metrics, queue summaries, and status tracking.
+    """
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if hasattr(request.user, "role") and request.user.role else None
+    )
+    if role_code == Role.VENDOR_USER:
+        messages.error(
+            request,
+            "Access Denied: Vendor users cannot access internal stores dashboards.",
+        )
+        return redirect("vendor_dashboard")
+
+    is_authorized = request.user.is_superuser or role_code in [
+        Role.STORES_RECEIVER,
+        Role.SUPER_ADMIN,
+        Role.AUDITOR,
+    ]
+    if not is_authorized:
+        messages.error(request, "Permission Denied: Access to Stores Dashboard is restricted.")
+        return redirect("receipts_list")
+
+    data = get_stores_dashboard_data(request.user)
+    return render(
+        request,
+        "pages/dashboards/stores_dashboard.html",
+        {
+            "metrics": data["metrics"],
+            "recent_grns": data["recent_grns"],
+        },
+    )
+
+
+@login_required(login_url="/login/")
+def receipt_delivery_performance_report_view(request):
+    """
+    Day 16: Receipt, Rejection & Delivery Performance Report view.
+    Provides filtered reports, summary KPIs, and export capabilities.
+    Restricted to Stores Receiver, Super Admin, and Auditor (read-only audit).
+    """
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if hasattr(request.user, "role") and request.user.role else None
+    )
+    is_authorized = request.user.is_superuser or role_code in [
+        Role.STORES_RECEIVER,
+        Role.SUPER_ADMIN,
+        Role.AUDITOR,
+    ]
+    if not is_authorized:
+        messages.error(
+            request, "Permission Denied: Access to Delivery Performance Report is restricted."
+        )
+        return redirect("receipts_list")
+
+    from apps.audit.models import AuditLog
+    from apps.reports.services import (
+        get_receipt_delivery_performance_summary,
+        get_receipt_rejection_report,
+    )
+
+    start_date = request.GET.get("start_date", "").strip() or None
+    end_date = request.GET.get("end_date", "").strip() or None
+    vendor = request.GET.get("vendor", "").strip() or None
+    po_number = request.GET.get("po_number", "").strip() or None
+    status_param = request.GET.get("status", "").strip() or None
+    export_format = request.GET.get("export", "").strip().upper()
+
+    report_lines = get_receipt_rejection_report(
+        start_date=start_date,
+        end_date=end_date,
+        vendor=vendor,
+        po_number=po_number,
+        inspection_status=status_param,
+    )
+    summary = get_receipt_delivery_performance_summary(
+        start_date=start_date,
+        end_date=end_date,
+        vendor=vendor,
+    )
+
+    # Handle direct export
+    if export_format in ["CSV", "XLSX"]:
+        AuditLog.objects.create(
+            actor=request.user,
+            action=AuditLog.ACTION_EXPORT,
+            target_model="GoodsReceipt",
+            target_object_id=f"DeliveryPerformanceReport_{export_format}",
+            new_state={"format": export_format, "rows": len(report_lines)},
+        )
+
+        fieldnames = [
+            "grn_number",
+            "po_number",
+            "vendor",
+            "delivery_note_number",
+            "received_date",
+            "expected_delivery_date",
+            "delivery_performance",
+            "days_variance",
+            "qty_received",
+            "qty_accepted",
+            "qty_rejected",
+            "rejection_rate_percent",
+            "inspection_status",
+            "return_status",
+            "stock_handoff_status",
+        ]
+
+        if export_format == "CSV":
+            import csv
+
+            from django.http import HttpResponse
+
+            response = HttpResponse(content_type="text/csv")
+            response["Content-Disposition"] = (
+                'attachment; filename="receipt_delivery_performance.csv"'
+            )
+            writer = csv.DictWriter(response, fieldnames=fieldnames, extrasaction="ignore")
+            writer.writeheader()
+            for row in report_lines:
+                writer.writerow(row)
+            return response
+
+        elif export_format == "XLSX":
+            from io import BytesIO
+
+            import openpyxl
+            from django.http import HttpResponse
+
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Delivery Performance"
+            ws.append(fieldnames)
+            for row in report_lines:
+                ws.append([str(row.get(f, "")) for f in fieldnames])
+            out = BytesIO()
+            wb.save(out)
+            response = HttpResponse(
+                out.getvalue(),
+                content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+            response["Content-Disposition"] = (
+                'attachment; filename="receipt_delivery_performance.xlsx"'
+            )
+            return response
+
+    return render(
+        request,
+        "receipts/delivery_performance_report.html",
+        {
+            "report_lines": report_lines,
+            "summary": summary,
+            "filters": {
+                "start_date": start_date or "",
+                "end_date": end_date or "",
+                "vendor": vendor or "",
+                "po_number": po_number or "",
+                "status": status_param or "",
+            },
         },
     )

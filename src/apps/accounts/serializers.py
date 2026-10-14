@@ -57,3 +57,23 @@ class UserCreateSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         return user
+
+
+class LoginRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField(
+        required=True,
+        help_text="Registered user email address (e.g. admin@example.com)",
+    )
+    password = serializers.CharField(
+        required=True,
+        write_only=True,
+        style={"input_type": "password"},
+        help_text="User account password",
+    )
+
+
+class LoginResponseSerializer(serializers.Serializer):
+    message = serializers.CharField(default="Login successful.")
+    user = UserSerializer()
+    csrf_token = serializers.CharField(help_text="CSRF token for subsequent state-changing requests")
+

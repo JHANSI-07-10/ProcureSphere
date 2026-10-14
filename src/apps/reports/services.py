@@ -122,23 +122,152 @@ def get_po_status_report():
     return report_data
 
 
-def get_receipt_rejection_report():
-    """5. Receipt / rejection and delivery performance"""
-    receipt_lines = ReceiptLine.objects.select_related("receipt__po__vendor", "po_line").all()
+def get_receipt_rejection_report(
+    start_date=None,
+    end_date=None,
+    vendor=None,
+    po_number=None,
+    inspection_status=None,
+):
+    """5. Receipt / rejection and delivery performance report"""
+    from django.utils.dateparse import parse_date
+
+    from apps.orders.models import DeliverySchedule
+
+    receipt_lines = (
+        ReceiptLine.objects.select_related(
+            "receipt",
+            "receipt__po",
+            "receipt__po__vendor",
+            "po_line",
+            "receipt__received_by",
+        )
+        .prefetch_related("rejections")
+        .all()
+        .order_by("-receipt__received_date", "receipt__grn_number")
+    )
+
+    if start_date:
+        parsed_start = parse_date(str(start_date)) if isinstance(start_date, str) else start_date
+        if parsed_start:
+            receipt_lines = receipt_lines.filter(receipt__received_date__date__gte=parsed_start)
+    if end_date:
+        parsed_end = parse_date(str(end_date)) if isinstance(end_date, str) else end_date
+        if parsed_end:
+            receipt_lines = receipt_lines.filter(receipt__received_date__date__lte=parsed_end)
+    if vendor:
+        receipt_lines = receipt_lines.filter(receipt__po__vendor__legal_name__icontains=vendor)
+    if po_number:
+        receipt_lines = receipt_lines.filter(receipt__po__po_number__icontains=po_number)
+
     report_data = []
     for rl in receipt_lines:
+        line_inspection_status = rl.inspection_status
+        if inspection_status and line_inspection_status != inspection_status:
+            continue
+
+        # Look up delivery schedule for delivery performance calculation
+        schedule = None
+        if rl.po_line:
+            schedule = DeliverySchedule.objects.filter(po_line=rl.po_line).first()
+        if not schedule and rl.receipt.po:
+            schedule = DeliverySchedule.objects.filter(po=rl.receipt.po).first()
+
+        received_dt = rl.receipt.received_date
+        recv_date_only = received_dt.date() if hasattr(received_dt, "date") else received_dt
+        expected_date = schedule.expected_delivery_date if schedule else None
+
+        if expected_date:
+            days_variance = (recv_date_only - expected_date).days
+            delivery_performance = "ON_TIME" if days_variance <= 0 else "LATE"
+            expected_date_str = expected_date.strftime("%Y-%m-%d")
+        else:
+            days_variance = 0
+            delivery_performance = "ON_SCHEDULE"
+            expected_date_str = "N/A"
+
+        qty_received = float(rl.quantity_received)
+        qty_accepted = float(rl.quantity_accepted)
+        qty_rejected = float(rl.quantity_rejected)
+        rejection_rate = (
+            round((qty_rejected / qty_received * 100.0), 2) if qty_received > 0 else 0.0
+        )
+
+        # Rejection & Return evidence
+        rej = rl.rejections.first()
+        rejection_reason = rej.rejection_reason if rej else ""
+        if rej and rej.returned_to_vendor:
+            return_status = "RETURNED"
+        elif rej and not rej.returned_to_vendor:
+            return_status = "PENDING_RETURN"
+        else:
+            return_status = "N/A"
+
         report_data.append(
             {
                 "grn_number": rl.receipt.grn_number,
                 "po_number": rl.receipt.po.po_number,
                 "vendor": rl.receipt.po.vendor.legal_name,
-                "received_date": rl.receipt.received_date.strftime("%Y-%m-%d"),
-                "qty_received": float(rl.quantity_received),
-                "qty_accepted": float(rl.quantity_accepted),
-                "qty_rejected": float(rl.quantity_rejected),
+                "item_description": rl.po_line.item_description if rl.po_line else "N/A",
+                "delivery_note_number": rl.receipt.delivery_note_number or "N/A",
+                "received_date": received_dt.strftime("%Y-%m-%d"),
+                "expected_delivery_date": expected_date_str,
+                "delivery_performance": delivery_performance,
+                "days_variance": days_variance,
+                "qty_received": qty_received,
+                "qty_accepted": qty_accepted,
+                "qty_rejected": qty_rejected,
+                "rejection_rate_percent": rejection_rate,
+                "inspection_status": line_inspection_status,
+                "rejection_reason": rejection_reason or "N/A",
+                "return_status": return_status,
+                "stock_handoff_status": rl.receipt.stock_handoff_status,
             }
         )
     return report_data
+
+
+def get_receipt_delivery_performance_summary(
+    start_date=None,
+    end_date=None,
+    vendor=None,
+):
+    """
+    Computes aggregated summary KPIs for receipt, rejection, and delivery performance.
+    """
+    report = get_receipt_rejection_report(start_date=start_date, end_date=end_date, vendor=vendor)
+    total_lines = len(report)
+    total_grns = len({r["grn_number"] for r in report})
+    total_qty_received = sum(r["qty_received"] for r in report)
+    total_qty_accepted = sum(r["qty_accepted"] for r in report)
+    total_qty_rejected = sum(r["qty_rejected"] for r in report)
+
+    overall_rejection_rate = (
+        round((total_qty_rejected / total_qty_received * 100.0), 2)
+        if total_qty_received > 0
+        else 0.0
+    )
+
+    scheduled_lines = [r for r in report if r["delivery_performance"] in ["ON_TIME", "LATE"]]
+    on_time_lines = [r for r in scheduled_lines if r["delivery_performance"] == "ON_TIME"]
+    on_time_delivery_rate = (
+        round((len(on_time_lines) / len(scheduled_lines) * 100.0), 2) if scheduled_lines else 100.0
+    )
+
+    returns_dispatched = len([r for r in report if r["return_status"] == "RETURNED"])
+    returns_pending = len([r for r in report if r["return_status"] == "PENDING_RETURN"])
+
+    return {
+        "total_grns": total_grns,
+        "total_lines": total_lines,
+        "total_qty_received": total_qty_received,
+        "total_qty_accepted": total_qty_accepted,
+        "total_qty_rejected": total_qty_rejected,
+        "overall_rejection_rate_percent": overall_rejection_rate,
+        "on_time_delivery_rate_percent": on_time_delivery_rate,
+        "returns_dispatched": returns_dispatched,
+        "returns_pending": returns_pending,
+    }
 
 
 def get_invoice_exception_aging_report():

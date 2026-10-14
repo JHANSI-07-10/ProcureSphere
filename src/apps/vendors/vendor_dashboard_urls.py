@@ -28,6 +28,11 @@ urlpatterns = [
         "bids/<uuid:bid_id>/validate/", views.vendor_bid_validate_view, name="vendor_bid_validate"
     ),
     path("bids/<uuid:bid_id>/amend/", views.vendor_bid_amend_view, name="vendor_bid_amend"),
+    path(
+        "bids/<uuid:bid_id>/withdraw/",
+        views.vendor_bid_withdraw_view,
+        name="vendor_bid_withdraw",
+    ),
     # Clarifications
     path("clarifications/", views.vendor_clarifications_view, name="vendor_clarifications"),
     # Purchase Orders & Acknowledgement

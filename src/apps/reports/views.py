@@ -1,9 +1,57 @@
+import csv
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
 
+from apps.audit.models import AuditLog
 from apps.reports.models import ExportJob
-from apps.reports.services import generate_export_job_service
+from apps.reports.services import (
+    generate_export_job_service,
+    get_audit_log_report,
+    get_po_status_report,
+    get_pr_aging_report,
+    get_sourcing_cycle_time_report,
+)
+
+PROC_REPORT_ROLES = {"PROC_EXEC", "PROCUREMENT_EXECUTIVE", "PROC_MGR", "SUPER_ADMIN"}
+
+
+def _get_role_code(user):
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if getattr(user, "role", None) else ""
+    )
+    return str(role_code or "").upper()
+
+
+def _resolve_base_layout(role_code):
+    """Procurement executive workspace must never fall back to the finance layout."""
+    if role_code in ("PROC_EXEC", "PROCUREMENT_EXECUTIVE"):
+        return "base.html"
+    if role_code in ("AUDITOR", "COMPLIANCE_AUDITOR", "AUDIT"):
+        return "audit/base_auditor.html"
+    if role_code in ("PROCUREMENT_MANAGER", "PROC_MGR", "MANAGER", "LEGAL_MGR"):
+        return "manager/base_manager.html"
+    return "base.html"
+
+
+def _require_proc_report_access(request):
+    role_code = _get_role_code(request.user)
+    if role_code not in PROC_REPORT_ROLES:
+        raise PermissionDenied("You do not have access to procurement reports.")
+    return role_code
+
+
+def _csv_response(filename, fieldnames, rows):
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    writer = csv.DictWriter(response, fieldnames=fieldnames)
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({f: row.get(f, "") for f in fieldnames})
+    return response
 
 
 @login_required(login_url="/login/")
@@ -25,6 +73,16 @@ def dashboard_view(request):
             "id": "sourcing_cycle",
             "name": "Sourcing Cycle Time",
             "desc": "RFQ/RFP duration and supplier participation",
+        },
+        {
+            "id": "po_status",
+            "name": "PO Status & Lifecycle Register",
+            "desc": "Purchase order status, amendments, and delivery schedule progression",
+        },
+        {
+            "id": "receipt_rejection",
+            "name": "Receipt, Rejection & Delivery Performance",
+            "desc": "Goods receipt intake, quality rejection rates, and vendor on-time delivery metrics",
         },
         {
             "id": "invoice_exception_aging",
@@ -64,6 +122,10 @@ def dashboard_view(request):
         base_layout = "audit/base_auditor.html"
     elif role_code in ["PROCUREMENT_MANAGER", "PROC_MGR", "MANAGER", "LEGAL_MGR"]:
         base_layout = "manager/base_manager.html"
+    elif role_code in ["STORES_RECEIVER", "STORES"]:
+        base_layout = "layouts/stores_base.html"
+    role_code = _get_role_code(request.user)
+    base_layout = _resolve_base_layout(role_code)
 
     return render(
         request,
@@ -98,3 +160,271 @@ def generate_view(request):
             messages.error(request, f"Error generating report: {str(e)}")
 
     return redirect("reports_hub")
+
+
+@login_required(login_url="/login/")
+def proc_exec_pr_aging_view(request):
+    """PR Aging — approval aging & bottlenecks for the Procurement Executive workspace."""
+    role_code = _require_proc_report_access(request)
+    base_layout = _resolve_base_layout(role_code)
+
+    rows = get_pr_aging_report()
+
+    q = (request.GET.get("q") or "").strip().lower()
+    status_filter = (request.GET.get("status") or "").strip().upper()
+    if q:
+        rows = [
+            r
+            for r in rows
+            if q in str(r.get("pr_number", "")).lower()
+            or q in str(r.get("title", "")).lower()
+            or q in str(r.get("department", "")).lower()
+        ]
+    if status_filter:
+        rows = [r for r in rows if str(r.get("status", "")).upper() == status_filter]
+
+    under_3 = sum(1 for r in rows if (r.get("age_days") or 0) < 3)
+    btw_3_7 = sum(1 for r in rows if 3 <= (r.get("age_days") or 0) <= 7)
+    over_7 = sum(1 for r in rows if (r.get("age_days") or 0) > 7)
+
+    if request.GET.get("export") == "csv":
+        fieldnames = [
+            "pr_number",
+            "title",
+            "department",
+            "cost_center",
+            "status",
+            "total_amount",
+            "created_at",
+            "age_days",
+        ]
+        return _csv_response("pr_aging_report.csv", fieldnames, rows)
+
+    statuses = sorted({str(r.get("status", "")) for r in rows if r.get("status")})
+    return render(
+        request,
+        "pages/reports/proc_exec_pr_aging.html",
+        {
+            "rows": rows,
+            "total": len(rows),
+            "under_3": under_3,
+            "btw_3_7": btw_3_7,
+            "over_7": over_7,
+            "statuses": statuses,
+            "q": request.GET.get("q", ""),
+            "status_filter": request.GET.get("status", ""),
+            "base_layout": base_layout,
+            "role_code": role_code,
+        },
+    )
+
+
+@login_required(login_url="/login/")
+def proc_exec_sourcing_cycle_view(request):
+    """Sourcing Cycle — RFQ/RFP duration and supplier participation."""
+    role_code = _require_proc_report_access(request)
+    base_layout = _resolve_base_layout(role_code)
+
+    rows = get_sourcing_cycle_time_report()
+
+    q = (request.GET.get("q") or "").strip().lower()
+    status_filter = (request.GET.get("status") or "").strip().upper()
+    if q:
+        rows = [
+            r
+            for r in rows
+            if q in str(r.get("event_number", "")).lower()
+            or q in str(r.get("title", "")).lower()
+        ]
+    if status_filter:
+        rows = [r for r in rows if str(r.get("status", "")).upper() == status_filter]
+
+    from datetime import datetime
+
+    cycles = []
+    for r in rows:
+        try:
+            start = datetime.strptime(str(r.get("start_date", "")), "%Y-%m-%d").date()
+            end = datetime.strptime(str(r.get("end_date", "")), "%Y-%m-%d").date()
+            cycles.append((end - start).days)
+        except (ValueError, TypeError):
+            continue
+    avg_cycle_days = round(sum(cycles) / len(cycles), 1) if cycles else 0
+    total_invited = sum(int(r.get("invited_vendors") or 0) for r in rows)
+    total_bids = sum(int(r.get("submitted_bids") or 0) for r in rows)
+    bid_rate = round((total_bids / total_invited * 100) if total_invited else 0, 1)
+
+    if request.GET.get("export") == "csv":
+        fieldnames = [
+            "event_number",
+            "title",
+            "event_type",
+            "status",
+            "invited_vendors",
+            "submitted_bids",
+            "start_date",
+            "end_date",
+        ]
+        return _csv_response("sourcing_cycle_report.csv", fieldnames, rows)
+
+    statuses = sorted({str(r.get("status", "")) for r in rows if r.get("status")})
+    return render(
+        request,
+        "pages/reports/proc_exec_sourcing_cycle.html",
+        {
+            "rows": rows,
+            "total": len(rows),
+            "avg_cycle_days": avg_cycle_days,
+            "total_invited": total_invited,
+            "total_bids": total_bids,
+            "bid_rate": bid_rate,
+            "statuses": statuses,
+            "q": request.GET.get("q", ""),
+            "status_filter": request.GET.get("status", ""),
+            "base_layout": base_layout,
+            "role_code": role_code,
+        },
+    )
+
+
+@login_required(login_url="/login/")
+def proc_exec_po_status_view(request):
+    """PO Status — open / partial / closed purchase order status."""
+    role_code = _require_proc_report_access(request)
+    base_layout = _resolve_base_layout(role_code)
+
+    rows = get_po_status_report()
+
+    q = (request.GET.get("q") or "").strip().lower()
+    status_filter = (request.GET.get("status") or "").strip().upper()
+    if q:
+        rows = [
+            r
+            for r in rows
+            if q in str(r.get("po_number", "")).lower()
+            or q in str(r.get("vendor", "")).lower()
+        ]
+    if status_filter:
+        rows = [r for r in rows if str(r.get("status", "")).upper() == status_filter]
+
+    groups = {}
+    for r in rows:
+        key = str(r.get("status", "UNKNOWN")).upper()
+        groups[key] = groups.get(key, 0) + 1
+
+    if request.GET.get("export") == "csv":
+        fieldnames = [
+            "po_number",
+            "version",
+            "vendor",
+            "cost_center",
+            "status",
+            "total_amount",
+            "acknowledged_at",
+        ]
+        return _csv_response("po_status_report.csv", fieldnames, rows)
+
+    statuses = sorted({str(r.get("status", "")) for r in rows if r.get("status")})
+    return render(
+        request,
+        "pages/reports/proc_exec_po_status.html",
+        {
+            "rows": rows,
+            "total": len(rows),
+            "groups": groups,
+            "statuses": statuses,
+            "q": request.GET.get("q", ""),
+            "status_filter": request.GET.get("status", ""),
+            "base_layout": base_layout,
+            "role_code": role_code,
+        },
+    )
+
+
+PROCUREMENT_AUDIT_MODELS = {
+    "PurchaseRequisition",
+    "PRLine",
+    "SourcingEvent",
+    "BidInvite",
+    "VendorBid",
+    "BidLine",
+    "BidEvaluation",
+    "Clarification",
+    "AwardDecision",
+    "PurchaseOrder",
+    "POLine",
+    "POAmendment",
+    "Vendor",
+    "VendorContact",
+    "VendorDocument",
+    "VendorRiskRecord",
+}
+
+
+@login_required(login_url="/login/")
+def proc_exec_audit_report_view(request):
+    """Immutable Audit Report — append-only procurement audit trail."""
+    role_code = _require_proc_report_access(request)
+    base_layout = _resolve_base_layout(role_code)
+
+    logs_qs = (
+        AuditLog.objects.select_related("actor")
+        .filter(target_model__in=sorted(PROCUREMENT_AUDIT_MODELS))
+        .order_by("-timestamp")[:200]
+    )
+
+    q = (request.GET.get("q") or "").strip().lower()
+    action_filter = (request.GET.get("action") or "").strip().upper()
+
+    rows = []
+    for log in logs_qs:
+        actor_email = log.actor.email if log.actor else "System"
+        row = {
+            "audit_id": str(log.id),
+            "timestamp": log.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            "actor": actor_email,
+            "action": log.action,
+            "target_model": log.target_model,
+            "target_object_id": log.target_object_id,
+        }
+        rows.append(row)
+
+    if q:
+        rows = [
+            r
+            for r in rows
+            if q in r["target_model"].lower()
+            or q in r["target_object_id"].lower()
+            or q in r["actor"].lower()
+            or q in r["audit_id"].lower()
+        ]
+    if action_filter:
+        rows = [r for r in rows if r["action"].upper() == action_filter]
+
+    if request.GET.get("export") == "csv":
+        # Export reuses the audited report service shape (direct download for speed).
+        _ = get_audit_log_report()
+        fieldnames = [
+            "audit_id",
+            "timestamp",
+            "actor",
+            "action",
+            "target_model",
+            "target_object_id",
+        ]
+        return _csv_response("immutable_audit_report.csv", fieldnames, rows)
+
+    actions = sorted({r["action"] for r in rows})
+    return render(
+        request,
+        "pages/reports/proc_exec_audit_report.html",
+        {
+            "rows": rows,
+            "total": len(rows),
+            "actions": actions,
+            "q": request.GET.get("q", ""),
+            "action_filter": request.GET.get("action", ""),
+            "base_layout": base_layout,
+            "role_code": role_code,
+        },
+    )

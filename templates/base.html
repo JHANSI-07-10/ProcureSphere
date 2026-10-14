@@ -20,39 +20,7 @@
 </head>
 <body class="bg-light">
     {% block navbar %}
-    {% if user.is_authenticated and user.role_code == 'STORES_RECEIVER' %}
-    <!-- Stores Receiver Top Header Bar -->
-    <nav class="navbar navbar-dark bg-dark shadow-sm py-2 sticky-top border-bottom border-secondary border-opacity-25">
-        <div class="container-fluid px-3 px-lg-4">
-            <div class="d-flex align-items-center">
-                <!-- Mobile / Tablet Hamburger Button -->
-                <button class="btn btn-outline-light btn-sm d-lg-none me-2 rounded-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#storesSidebar" aria-controls="storesSidebar" title="Toggle Navigation">
-                    <i class="fa-solid fa-bars-staggered"></i>
-                </button>
-                <a href="/" class="navbar-brand d-flex align-items-center text-white me-2 mb-0">
-                    <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
-                    <span class="fs-5 fw-bold">ProcureSphere <span class="text-primary fw-light">360</span></span>
-                </a>
-                <span class="badge bg-secondary bg-opacity-25 text-white border border-secondary border-opacity-50 px-2 py-1 rounded-pill d-none d-sm-inline-flex align-items-center ms-2" style="font-size: 0.75rem;">
-                    <i class="fa-solid fa-warehouse text-info me-1"></i> Stores & Receiving Desk
-                </span>
-            </div>
-
-            <div class="d-flex align-items-center gap-2">
-                <div class="d-flex align-items-center px-2 px-sm-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary border-opacity-50 text-white">
-                    <i class="fa-solid fa-circle-user text-info me-2 fs-5"></i>
-                    <div class="text-start leading-tight me-2 d-none d-sm-block">
-                        <div class="fw-semibold text-white small text-truncate" style="max-width: 150px;">{{ user.email }}</div>
-                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">STORES_RECEIVER</div>
-                    </div>
-                </div>
-                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-3" title="Sign Out">
-                    <i class="fa-solid fa-arrow-right-from-bracket me-1"></i> <span class="d-none d-sm-inline">Sign Out</span>
-                </a>
-            </div>
-        </div>
-    </nav>
-    {% elif user.is_authenticated and user.role_code == 'PROC_EXEC' %}
+    {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}
     {# Procurement Executive: sidebar-only layout (brand, user and sign-out live in the sidebar) #}
     {% else %}
     <!-- Top Navigation Bar for other roles -->
@@ -127,114 +95,13 @@
     {% endblock navbar %}
 
     {% block layout %}
-    <div class="{% if user.is_authenticated and user.role_code == 'STORES_RECEIVER' or user.is_authenticated and user.role_code == 'PROC_EXEC' %}d-flex min-vh-100 position-relative{% else %}container-fluid p-0{% endif %}">
+    <div class="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}d-flex min-vh-100 position-relative{% else %}container-fluid p-0{% endif %}">
         {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}
         {% include 'partials/proc_exec_sidebar.html' %}
         {% endif %}
-        {% if user.is_authenticated and user.role_code == 'STORES_RECEIVER' %}
-        <!-- Stores Receiver Desktop Sidebar (>= 992px) -->
-        <aside class="stores-sidebar bg-dark text-white d-none d-lg-flex flex-column border-end border-secondary border-opacity-25 shadow-sm" style="width: 260px; flex-shrink: 0; height: calc(100vh - 56px); position: sticky; top: 56px; overflow-y: auto; z-index: 1000;">
-            <div class="d-flex flex-column flex-grow-1 px-3 pt-3 text-white">
-                <ul class="nav nav-pills flex-column gap-1 w-100" id="storesSidebarMenu">
-                    <li class="nav-item">
-                        <div class="text-uppercase text-secondary text-opacity-75 fw-bold px-2 pt-2 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">Workspace</div>
-                        <a href="/" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if request.path == '/' %}active bg-primary text-white fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
-                            <i class="fa-solid fa-chart-pie me-2 text-center" style="width: 20px;"></i> Dashboard
-                        </a>
-                    </li>
-
-                    <li class="nav-item mt-2">
-                        <div class="text-uppercase text-secondary text-opacity-75 fw-bold px-2 pt-2 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">Receiving Operations</div>
-                        <a href="{% url 'orders_list' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if '/purchase-orders/' in request.path %}active bg-primary text-white fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
-                            <i class="fa-solid fa-truck-ramp-box me-2 text-center" style="width: 20px;"></i> Pending Deliveries
-                        </a>
-                        <a href="{% url 'receipts_list' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if '/receipts/' in request.path and not 'status=' in request.get_full_path %}active bg-primary text-white fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
-                            <i class="fa-solid fa-boxes-stacked me-2 text-center" style="width: 20px;"></i> Goods Receipts (GRN)
-                        </a>
-                    </li>
-
-                    <li class="nav-item mt-2">
-                        <div class="text-uppercase text-secondary text-opacity-75 fw-bold px-2 pt-2 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">Quality & Inventory</div>
-                        <a href="{% url 'receipts_inspection_queue' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if '/receipts/inspections/' in request.path or '/inspect/' in request.path %}active bg-warning text-dark fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
-                            <i class="fa-solid fa-microscope me-2 text-warning text-center" style="width: 20px;"></i> Quality Inspection
-                        </a>
-                        <a href="{% url 'receipts_stock_handoff_queue' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if '/receipts/handoffs/' in request.path or '/handoff/' in request.path %}active bg-success text-white fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
-                            <i class="fa-solid fa-dolly me-2 text-success text-center" style="width: 20px;"></i> Stock Handoff
-                        </a>
-                        <a href="{% url 'receipts_rejections_queue' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if '/receipts/rejections/' in request.path or '/receipts/returns/' in request.path %}active bg-danger text-white fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
-                            <i class="fa-solid fa-ban me-2 text-danger text-center" style="width: 20px;"></i> Rejections & Returns
-                        </a>
-                    </li>
-                </ul>
-
-                <div class="mt-auto pt-4 pb-3 border-top border-secondary border-opacity-25">
-                    <div class="d-flex align-items-center px-2 py-1 text-secondary small">
-                        <i class="fa-solid fa-circle-check text-success me-2"></i>
-                        <span>Receiving Station Active</span>
-                    </div>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Stores Receiver Offcanvas Mobile Sidebar (< 992px) -->
-        <div class="offcanvas offcanvas-start bg-dark text-white d-lg-none" tabindex="-1" id="storesSidebar" aria-labelledby="storesSidebarLabel" style="width: 280px;">
-            <div class="offcanvas-header border-bottom border-secondary border-opacity-25 py-3">
-                <div class="d-flex align-items-center" id="storesSidebarLabel">
-                    <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
-                    <span class="fs-6 fw-bold text-white">ProcureSphere <span class="text-primary fw-light">360</span></span>
-                </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-            </div>
-            <div class="offcanvas-body p-3 d-flex flex-column">
-                <ul class="nav nav-pills flex-column gap-1 w-100">
-                    <li class="nav-item">
-                        <div class="text-uppercase text-secondary text-opacity-75 fw-bold px-2 pt-1 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">Workspace</div>
-                        <a href="/" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if request.path == '/' %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                            <i class="fa-solid fa-chart-pie me-2 text-center" style="width: 20px;"></i> Dashboard
-                        </a>
-                    </li>
-
-                    <li class="nav-item mt-2">
-                        <div class="text-uppercase text-secondary text-opacity-75 fw-bold px-2 pt-1 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">Receiving Operations</div>
-                        <a href="{% url 'orders_list' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if '/purchase-orders/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                            <i class="fa-solid fa-truck-ramp-box me-2 text-center" style="width: 20px;"></i> Pending Deliveries
-                        </a>
-                        <a href="{% url 'receipts_list' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if request.path == '/receipts/' %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                            <i class="fa-solid fa-boxes-stacked me-2 text-center" style="width: 20px;"></i> Goods Receipts (GRN)
-                        </a>
-                    </li>
-
-                    <li class="nav-item mt-2">
-                        <div class="text-uppercase text-secondary text-opacity-75 fw-bold px-2 pt-1 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">Quality & Inventory</div>
-                        <a href="{% url 'receipts_inspection_queue' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if '/receipts/inspections/' in request.path or '/inspect/' in request.path %}active bg-warning text-dark fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                            <i class="fa-solid fa-microscope me-2 text-warning text-center" style="width: 20px;"></i> Quality Inspection
-                        </a>
-                        <a href="{% url 'receipts_stock_handoff_queue' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if '/receipts/handoffs/' in request.path or '/handoff/' in request.path %}active bg-success text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                            <i class="fa-solid fa-dolly me-2 text-success text-center" style="width: 20px;"></i> Stock Handoff
-                        </a>
-                        <a href="{% url 'receipts_rejections_queue' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if '/receipts/rejections/' in request.path or '/receipts/returns/' in request.path %}active bg-danger text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                            <i class="fa-solid fa-ban me-2 text-danger text-center" style="width: 20px;"></i> Rejections & Returns
-                        </a>
-                    </li>
-                </ul>
-
-                <div class="mt-auto pt-4 border-top border-secondary border-opacity-25">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div class="text-start leading-tight">
-                            <div class="fw-semibold text-white small text-truncate" style="max-width: 140px;">{{ user.email }}</div>
-                            <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">STORES_RECEIVER</div>
-                        </div>
-                        <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-3">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
 
         <!-- Main Page Content Area -->
-        <main class="{% if user.is_authenticated and user.role_code == 'STORES_RECEIVER' or user.is_authenticated and user.role_code == 'PROC_EXEC' %}flex-grow-1 p-3 p-md-4 p-xl-4 overflow-auto bg-light{% else %}container-fluid p-4 overflow-auto{% endif %}" style="min-width: 0;">
+        <main class="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}flex-grow-1 p-3 p-md-4 p-xl-4 overflow-auto bg-light{% else %}container-fluid p-4 overflow-auto{% endif %}" style="min-width: 0;">
             {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}
             <button class="btn btn-outline-dark btn-sm d-lg-none mb-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#procExecSidebar" aria-controls="procExecSidebar">
                 <i class="fa-solid fa-bars me-1"></i> Menu

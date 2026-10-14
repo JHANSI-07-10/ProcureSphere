@@ -51,6 +51,13 @@
                 <input name="notes" class="form-control form-control-sm" placeholder="Approval note" aria-label="Approval note">
                 <button class="btn btn-sm btn-success text-nowrap">Approve &amp; activate</button>
             </form>
+            <form method="post" action="{% url 'vendors_kyc_htmx' vendor.id 'request-changes' %}"
+                  hx-post="{% url 'vendors_kyc_htmx' vendor.id 'request-changes' %}"
+                  hx-target="#modal-content-body" hx-swap="innerHTML" class="d-flex gap-2 w-100 mt-1">
+                {% csrf_token %}
+                <input name="notes" class="form-control form-control-sm" placeholder="Specify corrections / changes required..." required aria-label="Correction instructions">
+                <button class="btn btn-sm btn-warning text-nowrap"><i class="fa-solid fa-rotate-left me-1"></i>Request Changes</button>
+            </form>
             {% endif %}
             <a class="btn btn-sm btn-outline-secondary" href="{% url 'vendor_detail' vendor.id %}">Full vendor file</a>
         </div>

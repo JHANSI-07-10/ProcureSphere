@@ -90,12 +90,12 @@ class ReceiptLine(TimeStampedModel):
             insp = self.inspection
         except Exception:
             insp = None
+        if self.quantity_rejected > Decimal("0.00") or self.rejections.exists():
+            return "REJECTED"
         if not insp:
             return "PENDING"
         if insp.passed:
             return "PASSED"
-        if self.quantity_rejected > Decimal("0.00") or self.rejections.exists():
-            return "REJECTED"
         return "FAILED"
 
     @property

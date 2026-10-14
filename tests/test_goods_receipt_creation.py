@@ -311,3 +311,86 @@ def test_empty_receipt_submission_is_rejected(client, receiving_setup):
     resp = client.post(f"/receipts/create/{po.id}/", post_data)
     assert resp.status_code == 200
     assert GoodsReceipt.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_unauthorized_roles_cannot_create_goods_receipt(client, receiving_setup, db_roles):
+    """Test L: Users without STORES_RECEIVER or SUPER_ADMIN role are blocked by view and service."""
+    from django.core.exceptions import ValidationError
+
+    from apps.receipts.services import create_goods_receipt_service
+
+    po = receiving_setup["po"]
+    line1 = receiving_setup["line1"]
+
+    auditor = User.objects.create_user(
+        email="auditor_grn_block@hpe.com",
+        password="Password123!",
+        role=db_roles[Role.AUDITOR],
+    )
+    staff_ordinary = User.objects.create_user(
+        email="staff_grn_block@hpe.com",
+        password="Password123!",
+        role=db_roles[Role.REQUESTER],
+        is_staff=True,
+    )
+
+    for unauth_user in [auditor, staff_ordinary]:
+        client.force_login(unauth_user)
+
+        # View GET blocked
+        resp_get = client.get(f"/receipts/create/{po.id}/")
+        assert resp_get.status_code == 302
+        assert "/receipts/" in resp_get.url
+
+        # View POST blocked
+        post_data = {
+            "delivery_note_number": "DN-UNAUTH-01",
+            f"quantity_received_{line1.id}": "5.00",
+            f"quantity_accepted_{line1.id}": "5.00",
+        }
+        resp_post = client.post(f"/receipts/create/{po.id}/", post_data)
+        assert resp_post.status_code == 302
+        assert "/receipts/" in resp_post.url
+        assert GoodsReceipt.objects.count() == 0
+
+        # Service-level backend authorization enforcement
+        with pytest.raises(ValidationError) as exc:
+            create_goods_receipt_service(
+                po=po,
+                received_by=unauth_user,
+                receipt_items=[
+                    {
+                        "po_line_id": str(line1.id),
+                        "quantity_received": Decimal("5.00"),
+                        "quantity_accepted": Decimal("5.00"),
+                    }
+                ],
+                delivery_note_number="DN-SERVICE-UNAUTH",
+            )
+        assert "Unauthorized: Only Stores Receiver or Super Admin can create goods receipts" in str(
+            exc.value
+        )
+        assert GoodsReceipt.objects.count() == 0
+
+    # Super Admin can create goods receipt
+    admin = User.objects.create_user(
+        email="admin_grn_ok@hpe.com",
+        password="Password123!",
+        role=db_roles[Role.SUPER_ADMIN],
+        is_superuser=True,
+    )
+    grn_admin = create_goods_receipt_service(
+        po=po,
+        received_by=admin,
+        receipt_items=[
+            {
+                "po_line_id": str(line1.id),
+                "quantity_received": Decimal("2.00"),
+                "quantity_accepted": Decimal("2.00"),
+            }
+        ],
+        delivery_note_number="DN-ADMIN-OK",
+    )
+    assert grn_admin.received_by == admin
+    assert grn_admin.lines.count() == 1

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 from apps.core.models import TimeStampedModel
@@ -17,6 +18,7 @@ class Vendor(TimeStampedModel):
     STATUS_DRAFT = "DRAFT"
     STATUS_SUBMITTED = "SUBMITTED"
     STATUS_KYC_REVIEW = "KYC_REVIEW"
+    STATUS_CHANGES_REQUIRED = "CHANGES_REQUIRED"
     STATUS_APPROVED = "APPROVED"
     STATUS_REJECTED = "REJECTED"
     STATUS_ACTIVE = "ACTIVE"
@@ -27,6 +29,7 @@ class Vendor(TimeStampedModel):
         (STATUS_DRAFT, "Draft"),
         (STATUS_SUBMITTED, "Submitted"),
         (STATUS_KYC_REVIEW, "KYC Review"),
+        (STATUS_CHANGES_REQUIRED, "Changes Required"),
         (STATUS_APPROVED, "Approved"),
         (STATUS_REJECTED, "Rejected"),
         (STATUS_ACTIVE, "Active"),
@@ -158,3 +161,35 @@ class VendorRiskRecord(TimeStampedModel):
     def risk_flag_labels(self):
         labels = dict(self.RISK_FLAG_CHOICES)
         return [labels.get(code, code) for code in (self.risk_flags or [])]
+
+
+class VendorCredentialDispatch(TimeStampedModel):
+    """Evidence that portal credentials were issued and emailed to a vendor (no password stored)."""
+
+    STATUS_PENDING = "PENDING"
+    STATUS_SENT = "SENT"
+    STATUS_FAILED = "FAILED"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_SENT, "Sent"),
+        (STATUS_FAILED, "Failed"),
+    ]
+
+    vendor = models.ForeignKey(
+        Vendor, on_delete=models.PROTECT, related_name="credential_dispatches"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="credential_dispatches"
+    )
+    sent_to = models.EmailField()
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True
+    )
+    error = models.TextField(blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.vendor_id} -> {self.sent_to} [{self.status}]"

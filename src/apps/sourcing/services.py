@@ -777,6 +777,10 @@ def submit_vendor_bid_service(
             submitted_at=timezone.now(),
         )
     else:
+        if bid.status == VendorBid.STATUS_WITHDRAWN:
+            raise ValidationError(
+                "Cannot submit: This bid has already been withdrawn and cannot be re-submitted."
+            )
         bid.status = VendorBid.STATUS_SUBMITTED
         bid.proposal_summary = proposal_summary
         bid.technical_proposal = technical_proposal or bid.technical_proposal
@@ -790,6 +794,14 @@ def submit_vendor_bid_service(
         for item in line_items:
             qty = Decimal(str(item["quantity"]))
             unit_price = Decimal(str(item["quoted_unit_price"]))
+            if qty <= Decimal("0.00"):
+                raise ValidationError(
+                    f"Quantity for line item '{item.get('item_description', '')}' must be greater than zero."
+                )
+            if unit_price < Decimal("0.00"):
+                raise ValidationError(
+                    f"Quoted unit price for line item '{item.get('item_description', '')}' cannot be negative."
+                )
             line = BidLine.objects.create(
                 bid=bid,
                 pr_line=item.get("pr_line"),
@@ -1005,6 +1017,10 @@ def ask_clarification_service(
         SourcingEvent.STATUS_CANCELLED,
     ):
         raise ValidationError(f"Clarifications are not accepted for a {event.status} event.")
+    if event.bid_end_date and timezone.now() > event.bid_end_date:
+        raise ValidationError(
+            f"Clarifications are closed: Sourcing event deadline passed on {event.bid_end_date.strftime('%Y-%m-%d %H:%M')}."
+        )
 
     clarification = Clarification.objects.create(
         event=event,

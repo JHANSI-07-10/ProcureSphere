@@ -21,6 +21,7 @@ from .selectors import (
     search_sourcing_events,
 )
 from .serializers import (
+    AmendBidPayload,
     AnswerPayload,
     AwardDecisionSerializer,
     BidEvaluationSerializer,
@@ -349,6 +350,26 @@ class VendorBidViewSet(viewsets.ReadOnlyModelViewSet):
         bid = self.get_object()  # already scoped to the vendor's own bids
         bid = services.withdraw_vendor_bid_service(
             bid=bid, user=request.user, reason=payload.validated_data["reason"]
+        )
+        return Response(VendorBidSerializer(bid, context={"request": request}).data)
+
+    @extend_schema(request=AmendBidPayload, responses=VendorBidSerializer)
+    @action(detail=True, methods=["post"])
+    def amend(self, request, pk=None):
+        if not request.user.is_vendor:
+            raise PermissionDenied("Only the bidding vendor can amend its bid.")
+        payload = AmendBidPayload(data=request.data)
+        payload.is_valid(raise_exception=True)
+        bid = self.get_object()
+        data = payload.validated_data
+        bid = services.amend_vendor_bid_service(
+            bid=bid,
+            vendor_user=request.user,
+            amendment_reason=data["amendment_reason"],
+            line_items=data["line_items"],
+            proposal_summary=data.get("proposal_summary", ""),
+            technical_proposal=data.get("technical_proposal", ""),
+            commercial_proposal=data.get("commercial_proposal", ""),
         )
         return Response(VendorBidSerializer(bid, context={"request": request}).data)
 

@@ -109,7 +109,16 @@ class ApprovalActionViewSet(viewsets.ReadOnlyModelViewSet):
                 comments=comment,
             )
 
-        return Response(ApprovalActionSerializer(new_action).data, status=status.HTTP_200_OK)
+        if isinstance(new_action, ApprovalAction):
+            res_data = ApprovalActionSerializer(new_action).data
+        else:
+            res_data = {
+                "id": str(getattr(new_action, "id", "")),
+                "status": "APPROVED",
+                "comments": comment,
+            }
+
+        return Response(res_data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], url_path="reject")
     def reject(self, request, pk=None):
@@ -139,7 +148,16 @@ class ApprovalActionViewSet(viewsets.ReadOnlyModelViewSet):
                 comments=reason,
             )
 
-        return Response(ApprovalActionSerializer(new_action).data, status=status.HTTP_200_OK)
+        if isinstance(new_action, ApprovalAction):
+            res_data = ApprovalActionSerializer(new_action).data
+        else:
+            res_data = {
+                "id": str(getattr(new_action, "id", "")),
+                "status": "REJECTED",
+                "comments": reason,
+            }
+
+        return Response(res_data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], url_path="comment")
     def comment(self, request, pk=None):

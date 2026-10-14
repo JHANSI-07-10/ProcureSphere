@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.middleware.csrf import get_token
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from rest_framework import mixins, status, views, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -9,13 +10,43 @@ from rest_framework.response import Response
 
 from .models import Role, User
 from .selectors import get_all_roles, get_all_users
-from .serializers import RoleSerializer, UserCreateSerializer, UserSerializer
+from .serializers import (
+    LoginRequestSerializer,
+    LoginResponseSerializer,
+    RoleSerializer,
+    UserCreateSerializer,
+    UserSerializer,
+)
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
 class SessionLoginView(views.APIView):
     permission_classes = [AllowAny]
+    serializer_class = LoginRequestSerializer
 
+    @extend_schema(
+        summary="Session Login",
+        description="Authenticate user with email and password to start a session and obtain a CSRF token.",
+        request=LoginRequestSerializer,
+        examples=[
+            OpenApiExample(
+                "Standard Login Example",
+                value={
+                    "email": "admin@example.com",
+                    "password": "Password123!",
+                },
+                request_only=True,
+            )
+        ],
+        responses={
+            200: LoginResponseSerializer,
+            400: OpenApiResponse(description="Validation error: email and password are required."),
+            401: OpenApiResponse(description="Authentication failed: invalid email or password."),
+            403: OpenApiResponse(description="Forbidden: account is inactive."),
+            429: OpenApiResponse(description="Too many failed login attempts: account temporarily locked."),
+        },
+        tags=["Authentication"],
+    )
     def post(self, request, *args, **kwargs):
         email = request.data.get("email")
         password = request.data.get("password")
@@ -128,6 +159,16 @@ class SessionLoginView(views.APIView):
 class SessionLogoutView(views.APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="Session Logout",
+        description="Terminates the active user session and records an audit log.",
+        request=None,
+        responses={
+            200: OpenApiResponse(description="Successfully logged out."),
+            401: OpenApiResponse(description="Authentication credentials were not provided."),
+        },
+        tags=["Authentication"],
+    )
     def post(self, request, *args, **kwargs):
         user = request.user
         if user and user.is_authenticated:

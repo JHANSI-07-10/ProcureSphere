@@ -227,6 +227,14 @@ class ReasonPayload(serializers.Serializer):
     reason = serializers.CharField()
 
 
+class AmendBidPayload(serializers.Serializer):
+    amendment_reason = serializers.CharField()
+    line_items = serializers.ListField(child=serializers.DictField(), allow_empty=False)
+    proposal_summary = serializers.CharField(required=False, allow_blank=True, default="")
+    technical_proposal = serializers.CharField(required=False, allow_blank=True, default="")
+    commercial_proposal = serializers.CharField(required=False, allow_blank=True, default="")
+
+
 class CommentsPayload(serializers.Serializer):
     comments = serializers.CharField(required=False, allow_blank=True, default="")
 

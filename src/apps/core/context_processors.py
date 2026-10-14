@@ -13,4 +13,6 @@ def layout_context(request):
         )
         if role_code == Role.LEGAL_MGR or role_code == "LEGAL_MGR":
             return {"base_layout": "layouts/legal_base.html"}
+        elif role_code == Role.STORES_RECEIVER or role_code == "STORES_RECEIVER":
+            return {"base_layout": "layouts/stores_base.html"}
     return {}

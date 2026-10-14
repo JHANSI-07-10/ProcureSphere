@@ -1,0 +1,24 @@
+<div class="modal-header">
+    <h5 class="modal-title fw-bold"><i class="fa-solid fa-circle-check text-success me-2"></i>{{ vendor.vendor_number }} · {{ vendor.legal_name }}</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+    {% if dispatch %}
+        <div class="alert alert-success small" role="alert">
+            <i class="fa-solid fa-envelope-circle-check me-1"></i>Credentials and portal login link emailed to <strong>{{ dispatch.sent_to }}</strong>. The vendor must set a new password at first login.
+        </div>
+    {% elif error %}
+        <div class="alert alert-danger small" role="alert"><i class="fa-solid fa-circle-xmark me-1"></i>{{ error }}</div>
+    {% else %}
+        <div class="alert alert-success small" role="alert">Vendor registered as <strong>DRAFT</strong>.</div>
+        <p class="small text-muted mb-0">Generate a login for <strong>{{ vendor.email }}</strong> and email the credentials with the portal link(s).</p>
+    {% endif %}
+</div>
+<div class="modal-footer">
+    <a href="{% url 'vendor_detail' vendor.id %}" class="btn btn-light rounded-pill">Open vendor</a>
+    {% if not dispatch %}
+    <button class="btn btn-primary rounded-pill px-4" hx-post="{% url 'vendor_issue_credentials' vendor.id %}" hx-target="#modal-content-body" hx-swap="innerHTML" hx-disabled-elt="this">
+        <i class="fa-solid fa-paper-plane me-1"></i>{% if error %}Resend{% else %}Generate credentials &amp; email{% endif %}
+    </button>
+    {% endif %}
+</div>

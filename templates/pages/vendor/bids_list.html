@@ -46,6 +46,11 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link rounded-pill px-3 py-1 small fw-semibold {% if tab == 'withdrawn' %}active{% else %}text-secondary{% endif %}" href="?tab=withdrawn">
+                        Withdrawn <span class="badge bg-danger bg-opacity-25 text-danger ms-1">{{ tab_counts.withdrawn }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link rounded-pill px-3 py-1 small fw-semibold {% if tab == 'history' %}active{% else %}text-secondary{% endif %}" href="?tab=history">
                         Bid History <span class="badge bg-secondary bg-opacity-25 text-secondary ms-1">{{ tab_counts.history }}</span>
                     </a>
@@ -101,7 +106,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <span class="badge {% if item.bid.status == 'SUBMITTED' %}bg-success{% elif item.bid.status == 'AMENDED' %}bg-info text-dark{% elif item.bid.status == 'DRAFT' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                <span class="badge {% if item.bid.status == 'SUBMITTED' %}bg-success{% elif item.bid.status == 'AMENDED' %}bg-info text-dark{% elif item.bid.status == 'DRAFT' %}bg-warning text-dark{% elif item.bid.status == 'WITHDRAWN' %}bg-danger text-white{% else %}bg-secondary{% endif %}">
                                     {{ item.bid.get_status_display }}
                                 </span>
                             </td>
