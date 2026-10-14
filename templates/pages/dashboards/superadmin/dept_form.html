@@ -1,0 +1,42 @@
+<div class="modal-header bg-light border-bottom-0 pb-0">
+    <h5 class="modal-title fw-bold text-dark">
+        <i class="fa-solid fa-building text-primary me-2"></i>{% if is_edit %}Edit Department{% else %}Create Department{% endif %}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<form hx-post="{% if is_edit %}/superadmin/departments/{{ form.instance.pk }}/edit/{% else %}/superadmin/departments/create/{% endif %}" hx-target="#modal-content-body" hx-swap="outerHTML">
+    {% csrf_token %}
+    <div class="modal-body pt-4">
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold text-secondary small">Department Name <span class="text-danger">*</span></label>
+                {{ form.name }}
+                {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold text-secondary small">Department Code <span class="text-danger">*</span></label>
+                {{ form.code }}
+                {% if form.code.errors %}<div class="text-danger small mt-1">{{ form.code.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold text-secondary small">Parent Organization <span class="text-danger">*</span></label>
+                {{ form.organization }}
+                {% if form.organization.errors %}<div class="text-danger small mt-1">{{ form.organization.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold text-secondary small">Description</label>
+                {{ form.description }}
+                {% if form.description.errors %}<div class="text-danger small mt-1">{{ form.description.errors }}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer border-top-0 pt-0">
+        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary text-white fw-bold rounded-pill px-4">
+            <i class="fa-solid fa-check me-1"></i> Save Department
+        </button>
+    </div>
+</form>

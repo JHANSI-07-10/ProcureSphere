@@ -3,7 +3,7 @@ from django import forms
 from apps.accounts.models import User
 from apps.approvals.models import ApprovalPolicy
 from apps.budgets.models import Budget
-from apps.organization.models import Organization
+from apps.organization.models import CostCenter, Department, Organization
 
 
 class UserAdminForm(forms.ModelForm):
@@ -28,6 +28,71 @@ class OrganizationAdminForm(forms.ModelForm):
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
+
+
+class DepartmentAdminForm(forms.ModelForm):
+    class Meta:
+        model = Department
+        fields = ["organization", "name", "code", "description"]
+        widgets = {
+            "organization": forms.Select(attrs={"class": "form-select"}),
+            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. Human Resources"}),
+            "code": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. HR"}),
+            "description": forms.Textarea(
+                attrs={"class": "form-control", "rows": 3, "placeholder": "Department description (optional)"}
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["organization"].queryset = Organization.objects.filter(is_active=True).order_by("name")
+        self.fields["organization"].empty_label = "-- Select Organization --"
+
+    def clean_code(self):
+        code = self.cleaned_data.get("code", "").strip().upper()
+        if not code:
+            raise forms.ValidationError("Department code is required.")
+        qs = Department.objects.filter(code=code)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError(f"Department code '{code}' already exists. Code must be unique.")
+        return code
+
+
+class CostCenterAdminForm(forms.ModelForm):
+    class Meta:
+        model = CostCenter
+        fields = ["code", "name", "department", "manager"]
+        widgets = {
+            "code": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. CC-IT-101"}),
+            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. IT Operations"}),
+            "department": forms.Select(attrs={"class": "form-select"}),
+            "manager": forms.Select(attrs={"class": "form-select"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["department"].queryset = (
+            Department.objects.select_related("organization").all().order_by("name")
+        )
+        self.fields["department"].empty_label = "-- Select Department --"
+        self.fields["manager"].queryset = (
+            User.objects.filter(is_active=True).order_by("email")
+        )
+        self.fields["manager"].empty_label = "-- Select Manager (Optional) --"
+        self.fields["manager"].required = False
+
+    def clean_code(self):
+        code = self.cleaned_data.get("code", "").strip().upper()
+        if not code:
+            raise forms.ValidationError("Cost center code is required.")
+        qs = CostCenter.objects.filter(code=code)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError(f"Cost center code '{code}' already exists. Code must be unique.")
+        return code
 
 
 class BudgetAdminForm(forms.ModelForm):
