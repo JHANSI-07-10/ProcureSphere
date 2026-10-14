@@ -123,6 +123,13 @@ def create_view(request):
             department = Department.objects.get(id=department_id)
             cost_center = CostCenter.objects.get(id=cost_center_id)
 
+            if getattr(user, "cost_center", None) and str(user.cost_center.id) != str(cost_center.id):
+                messages.error(
+                    request,
+                    f"Authorization Error: You are only authorized to create requisitions for Cost Center '{user.cost_center.code}' ({user.cost_center.name}).",
+                )
+                return redirect("requisition_create")
+
             item_descriptions = request.POST.getlist("item_description[]")
             quantities = request.POST.getlist("quantity[]")
             unit_prices = request.POST.getlist("estimated_unit_price[]")
@@ -227,7 +234,10 @@ def create_view(request):
             return redirect("requisition_create")
 
     # GET Request
-    if getattr(user, "department", None):
+    if getattr(user, "cost_center", None):
+        departments = Department.objects.filter(id=user.cost_center.department_id)
+        cost_centers = CostCenter.objects.filter(id=user.cost_center.id)
+    elif getattr(user, "department", None):
         departments = Department.objects.filter(id=user.department.id)
         cost_centers = CostCenter.objects.filter(department=user.department)
     else:
@@ -239,7 +249,11 @@ def create_view(request):
     return render(
         request,
         "pages/requisitions/create.html",
-        {"departments": departments, "cost_centers": cost_centers},
+        {
+            "departments": departments,
+            "cost_centers": cost_centers,
+            "user_assigned_cost_center": getattr(user, "cost_center", None),
+        },
     )
 
 
@@ -646,8 +660,10 @@ def attachment_download_view(request, pk, attachment_id):
     """
     import mimetypes
     import os
+
     from django.core.exceptions import PermissionDenied
     from django.http import FileResponse
+
     from apps.audit.models import AuditLog
 
     user = request.user

@@ -1,8 +1,8 @@
 <div class="modal-header bg-light border-bottom-0 pb-0">
-    <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-user text-info me-2"></i>{% if form.instance.pk %}Edit User{% else %}Create User{% endif %}</h5>
+    <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-user text-info me-2"></i>{% if is_edit %}Edit User{% else %}Create User{% endif %}</h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
-<form hx-post="{% if form.instance.pk %}/superadmin/users/{{ form.instance.pk }}/edit/{% else %}/superadmin/users/create/{% endif %}" hx-target="#modal-content-body" hx-swap="outerHTML">
+<form hx-post="{% if is_edit %}/superadmin/users/{{ form.instance.pk }}/edit/{% else %}/superadmin/users/create/{% endif %}" hx-target="#modal-content-body" hx-swap="outerHTML">
     {% csrf_token %}
     <div class="modal-body pt-4">
         {% if form.non_field_errors %}
@@ -10,24 +10,32 @@
         {% endif %}
         <div class="row g-3">
             <div class="col-md-6">
-                <label class="form-label fw-semibold text-secondary small">Email Address</label>
+                <label class="form-label fw-semibold text-secondary small">Email Address <span class="text-danger">*</span></label>
                 {{ form.email }}
-                {% if form.email.errors %}<div class="text-danger small">{{ form.email.errors }}</div>{% endif %}
+                {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors }}</div>{% endif %}
             </div>
             <div class="col-md-6">
                 <label class="form-label fw-semibold text-secondary small">Phone Number</label>
                 {{ form.phone_number }}
-                {% if form.phone_number.errors %}<div class="text-danger small">{{ form.phone_number.errors }}</div>{% endif %}
+                {% if form.phone_number.errors %}<div class="text-danger small mt-1">{{ form.phone_number.errors }}</div>{% endif %}
             </div>
             <div class="col-md-6">
                 <label class="form-label fw-semibold text-secondary small">Role</label>
                 {{ form.role }}
-                {% if form.role.errors %}<div class="text-danger small">{{ form.role.errors }}</div>{% endif %}
+                {% if form.role.errors %}<div class="text-danger small mt-1">{{ form.role.errors }}</div>{% endif %}
             </div>
             <div class="col-md-6">
                 <label class="form-label fw-semibold text-secondary small">Department</label>
-                {{ form.department }}
-                {% if form.department.errors %}<div class="text-danger small">{{ form.department.errors }}</div>{% endif %}
+                <div id="department-select-container">
+                    {{ form.department }}
+                </div>
+                {% if form.department.errors %}<div class="text-danger small mt-1">{{ form.department.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12" id="cost-center-wrapper" style="display: none;">
+                <label class="form-label fw-semibold text-secondary small">Cost Center <span class="text-danger">*</span></label>
+                {{ form.cost_center }}
+                <div class="form-text small text-muted">Required for Requesters. Must belong to the selected Department.</div>
+                {% if form.cost_center.errors %}<div class="text-danger small mt-1">{{ form.cost_center.errors }}</div>{% endif %}
             </div>
             <div class="col-12">
                 <div class="form-check form-switch mt-2">
@@ -39,6 +47,63 @@
     </div>
     <div class="modal-footer border-top-0 pt-0">
         <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-        <button type="submit" class="btn btn-info text-white fw-bold rounded-pill px-4">Save User</button>
+        <button type="submit" class="btn btn-info text-white fw-bold rounded-pill px-4">
+            <i class="fa-solid fa-check me-1"></i> Save User
+        </button>
     </div>
 </form>
+
+<script>
+(function() {
+    var roleSelect = document.getElementById("id_role");
+    var deptSelect = document.getElementById("id_department");
+    var ccWrapper = document.getElementById("cost-center-wrapper");
+    var ccSelect = document.getElementById("id_cost_center");
+
+    function isRequesterSelected() {
+        if (!roleSelect) return false;
+        var selectedOpt = roleSelect.options[roleSelect.selectedIndex];
+        if (!selectedOpt || !selectedOpt.text) return false;
+        return selectedOpt.text.toUpperCase().indexOf("REQUESTER") !== -1;
+    }
+
+    function updateCostCenterVisibility() {
+        if (!ccWrapper) return;
+        if (isRequesterSelected()) {
+            ccWrapper.style.display = "block";
+        } else {
+            ccWrapper.style.display = "none";
+            if (ccSelect) ccSelect.value = "";
+        }
+    }
+
+    function refreshCostCenters() {
+        if (!deptSelect || !ccSelect) return;
+        var deptId = deptSelect.value;
+        if (!deptId) {
+            ccSelect.innerHTML = '<option value="">-- Select Cost Center --</option>';
+            return;
+        }
+        fetch('/superadmin/cost-centers/options/?department=' + encodeURIComponent(deptId))
+            .then(function(res) { return res.text(); })
+            .then(function(html) {
+                var currentVal = ccSelect.value;
+                ccSelect.innerHTML = html;
+                if (currentVal) ccSelect.value = currentVal;
+            })
+            .catch(function(err) {
+                console.error("Error loading cost centers:", err);
+            });
+    }
+
+    if (roleSelect) {
+        roleSelect.addEventListener("change", updateCostCenterVisibility);
+    }
+    if (deptSelect) {
+        deptSelect.addEventListener("change", refreshCostCenters);
+    }
+
+    // Initial check on load
+    updateCostCenterVisibility();
+})();
+</script>

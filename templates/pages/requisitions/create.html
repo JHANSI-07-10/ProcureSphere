@@ -46,22 +46,31 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold text-secondary small">Department *</label>
                             <select name="department" class="form-select bg-light border-0" required>
+                                {% if departments|length != 1 %}
                                 <option value="" disabled selected>Select Department...</option>
+                                {% endif %}
                                 {% for dept in departments %}
-                                <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                <option value="{{ dept.id }}" {% if departments|length == 1 %}selected{% endif %}>{{ dept.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold text-secondary small">Cost Center *</label>
                             <select name="cost_center" id="cost_center_select" class="form-select bg-light border-0" required onchange="updateBudgetNotice()">
+                                {% if cost_centers|length != 1 %}
                                 <option value="" disabled selected>Select Cost Center...</option>
+                                {% endif %}
                                 {% for cc in cost_centers %}
-                                <option value="{{ cc.id }}" data-budget="{% if cc.available_budget != None %}{{ cc.available_budget|floatformat:2 }}{% else %}N/A{% endif %}">
+                                <option value="{{ cc.id }}" data-budget="{% if cc.available_budget != None %}{{ cc.available_budget|floatformat:2 }}{% else %}N/A{% endif %}" {% if cost_centers|length == 1 %}selected{% endif %}>
                                     {{ cc.code }} - {{ cc.name }}
                                 </option>
                                 {% endfor %}
                             </select>
+                            {% if user_assigned_cost_center %}
+                            <div class="form-text text-success small mt-1">
+                                <i class="fa-solid fa-lock me-1"></i> Designated Cost Center: <strong>{{ user_assigned_cost_center.code }}</strong>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
 

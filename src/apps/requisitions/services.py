@@ -36,6 +36,11 @@ def create_purchase_requisition_service(
     if not line_items:
         raise ValidationError("Purchase Requisition must contain at least one line item.")
 
+    if getattr(requester, "cost_center", None) and requester.cost_center != cost_center:
+        raise ValidationError(
+            f"Requester '{requester.email}' is only authorized to create requisitions for Cost Center '{requester.cost_center.code}'."
+        )
+
     pr_count = PurchaseRequisition.objects.count() + 1
     pr_number = f"PR-{timezone.now().strftime('%Y')}-{pr_count:05d}"
 

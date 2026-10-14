@@ -1,0 +1,4 @@
+<option value="">-- Select Cost Center --</option>
+{% for cc in cost_centers %}
+<option value="{{ cc.pk }}">{{ cc.name }} ({{ cc.code }})</option>
+{% endfor %}

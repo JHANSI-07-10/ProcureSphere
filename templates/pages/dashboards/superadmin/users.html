@@ -23,7 +23,7 @@
                     <tr>
                         <th class="ps-4">Email / User</th>
                         <th>Role</th>
-                        <th>Department</th>
+                        <th>Department / Cost Center</th>
                         <th class="text-center">Status</th>
                         <th class="text-end pe-4">Joined Date</th>
                         <th></th>
@@ -34,7 +34,12 @@
                     <tr>
                         <td class="ps-4 fw-bold text-dark">{{ u.email }}</td>
                         <td><span class="badge bg-secondary">{{ u.role.name|default:"No Role" }}</span></td>
-                        <td>{{ u.department.name|default:"-" }}</td>
+                        <td>
+                            {{ u.department.name|default:"-" }}
+                            {% if u.cost_center %}
+                            <span class="badge bg-light text-dark border ms-1">{{ u.cost_center.code }}</span>
+                            {% endif %}
+                        </td>
                         <td class="text-center">
                             {% if u.is_active %}
                             <span class="badge bg-success bg-opacity-10 text-success border border-success">Active</span>
@@ -49,7 +54,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center py-5 text-muted">No users found in the system.</td>
+                        <td colspan="6" class="text-center py-5 text-muted">No users found in the system.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

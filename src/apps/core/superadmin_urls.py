@@ -15,6 +15,7 @@ urlpatterns = [
     path("departments/<uuid:dept_id>/edit/", superadmin_views.dept_edit_view, name="dept_edit"),
     path("cost-centers/create/", superadmin_views.cost_center_create_view, name="cost_center_create"),
     path("cost-centers/<uuid:cc_id>/edit/", superadmin_views.cost_center_edit_view, name="cost_center_edit"),
+    path("cost-centers/options/", superadmin_views.cost_center_options_view, name="cost_center_options"),
     path("budgets/", superadmin_views.budget_list_view, name="budgets"),
     path("budgets/create/", superadmin_views.budget_create_view, name="budget_create"),
     path("budgets/<uuid:budget_id>/edit/", superadmin_views.budget_edit_view, name="budget_edit"),

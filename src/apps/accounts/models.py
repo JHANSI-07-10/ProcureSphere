@@ -84,6 +84,14 @@ class User(AbstractUser):
         blank=True,
         related_name="users",
     )
+    cost_center = models.ForeignKey(
+        "organization.CostCenter",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requester_users",
+        help_text="Designated cost center for Requester accounts",
+    )
     vendor = models.ForeignKey(
         "vendors.Vendor",
         on_delete=models.SET_NULL,

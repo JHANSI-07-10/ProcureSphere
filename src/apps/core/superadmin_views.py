@@ -21,44 +21,130 @@ from apps.core.superadmin_forms import (
 from apps.organization.models import CostCenter, Department, Organization
 
 
-@login_required
-def user_list_view(request):
-    users = User.objects.select_related("role", "department").all().order_by("-date_joined")
-    return render(request, "pages/dashboards/superadmin/users.html", {"users": users})
-
-
-@login_required
-def user_create_view(request):
-    if request.method == "POST":
-        form = UserAdminForm(request.POST)
-        if form.is_valid():
-            user = form.save(commit=False)
-            user.username = form.cleaned_data["email"]
-            user.save()
-            return HttpResponse("<script>window.location.reload();</script>")
-    else:
-        form = UserAdminForm()
-    return render(request, "pages/dashboards/superadmin/user_form.html", {"form": form})
-
-
-@login_required
-def user_edit_view(request, user_id):
-    user = get_object_or_404(User, pk=user_id)
-    if request.method == "POST":
-        form = UserAdminForm(request.POST, instance=user)
-        if form.is_valid():
-            form.save()
-            return HttpResponse("<script>window.location.reload();</script>")
-    else:
-        form = UserAdminForm(instance=user)
-    return render(request, "pages/dashboards/superadmin/user_form.html", {"form": form})
-
-
 def _is_super_admin(user):
     return user.is_authenticated and (
         user.is_superuser
         or getattr(user, "role_code", None) == Role.SUPER_ADMIN
         or (hasattr(user, "role") and user.role and user.role.code == Role.SUPER_ADMIN)
+    )
+
+
+@login_required
+def user_list_view(request):
+    users = User.objects.select_related("role", "department", "cost_center").all().order_by("-date_joined")
+    return render(request, "pages/dashboards/superadmin/users.html", {"users": users})
+
+
+@login_required
+def user_create_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
+    if request.method == "POST":
+        form = UserAdminForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.username = form.cleaned_data["email"]
+            if not user.password:
+                user.set_password("Password123!")
+            user.save()
+
+            from apps.audit.services import create_audit_log_service
+
+            create_audit_log_service(
+                actor=request.user,
+                action=AuditLog.ACTION_CREATE,
+                target_model="User",
+                target_object_id=str(user.id),
+                previous_state=None,
+                new_state={
+                    "email": user.email,
+                    "phone_number": user.phone_number,
+                    "role": user.role.code if user.role else None,
+                    "department": user.department.code if user.department else None,
+                    "cost_center": user.cost_center.code if user.cost_center else None,
+                    "is_active": user.is_active,
+                },
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            )
+
+            return HttpResponse("<script>window.location.reload();</script>")
+    else:
+        form = UserAdminForm()
+    return render(request, "pages/dashboards/superadmin/user_form.html", {"form": form, "is_edit": False})
+
+
+@login_required
+def user_edit_view(request, user_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
+    user = get_object_or_404(User, pk=user_id)
+    if request.method == "POST":
+        old_state = {
+            "email": user.email,
+            "phone_number": user.phone_number,
+            "role": user.role.code if user.role else None,
+            "department": user.department.code if user.department else None,
+            "cost_center": user.cost_center.code if user.cost_center else None,
+            "is_active": user.is_active,
+        }
+        form = UserAdminForm(request.POST, instance=user)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.username = form.cleaned_data["email"]
+            user.save()
+
+            from apps.audit.services import create_audit_log_service
+
+            create_audit_log_service(
+                actor=request.user,
+                action=AuditLog.ACTION_UPDATE,
+                target_model="User",
+                target_object_id=str(user.id),
+                previous_state=old_state,
+                new_state={
+                    "email": user.email,
+                    "phone_number": user.phone_number,
+                    "role": user.role.code if user.role else None,
+                    "department": user.department.code if user.department else None,
+                    "cost_center": user.cost_center.code if user.cost_center else None,
+                    "is_active": user.is_active,
+                },
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            )
+
+            return HttpResponse("<script>window.location.reload();</script>")
+    else:
+        form = UserAdminForm(instance=user)
+    return render(request, "pages/dashboards/superadmin/user_form.html", {"form": form, "is_edit": True, "user_obj": user})
+
+
+@login_required
+def cost_center_options_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse("<option value=''>-- Unauthorized --</option>", status=403)
+    dept_id = request.GET.get("department", "").strip()
+    cost_centers = CostCenter.objects.none()
+    if dept_id:
+        try:
+            import uuid
+            uuid.UUID(dept_id)
+            cost_centers = CostCenter.objects.filter(department_id=dept_id).order_by("name")
+        except (ValueError, AttributeError):
+            pass
+    return render(
+        request,
+        "pages/dashboards/superadmin/cost_center_options.html",
+        {"cost_centers": cost_centers},
     )
 
 
@@ -90,6 +176,12 @@ def org_list_view(request):
 
 @login_required
 def org_create_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
     if request.method == "POST":
         form = OrganizationAdminForm(request.POST)
         if form.is_valid():
@@ -97,11 +189,17 @@ def org_create_view(request):
             return HttpResponse("<script>window.location.reload();</script>")
     else:
         form = OrganizationAdminForm()
-    return render(request, "pages/dashboards/superadmin/org_form.html", {"form": form})
+    return render(request, "pages/dashboards/superadmin/org_form.html", {"form": form, "is_edit": False})
 
 
 @login_required
 def org_edit_view(request, org_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
     org = get_object_or_404(Organization, pk=org_id)
     if request.method == "POST":
         form = OrganizationAdminForm(request.POST, instance=org)
@@ -110,7 +208,7 @@ def org_edit_view(request, org_id):
             return HttpResponse("<script>window.location.reload();</script>")
     else:
         form = OrganizationAdminForm(instance=org)
-    return render(request, "pages/dashboards/superadmin/org_form.html", {"form": form})
+    return render(request, "pages/dashboards/superadmin/org_form.html", {"form": form, "is_edit": True, "org": org})
 
 
 @login_required
@@ -319,6 +417,12 @@ def audit_list_view(request):
 
 @login_required
 def budget_create_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
     if request.method == "POST":
         form = BudgetAdminForm(request.POST)
         if form.is_valid():
@@ -326,11 +430,17 @@ def budget_create_view(request):
             return HttpResponse("<script>window.location.reload();</script>")
     else:
         form = BudgetAdminForm()
-    return render(request, "pages/dashboards/superadmin/budget_form.html", {"form": form})
+    return render(request, "pages/dashboards/superadmin/budget_form.html", {"form": form, "is_edit": False})
 
 
 @login_required
 def budget_edit_view(request, budget_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
     budget = get_object_or_404(Budget, pk=budget_id)
     if request.method == "POST":
         form = BudgetAdminForm(request.POST, instance=budget)
@@ -339,11 +449,17 @@ def budget_edit_view(request, budget_id):
             return HttpResponse("<script>window.location.reload();</script>")
     else:
         form = BudgetAdminForm(instance=budget)
-    return render(request, "pages/dashboards/superadmin/budget_form.html", {"form": form})
+    return render(request, "pages/dashboards/superadmin/budget_form.html", {"form": form, "is_edit": True, "budget": budget})
 
 
 @login_required
 def policy_create_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
     if request.method == "POST":
         form = PolicyAdminForm(request.POST)
         if form.is_valid():
@@ -351,11 +467,17 @@ def policy_create_view(request):
             return HttpResponse("<script>window.location.reload();</script>")
     else:
         form = PolicyAdminForm()
-    return render(request, "pages/dashboards/superadmin/policy_form.html", {"form": form})
+    return render(request, "pages/dashboards/superadmin/policy_form.html", {"form": form, "is_edit": False})
 
 
 @login_required
 def policy_edit_view(request, policy_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
     policy = get_object_or_404(ApprovalPolicy, pk=policy_id)
     if request.method == "POST":
         form = PolicyAdminForm(request.POST, instance=policy)
@@ -364,7 +486,7 @@ def policy_edit_view(request, policy_id):
             return HttpResponse("<script>window.location.reload();</script>")
     else:
         form = PolicyAdminForm(instance=policy)
-    return render(request, "pages/dashboards/superadmin/policy_form.html", {"form": form})
+    return render(request, "pages/dashboards/superadmin/policy_form.html", {"form": form, "is_edit": True, "policy": policy})
 
 
 @login_required

@@ -1,8 +1,8 @@
 <div class="modal-header bg-light border-bottom-0 pb-0">
-    <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-scale-balanced text-warning me-2"></i>{% if form.instance.pk %}Edit Policy{% else %}Create Approval Policy{% endif %}</h5>
+    <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-scale-balanced text-warning me-2"></i>{% if is_edit %}Edit Policy{% else %}Create Approval Policy{% endif %}</h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
-<form hx-post="{% if form.instance.pk %}/superadmin/policies/{{ form.instance.pk }}/edit/{% else %}/superadmin/policies/create/{% endif %}" hx-target="#modal-content-body" hx-swap="outerHTML">
+<form hx-post="{% if is_edit %}/superadmin/policies/{{ form.instance.pk }}/edit/{% else %}/superadmin/policies/create/{% endif %}" hx-target="#modal-content-body" hx-swap="outerHTML">
     {% csrf_token %}
     <div class="modal-body pt-4">
         {% if form.non_field_errors %}
