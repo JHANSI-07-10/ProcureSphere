@@ -278,3 +278,122 @@ def get_vendor_purchase_orders(vendor, limit=20):
     from apps.orders.models import PurchaseOrder
 
     return PurchaseOrder.objects.filter(vendor=vendor).order_by("-created_at")[:limit]
+
+
+def get_vendor_onboarding_progress(vendor):
+    """
+    Computes step-by-step onboarding progress for restricted self-service vendor onboarding.
+    Returns checklist items, completed count, total count, progress percentage, and current stage.
+    """
+    if not vendor:
+        return {
+            "steps": [],
+            "completed_count": 0,
+            "total_count": 5,
+            "percentage": 0,
+            "is_complete": False,
+            "status": "DRAFT",
+            "can_submit": False,
+        }
+
+    # Step 1: Corporate Profile
+    step1_done = bool(vendor.legal_name and vendor.address and vendor.phone)
+    step1 = {
+        "id": "profile",
+        "step_number": 1,
+        "title": "Corporate Profile",
+        "description": "Company registration, legal address, and verified phone contact (+91).",
+        "is_complete": step1_done,
+        "url": "/vendor/profile/#company-info",
+        "icon": "fa-building",
+    }
+
+    # Step 2: Banking & Remittance Settlement
+    step2_done = bool(vendor.bank_name and vendor.bank_account_number and vendor.bank_routing_code)
+    step2 = {
+        "id": "banking",
+        "step_number": 2,
+        "title": "Bank Settlement Details",
+        "description": "Remittance bank name, account number/IBAN, and routing code/IFSC.",
+        "is_complete": step2_done,
+        "url": "/vendor/profile/#bank-info",
+        "icon": "fa-landmark",
+    }
+
+    # Step 3: Authorized Contacts
+    contacts_count = vendor.contacts.count()
+    step3_done = contacts_count > 0
+    step3 = {
+        "id": "contacts",
+        "step_number": 3,
+        "title": "Authorized Contacts",
+        "description": f"{contacts_count} contact(s) registered. Primary and secondary contact management.",
+        "is_complete": step3_done,
+        "url": "/vendor/profile/#contacts",
+        "icon": "fa-address-book",
+    }
+
+    # Step 4: Mandatory KYC Documents
+    docs_count = vendor.documents.count()
+    verified_docs_count = vendor.documents.filter(is_verified=True).count()
+    step4_done = docs_count > 0
+    step4 = {
+        "id": "documents",
+        "step_number": 4,
+        "title": "KYC Verification Documents",
+        "description": f"{docs_count} document(s) uploaded ({verified_docs_count} verified).",
+        "is_complete": step4_done,
+        "url": "/vendor/profile/#kyc-docs",
+        "icon": "fa-folder-open",
+    }
+
+    # Step 5: Procurement Review & Activation
+    is_active = vendor.status == Vendor.STATUS_ACTIVE
+    step5_done = is_active
+    step5_label = (
+        "Active & Approved"
+        if is_active
+        else (
+            "Under Review"
+            if vendor.status in (Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW)
+            else (
+                "Changes Required"
+                if vendor.status == Vendor.STATUS_CHANGES_REQUIRED
+                else ("Rejected" if vendor.status == Vendor.STATUS_REJECTED else "Pending Submission")
+            )
+        )
+    )
+    step5 = {
+        "id": "review",
+        "step_number": 5,
+        "title": "Procurement Review & Activation",
+        "description": f"Status: {step5_label}.",
+        "is_complete": step5_done,
+        "in_progress": vendor.status in (Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW),
+        "changes_required": vendor.status == Vendor.STATUS_CHANGES_REQUIRED,
+        "url": "/vendor/profile/",
+        "icon": "fa-shield-halved",
+    }
+
+    steps = [step1, step2, step3, step4, step5]
+    completed_count = sum(1 for s in steps if s["is_complete"])
+    percentage = int((completed_count / len(steps)) * 100)
+    can_submit = (
+        vendor.status in (Vendor.STATUS_DRAFT, Vendor.STATUS_CHANGES_REQUIRED)
+        and step1_done
+        and step4_done
+    )
+
+    return {
+        "steps": steps,
+        "completed_count": completed_count,
+        "total_count": len(steps),
+        "percentage": percentage,
+        "is_complete": is_active,
+        "status": vendor.status,
+        "status_display": vendor.get_status_display(),
+        "status_notes": vendor.status_notes,
+        "changes_required": vendor.status == Vendor.STATUS_CHANGES_REQUIRED,
+        "can_submit": can_submit,
+    }
+

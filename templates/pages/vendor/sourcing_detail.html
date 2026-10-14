@@ -243,8 +243,12 @@
                     <div class="d-grid mt-3">
                         {% if is_open %}
                             {% if existing_bid %}
-                            <a href="{% url 'vendor_bid_detail' bid_id=existing_bid.id %}" class="btn btn-primary btn-sm rounded-pill py-2 shadow-sm">
-                                View My Submitted Bid &rarr;
+                            <a href="{% url 'vendor_bid_detail' bid_id=existing_bid.id %}" class="btn {% if existing_bid.status == 'WITHDRAWN' %}btn-outline-danger{% else %}btn-primary{% endif %} btn-sm rounded-pill py-2 shadow-sm">
+                                {% if existing_bid.status == 'WITHDRAWN' %}
+                                    <i class="fa-solid fa-ban me-1"></i> View My Bid (Withdrawn) &rarr;
+                                {% else %}
+                                    View My Submitted Bid &rarr;
+                                {% endif %}
                             </a>
                             {% else %}
                             <a href="{% url 'vendor_bid_create' event_id=event.id %}" class="btn btn-primary btn-sm rounded-pill py-2 shadow-sm">

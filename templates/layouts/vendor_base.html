@@ -28,8 +28,8 @@
                     <span class="fw-semibold small d-block mb-1">{{ vendor.legal_name|truncatechars:35 }}</span>
                     <span class="text-muted d-block" style="font-size: 0.7rem; line-height: 1;">{{ vendor.vendor_number }} &bull; {{ vendor.tax_identification_number }}</span>
                 </div>
-                <span class="badge ms-2 rounded-pill {% if vendor.status == 'ACTIVE' %}bg-success{% elif vendor.status == 'KYC_REVIEW' or vendor.status == 'SUBMITTED' %}bg-warning text-dark{% elif vendor.status == 'APPROVED' %}bg-info text-dark{% elif vendor.status == 'SUSPENDED' or vendor.status == 'REJECTED' %}bg-danger{% else %}bg-secondary{% endif %}" style="font-size: 0.65rem;">
-                    {{ vendor.status }}
+                <span class="badge ms-2 rounded-pill {% if vendor.status == 'ACTIVE' %}bg-success{% elif vendor.status == 'KYC_REVIEW' or vendor.status == 'SUBMITTED' or vendor.status == 'CHANGES_REQUIRED' %}bg-warning text-dark{% elif vendor.status == 'APPROVED' %}bg-info text-dark{% elif vendor.status == 'SUSPENDED' or vendor.status == 'REJECTED' %}bg-danger{% else %}bg-secondary{% endif %}" style="font-size: 0.65rem;">
+                    {{ vendor.get_status_display }}
                 </span>
             </div>
             {% endif %}

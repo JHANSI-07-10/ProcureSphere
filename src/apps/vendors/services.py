@@ -19,6 +19,7 @@ from .brevo_email import build_credentials_html
 from .models import (
     Vendor,
     VendorCategory,
+    VendorContact,
     VendorCredentialDispatch,
     VendorDocument,
     VendorRiskRecord,
@@ -88,10 +89,12 @@ def register_vendor_service(
 @transaction.atomic
 def submit_vendor_kyc_service(*, vendor: Vendor, user: User) -> Vendor:
     """
-    Transitions Vendor state from DRAFT to SUBMITTED.
+    Transitions Vendor state from DRAFT or CHANGES_REQUIRED to SUBMITTED.
     """
-    if vendor.status != Vendor.STATUS_DRAFT:
-        raise ValidationError(f"Cannot submit vendor in status '{vendor.status}'. Must be DRAFT.")
+    if vendor.status not in (Vendor.STATUS_DRAFT, Vendor.STATUS_CHANGES_REQUIRED):
+        raise ValidationError(
+            f"Cannot submit vendor in status '{vendor.status}'. Must be DRAFT or CHANGES_REQUIRED."
+        )
 
     if not vendor.documents.exists():
         raise ValidationError(
@@ -196,6 +199,9 @@ VENDOR_GOVERNANCE_TRANSITIONS = {
     (Vendor.STATUS_SUSPENDED, Vendor.STATUS_ACTIVE): "suspend",
     (Vendor.STATUS_SUBMITTED, Vendor.STATUS_REJECTED): "operate",
     (Vendor.STATUS_KYC_REVIEW, Vendor.STATUS_REJECTED): "operate",
+    (Vendor.STATUS_SUBMITTED, Vendor.STATUS_CHANGES_REQUIRED): "operate",
+    (Vendor.STATUS_KYC_REVIEW, Vendor.STATUS_CHANGES_REQUIRED): "operate",
+    (Vendor.STATUS_CHANGES_REQUIRED, Vendor.STATUS_REJECTED): "operate",
 }
 
 
@@ -542,3 +548,158 @@ def issue_vendor_credentials_service(
     dispatch.sent_at = timezone.now()
     dispatch.save(update_fields=["status", "sent_at", "updated_at"])
     return dispatch
+
+
+@transaction.atomic
+def request_vendor_changes_service(*, vendor: Vendor, reviewer: User, notes: str) -> Vendor:
+    """
+    Transitions Vendor to CHANGES_REQUIRED and notifies vendor with reviewer notes.
+    """
+    return set_vendor_status_governance_service(
+        vendor=vendor,
+        actor=reviewer,
+        new_status=Vendor.STATUS_CHANGES_REQUIRED,
+        notes=notes,
+    )
+
+
+@transaction.atomic
+def create_vendor_contact_service(
+    *,
+    vendor: Vendor,
+    user: User,
+    data: dict,
+) -> VendorContact:
+    """
+    Creates a new authorized vendor contact for the vendor.
+    If is_primary is set, demotes other contacts of this vendor.
+    """
+    first_name = (data.get("first_name") or "").strip()
+    last_name = (data.get("last_name") or "").strip()
+    email = (data.get("email") or "").strip()
+    phone = (data.get("phone") or "").strip()
+    designation = (data.get("designation") or "").strip()
+    is_primary = bool(data.get("is_primary", False))
+
+    if not first_name or not last_name or not email:
+        raise ValidationError("First name, last name, and email are required.")
+
+    if is_primary:
+        vendor.contacts.filter(is_primary=True).update(is_primary=False)
+
+    contact = VendorContact.objects.create(
+        vendor=vendor,
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        phone=phone,
+        designation=designation,
+        is_primary=is_primary,
+    )
+
+    create_audit_log_service(
+        actor=user,
+        action=AuditLog.ACTION_CREATE,
+        target_model="VendorContact",
+        target_object_id=str(contact.id),
+        new_state={
+            "vendor": vendor.legal_name,
+            "name": f"{contact.first_name} {contact.last_name}",
+            "email": contact.email,
+            "designation": contact.designation,
+            "is_primary": contact.is_primary,
+        },
+    )
+    return contact
+
+
+@transaction.atomic
+def update_vendor_contact_service(
+    *,
+    contact: VendorContact,
+    vendor: Vendor,
+    user: User,
+    data: dict,
+) -> VendorContact:
+    """
+    Updates an authorized vendor contact.
+    Enforces strict vendor-level isolation (contact must belong to vendor).
+    """
+    if contact.vendor_id != vendor.id:
+        raise PermissionDenied("You do not have permission to modify a contact belonging to another vendor.")
+
+    previous_state = {
+        "first_name": contact.first_name,
+        "last_name": contact.last_name,
+        "email": contact.email,
+        "phone": contact.phone,
+        "designation": contact.designation,
+        "is_primary": contact.is_primary,
+    }
+
+    if "first_name" in data:
+        contact.first_name = (data["first_name"] or "").strip()
+    if "last_name" in data:
+        contact.last_name = (data["last_name"] or "").strip()
+    if "email" in data:
+        contact.email = (data["email"] or "").strip()
+    if "phone" in data:
+        contact.phone = (data["phone"] or "").strip()
+    if "designation" in data:
+        contact.designation = (data["designation"] or "").strip()
+
+    if "is_primary" in data:
+        is_primary = bool(data["is_primary"])
+        if is_primary:
+            vendor.contacts.exclude(pk=contact.pk).filter(is_primary=True).update(is_primary=False)
+        contact.is_primary = is_primary
+
+    contact.save()
+
+    create_audit_log_service(
+        actor=user,
+        action=AuditLog.ACTION_UPDATE,
+        target_model="VendorContact",
+        target_object_id=str(contact.id),
+        previous_state=previous_state,
+        new_state={
+            "vendor": vendor.legal_name,
+            "name": f"{contact.first_name} {contact.last_name}",
+            "email": contact.email,
+            "designation": contact.designation,
+            "is_primary": contact.is_primary,
+        },
+    )
+    return contact
+
+
+@transaction.atomic
+def delete_vendor_contact_service(
+    *,
+    contact: VendorContact,
+    vendor: Vendor,
+    user: User,
+) -> None:
+    """
+    Deletes an authorized vendor contact.
+    Enforces strict vendor-level isolation.
+    """
+    if contact.vendor_id != vendor.id:
+        raise PermissionDenied("You do not have permission to delete a contact belonging to another vendor.")
+
+    contact_info = {
+        "vendor": vendor.legal_name,
+        "name": f"{contact.first_name} {contact.last_name}",
+        "email": contact.email,
+    }
+    contact_id = str(contact.id)
+    contact.delete()
+
+    create_audit_log_service(
+        actor=user,
+        action=AuditLog.ACTION_DELETE,
+        target_model="VendorContact",
+        target_object_id=contact_id,
+        previous_state=contact_info,
+        new_state=None,
+    )

@@ -11,6 +11,11 @@ def portal_login_view(request):
     Redirects authenticated users straight to the ERP Dashboard (/).
     """
     if request.user.is_authenticated:
+        role_code = getattr(request.user, "role_code", None) or (
+            request.user.role.code if hasattr(request.user, "role") and request.user.role else None
+        )
+        if role_code == "VENDOR_USER":
+            return redirect("/vendor/")
         return redirect("/")
 
     if request.method == "POST":
@@ -50,7 +55,15 @@ def portal_login_view(request):
                 user_agent=request.META.get("HTTP_USER_AGENT", ""),
             )
 
-            next_url = request.GET.get("next") or "/"
+            next_url = request.GET.get("next")
+            if not next_url:
+                role_code = getattr(user, "role_code", None) or (
+                    user.role.code if hasattr(user, "role") and user.role else None
+                )
+                if role_code == "VENDOR_USER":
+                    next_url = "/vendor/"
+                else:
+                    next_url = "/"
             return redirect(next_url)
         else:
             messages.error(request, "Invalid email or password. Please try again.")

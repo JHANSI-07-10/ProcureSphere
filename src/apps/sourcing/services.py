@@ -777,6 +777,10 @@ def submit_vendor_bid_service(
             submitted_at=timezone.now(),
         )
     else:
+        if bid.status == VendorBid.STATUS_WITHDRAWN:
+            raise ValidationError(
+                "Cannot submit: This bid has already been withdrawn and cannot be re-submitted."
+            )
         bid.status = VendorBid.STATUS_SUBMITTED
         bid.proposal_summary = proposal_summary
         bid.technical_proposal = technical_proposal or bid.technical_proposal

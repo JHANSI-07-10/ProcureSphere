@@ -47,6 +47,7 @@ TRANSITION_LABELS = {
     Vendor.STATUS_ACTIVE: ("Release / reinstate to Active", "success"),
     Vendor.STATUS_SUSPENDED: ("Suspend / blacklist", "danger"),
     Vendor.STATUS_REJECTED: ("Reject registration", "danger"),
+    Vendor.STATUS_CHANGES_REQUIRED: ("Request corrections / changes", "warning"),
 }
 
 
@@ -251,6 +252,19 @@ def vendor_kyc_action_view(request, vendor_id, kyc_action):
                 vendor=vendor, manager=request.user, notes=request.POST.get("notes", "").strip()
             )
             messages.success(request, "Vendor approved and activated.")
+        elif kyc_action == "request-changes":
+            notes = request.POST.get("notes", "").strip()
+            if not notes:
+                raise ValidationError("Please provide instructions on what changes are required.")
+            set_vendor_status_governance_service(
+                vendor=vendor,
+                actor=request.user,
+                new_status=Vendor.STATUS_CHANGES_REQUIRED,
+                notes=notes,
+            )
+            messages.warning(
+                request, f"Corrections requested from {vendor.legal_name}. Vendor notified."
+            )
         else:
             raise Http404("Unknown KYC action.")
     except ValidationError as exc:
@@ -405,6 +419,17 @@ def vendor_kyc_htmx_view(request, vendor_id, kyc_action):
                 vendor=vendor, manager=request.user, notes=request.POST.get("notes", "").strip()
             )
             detail = "Vendor approved and activated."
+        elif kyc_action == "request-changes":
+            notes = request.POST.get("notes", "").strip()
+            if not notes:
+                raise ValidationError("Please provide instructions on what changes are required.")
+            set_vendor_status_governance_service(
+                vendor=vendor,
+                actor=request.user,
+                new_status=Vendor.STATUS_CHANGES_REQUIRED,
+                notes=notes,
+            )
+            detail = f"Corrections requested from {vendor.legal_name}. Vendor notified."
         else:
             raise Http404("Unknown KYC action.")
     except ValidationError as exc:

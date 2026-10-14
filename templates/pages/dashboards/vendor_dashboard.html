@@ -24,6 +24,82 @@
         </div>
     </div>
 
+    {% if vendor.status == 'CHANGES_REQUIRED' %}
+    <!-- Changes Required Alert Banner -->
+    <div class="alert alert-warning border-warning shadow-sm rounded-4 p-3 mb-4 d-flex align-items-start gap-3">
+        <div class="fs-3 text-warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div class="flex-grow-1">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <h6 class="fw-bold text-dark mb-1">Corrections Requested by Procurement Reviewer</h6>
+                <a href="/vendor/profile/" class="btn btn-warning btn-sm fw-semibold rounded-pill px-3 shadow-sm">
+                    <i class="fa-solid fa-pen-to-square me-1"></i> Update &amp; Resubmit Profile
+                </a>
+            </div>
+            <p class="mb-0 text-muted small mt-1">
+                <strong>Reviewer Feedback:</strong> {{ vendor.status_notes|default:"Please review your corporate profile, banking settlement, and KYC document attachments." }}
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Step-by-Step Onboarding Progress Checklist Widget -->
+    <div class="card glass-card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <div>
+                    <h5 class="fw-bold text-dark mb-1">
+                        <i class="fa-solid fa-list-check text-primary me-2"></i> Onboarding &amp; Compliance Progress
+                    </h5>
+                    <p class="text-muted small mb-0">
+                        Complete all 5 onboarding milestones to qualify for RFQ/RFP bidding invitations and automated purchase orders.
+                    </p>
+                </div>
+                <div class="text-end">
+                    <span class="fs-4 fw-bold {% if onboarding.percentage == 100 %}text-success{% else %}text-primary{% endif %}">{{ onboarding.percentage }}%</span>
+                    <span class="text-muted small d-block">{{ onboarding.completed_count }} of {{ onboarding.total_count }} Milestones Completed</span>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress mb-4" style="height: 10px; border-radius: 8px;">
+                <div class="progress-bar {% if onboarding.percentage == 100 %}bg-success{% elif onboarding.changes_required %}bg-warning{% else %}bg-primary{% endif %} progress-bar-striped progress-bar-animated"
+                     role="progressbar"
+                     style="width: {{ onboarding.percentage }}%;"
+                     aria-valuenow="{{ onboarding.percentage }}"
+                     aria-valuemin="0"
+                     aria-valuemax="100"></div>
+            </div>
+
+            <!-- 5-Step Milestones Grid -->
+            <div class="row g-3">
+                {% for step in onboarding.steps %}
+                <div class="col-12 col-md-6 col-xl">
+                    <a href="{{ step.url }}" class="text-decoration-none text-dark h-100 d-block">
+                        <div class="p-3 rounded-3 border h-100 transition-all {% if step.is_complete %}border-success bg-success bg-opacity-10{% elif step.changes_required %}border-warning bg-warning bg-opacity-10{% elif step.in_progress %}border-info bg-info bg-opacity-10{% else %}border-light bg-light{% endif %}">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge rounded-pill {% if step.is_complete %}bg-success{% elif step.changes_required %}bg-warning text-dark{% elif step.in_progress %}bg-info text-dark{% else %}bg-secondary{% endif %}">
+                                    Step {{ step.step_number }}
+                                </span>
+                                {% if step.is_complete %}
+                                    <i class="fa-solid fa-circle-check text-success fs-5"></i>
+                                {% elif step.changes_required %}
+                                    <i class="fa-solid fa-circle-exclamation text-warning fs-5"></i>
+                                {% elif step.in_progress %}
+                                    <i class="fa-solid fa-clock-rotate-left text-info fs-5"></i>
+                                {% else %}
+                                    <i class="fa-regular fa-circle text-muted fs-5"></i>
+                                {% endif %}
+                            </div>
+                            <h6 class="fw-bold mb-1 fs-6">{{ step.title }}</h6>
+                            <p class="text-muted small mb-0 lh-sm" style="font-size: 0.75rem;">{{ step.description }}</p>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
     <!-- 8 Summary Metric Cards (Real backend data) -->
     <div class="row g-3 mb-4">
         <!-- 1. Active Invitations -->

@@ -18,6 +18,7 @@ class Vendor(TimeStampedModel):
     STATUS_DRAFT = "DRAFT"
     STATUS_SUBMITTED = "SUBMITTED"
     STATUS_KYC_REVIEW = "KYC_REVIEW"
+    STATUS_CHANGES_REQUIRED = "CHANGES_REQUIRED"
     STATUS_APPROVED = "APPROVED"
     STATUS_REJECTED = "REJECTED"
     STATUS_ACTIVE = "ACTIVE"
@@ -28,6 +29,7 @@ class Vendor(TimeStampedModel):
         (STATUS_DRAFT, "Draft"),
         (STATUS_SUBMITTED, "Submitted"),
         (STATUS_KYC_REVIEW, "KYC Review"),
+        (STATUS_CHANGES_REQUIRED, "Changes Required"),
         (STATUS_APPROVED, "Approved"),
         (STATUS_REJECTED, "Rejected"),
         (STATUS_ACTIVE, "Active"),

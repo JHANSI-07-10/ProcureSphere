@@ -294,6 +294,12 @@ def home_view(request):  # noqa: C901
 
         return auditor_dashboard_view(request)
 
+    # 12. VENDOR PORTAL DASHBOARD
+    elif role_code == Role.VENDOR_USER:
+        from apps.vendors.vendor_dashboard_views import vendor_dashboard_overview_view
+
+        return vendor_dashboard_overview_view(request)
+
     # Fallback for all other unknown roles
     return render(request, "pages/dashboards/requester_dashboard.html")
 

@@ -149,7 +149,7 @@ def test_vendor_can_view_and_update_own_profile(client, vendor_setup):
         "bank_account_number": "9876543210",
         "bank_routing_code": "121000358",
         "address": "200 Innovation Parkway, San Jose, CA",
-        "phone": "+1-408-555-0199",
+        "phone": "+919876543210",
     }
     post_res = client.post("/vendor/profile/", update_data, follow=True)
     assert post_res.status_code == 200
@@ -158,6 +158,71 @@ def test_vendor_can_view_and_update_own_profile(client, vendor_setup):
     assert vendor_setup["vendor_a"].trade_name == "Acme Tech Solutions"
     assert vendor_setup["vendor_a"].bank_name == "Silicon Valley Commercial Bank"
     assert vendor_setup["vendor_a"].address == "200 Innovation Parkway, San Jose, CA"
+    assert vendor_setup["vendor_a"].phone == "+919876543210"
+
+
+@pytest.mark.django_db
+def test_vendor_phone_validation_on_dashboard_requires_plus_91_and_10_digits(client, vendor_setup):
+    """
+    On the Vendor Dashboard, phone number validation strictly enforces
+    country code (+91) followed by exactly 10 digits.
+    """
+    client.force_login(vendor_setup["user_vendor_a"])
+
+    base_data = {
+        "action": "update_profile",
+        "trade_name": "Acme Tech",
+        "address": "123 Tech Park",
+        "bank_name": "Test Bank",
+        "bank_account_number": "1234567890",
+        "bank_routing_code": "ROUTING01",
+    }
+
+    # 1. Invalid: Missing +91 country code (e.g. 10 digits only)
+    res_no_code = client.post("/vendor/profile/", {**base_data, "phone": "9876543210"}, follow=True)
+    assert res_no_code.status_code == 200
+    assert "country code (+91)" in res_no_code.content.decode()
+
+    # 2. Invalid: Wrong country code (+1 instead of +91)
+    res_wrong_code = client.post("/vendor/profile/", {**base_data, "phone": "+19876543210"}, follow=True)
+    assert res_wrong_code.status_code == 200
+    assert "country code (+91)" in res_wrong_code.content.decode()
+
+    # 3. Invalid: +91 with only 9 digits
+    res_short = client.post("/vendor/profile/", {**base_data, "phone": "+91987654321"}, follow=True)
+    assert res_short.status_code == 200
+    assert "exactly 10 digits" in res_short.content.decode()
+
+    # 4. Invalid: +91 with 11 digits
+    res_long = client.post("/vendor/profile/", {**base_data, "phone": "+9198765432109"}, follow=True)
+    assert res_long.status_code == 200
+    assert "exactly 10 digits" in res_long.content.decode()
+
+    # 5. Invalid: 12-digit number NOT starting with 91
+    res_invalid_12 = client.post("/vendor/profile/", {**base_data, "phone": "123456789012"}, follow=True)
+    assert res_invalid_12.status_code == 200
+    assert "country code (+91)" in res_invalid_12.content.decode()
+
+    # 6. Invalid: Empty phone
+    res_empty = client.post("/vendor/profile/", {**base_data, "phone": ""}, follow=True)
+    assert res_empty.status_code == 200
+    assert "required" in res_empty.content.decode().lower()
+
+    # 7. Valid: 12 numbers starting with 91 (e.g. 919876543210 auto-normalizes to +919876543210)
+    res_12_valid = client.post("/vendor/profile/", {**base_data, "phone": "919876543210"}, follow=True)
+    assert res_12_valid.status_code == 200
+    assert "updated successfully" in res_12_valid.content.decode()
+    vendor_setup["vendor_a"].refresh_from_db()
+    assert vendor_setup["vendor_a"].phone == "+919876543210"
+
+    # 8. Valid: +91 followed by 10 digits with space/hyphen formatting (normalizes)
+    res_valid_spaced = client.post("/vendor/profile/", {**base_data, "phone": "+91 9876543210"}, follow=True)
+    assert res_valid_spaced.status_code == 200
+    assert "updated successfully" in res_valid_spaced.content.decode()
+
+    vendor_setup["vendor_a"].refresh_from_db()
+    assert vendor_setup["vendor_a"].phone == "+919876543210"
+
 
 
 @pytest.mark.django_db
@@ -573,6 +638,189 @@ def test_bid_amendment_rejected_after_deadline(client, vendor_setup):
 
     bid.refresh_from_db()
     assert bid.version == 1  # Unchanged
+
+
+@pytest.mark.django_db
+def test_bid_withdrawal_before_deadline_preserves_version_and_updates_status(client, vendor_setup):
+    """
+    Vendor withdraws submitted bid before deadline:
+    - Status transitions to STATUS_WITHDRAWN
+    - Immutable snapshot in BidVersion is preserved
+    - Withdrawn bid appears under 'withdrawn' tab
+    """
+    now = timezone.now()
+    exec_user = vendor_setup["proc_exec"]
+
+    event = create_sourcing_event_service(
+        title="Fiber Cable RFQ",
+        event_type=SourcingEvent.TYPE_RFQ,
+        bid_start_date=now - timedelta(days=1),
+        bid_end_date=now + timedelta(days=3),
+        description="Fiber optic links",
+        created_by_user=exec_user,
+    )
+    invite_vendors_to_event_service(
+        event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
+    )
+    publish_sourcing_event_service(event=event, user=exec_user)
+
+    lines = [
+        {
+            "item_description": "Single-mode fiber spool",
+            "quantity": Decimal("10"),
+            "quoted_unit_price": Decimal("500.00"),
+        }
+    ]
+    bid = submit_vendor_bid_service(
+        event=event,
+        vendor=vendor_setup["vendor_a"],
+        submitted_by_user=vendor_setup["user_vendor_a"],
+        line_items=lines,
+        proposal_summary="Fiber proposal",
+        technical_proposal="Technical specs",
+        commercial_proposal="Commercial terms",
+    )
+    assert bid.status == VendorBid.STATUS_SUBMITTED
+
+    client.force_login(vendor_setup["user_vendor_a"])
+
+    # Withdraw bid with business reason
+    withdraw_data = {
+        "withdrawal_reason": "Supply chain interruption prevented fulfilling delivery commitments",
+    }
+    res = client.post(f"/vendor/bids/{bid.id}/withdraw/", withdraw_data, follow=True)
+    assert res.status_code == 200
+
+    bid.refresh_from_db()
+    assert bid.status == VendorBid.STATUS_WITHDRAWN
+
+    # Verify immutable snapshot exists
+    assert bid.versions.filter(version_number=1).exists()
+
+    # Detail view reflects withdrawn banner and disabled actions
+    detail_res = client.get(f"/vendor/bids/{bid.id}/")
+    assert detail_res.status_code == 200
+    assert "Bid Formally Withdrawn" in detail_res.content.decode()
+    assert detail_res.context["can_withdraw"] is False
+    assert detail_res.context["can_amend"] is False
+
+    # Listed under withdrawn tab
+    list_res = client.get("/vendor/bids/?tab=withdrawn")
+    assert list_res.status_code == 200
+    assert bid.bid_number in list_res.content.decode()
+
+
+@pytest.mark.django_db
+def test_bid_withdrawal_rejected_after_deadline(client, vendor_setup):
+    """Bid withdrawal attempted after deadline is rejected."""
+    now = timezone.now()
+    exec_user = vendor_setup["proc_exec"]
+
+    event = create_sourcing_event_service(
+        title="Firewall RFQ",
+        event_type=SourcingEvent.TYPE_RFQ,
+        bid_start_date=now - timedelta(days=4),
+        bid_end_date=now + timedelta(days=1),
+        description="Next-gen firewalls",
+        created_by_user=exec_user,
+    )
+    invite_vendors_to_event_service(
+        event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
+    )
+    publish_sourcing_event_service(event=event, user=exec_user)
+
+    lines = [
+        {
+            "item_description": "Hardware Appliance",
+            "quantity": Decimal("1"),
+            "quoted_unit_price": Decimal("12000.00"),
+        }
+    ]
+    bid = submit_vendor_bid_service(
+        event=event,
+        vendor=vendor_setup["vendor_a"],
+        submitted_by_user=vendor_setup["user_vendor_a"],
+        line_items=lines,
+        proposal_summary="Security appliance",
+        technical_proposal="Specs",
+        commercial_proposal="Terms",
+    )
+
+    # Fast forward event past deadline
+    event.bid_end_date = now - timedelta(hours=1)
+    event.save()
+
+    client.force_login(vendor_setup["user_vendor_a"])
+    withdraw_data = {"withdrawal_reason": "Attempting late withdrawal"}
+    res = client.post(f"/vendor/bids/{bid.id}/withdraw/", withdraw_data, follow=True)
+    assert res.status_code == 200
+    assert "deadline" in res.content.decode().lower()
+
+    bid.refresh_from_db()
+    assert bid.status == VendorBid.STATUS_SUBMITTED  # Remains submitted
+
+
+@pytest.mark.django_db
+def test_withdrawn_bid_cannot_be_amended_or_resubmitted(client, vendor_setup):
+    """Withdrawn bids cannot be amended or edited/re-submitted."""
+    now = timezone.now()
+    exec_user = vendor_setup["proc_exec"]
+
+    event = create_sourcing_event_service(
+        title="Storage Array RFQ",
+        event_type=SourcingEvent.TYPE_RFQ,
+        bid_start_date=now - timedelta(days=1),
+        bid_end_date=now + timedelta(days=3),
+        description="SAN Storage",
+        created_by_user=exec_user,
+    )
+    invite_vendors_to_event_service(
+        event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
+    )
+    publish_sourcing_event_service(event=event, user=exec_user)
+
+    lines = [
+        {
+            "item_description": "SAN Storage Controller",
+            "quantity": Decimal("1"),
+            "quoted_unit_price": Decimal("25000.00"),
+        }
+    ]
+    bid = submit_vendor_bid_service(
+        event=event,
+        vendor=vendor_setup["vendor_a"],
+        submitted_by_user=vendor_setup["user_vendor_a"],
+        line_items=lines,
+        proposal_summary="Storage",
+        technical_proposal="Specs",
+        commercial_proposal="Terms",
+    )
+
+    client.force_login(vendor_setup["user_vendor_a"])
+    client.post(
+        f"/vendor/bids/{bid.id}/withdraw/",
+        {"withdrawal_reason": "Business restructuring"},
+        follow=True,
+    )
+
+    bid.refresh_from_db()
+    assert bid.status == VendorBid.STATUS_WITHDRAWN
+
+    # Attempting to amend fails
+    amend_data = {
+        "amendment_reason": "Trying to amend withdrawn bid",
+        "line_description[]": ["SAN Storage Controller"],
+        "line_quantity[]": ["1"],
+        "line_price[]": ["22000.00"],
+    }
+    res_amend = client.post(f"/vendor/bids/{bid.id}/amend/", amend_data, follow=True)
+    assert res_amend.status_code == 200
+    assert "Only submitted bids can be amended" in res_amend.content.decode()
+
+    # Attempting to access create view redirects with warning
+    res_create = client.get(f"/vendor/bids/create/{event.id}/", follow=True)
+    assert res_create.status_code == 200
+    assert "withdrawn and cannot be modified" in res_create.content.decode()
 
 
 # ==============================================================================
