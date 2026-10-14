@@ -4,309 +4,434 @@
 {% block page_heading %}Legal & SLA Governance Desk{% endblock %}
 
 {% block content %}
-<!-- Executive Hero Banner -->
-<div class="row g-3 mb-4">
-    <div class="col-12">
-        <div class="glass-card-dark p-4 position-relative overflow-hidden shadow-lg border-0 rounded-4" style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%) !important; color: #FFFFFF !important;">
-            <div class="row align-items-center g-3">
-                <div class="col-lg-7">
+<style>
+    .kpi-card-link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        height: 100%;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .kpi-card-link:hover .kpi-card {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px -4px rgba(15, 23, 42, 0.12) !important;
+        border-color: rgba(13, 110, 253, 0.4) !important;
+    }
+    .kpi-card {
+        transition: all 0.2s ease;
+    }
+    .panel-card {
+        transition: box-shadow 0.2s ease;
+    }
+    .panel-card:hover {
+        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08) !important;
+    }
+    .table > :not(caption) > * > * {
+        padding: 0.75rem 0.85rem;
+    }
+</style>
+
+<div class="container-fluid p-0">
+    <!-- Clean White Overview / Header Banner (Stores Design Reference) -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+        <div class="card-body p-3 p-md-4">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                        <span class="badge bg-cyan text-dark rounded-pill fw-bold px-3 py-1 text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.05em;">LEGAL COMPLIANCE DESK</span>
-                        <span class="text-white-50 small"><i class="fa-solid fa-user-shield me-1 text-cyan"></i> {{ user.email }}</span>
+                        <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 text-uppercase fw-bold rounded-pill border border-primary border-opacity-25" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                            <i class="fa-solid fa-scale-balanced me-1"></i> Legal Compliance Desk
+                        </span>
+                        <span class="badge bg-success bg-opacity-10 text-success px-2 py-1 rounded-pill border border-success border-opacity-25" style="font-size: 0.72rem;">
+                            <i class="fa-solid fa-circle me-1" style="font-size: 0.5rem;"></i> Active Session
+                        </span>
+                        <span class="text-muted small ms-1">
+                            <i class="fa-solid fa-user-shield me-1 text-primary"></i> {{ user.email }}
+                        </span>
                     </div>
-                    <h2 class="fw-bold text-white mb-2 font-heading display-6">Contract Lifecycle & SLA Workspace</h2>
-                    <p class="text-white-50 mb-0 small opacity-85">Manage contract approvals, enforce vendor legal obligations, mitigate SLA compliance risks, and track renewal schedules across all corporate entities.</p>
+                    <h2 class="h3 fw-bold mb-1 text-dark font-heading">Contract Lifecycle & SLA Workspace</h2>
+                    <p class="text-muted mb-0 small">Manage contract approvals, enforce vendor legal obligations, mitigate SLA compliance risks, and track renewal schedules across all corporate entities.</p>
                 </div>
-                <div class="col-lg-5 text-lg-end">
-                    <div class="d-flex flex-wrap gap-2 justify-content-lg-end align-items-center">
-                        <div class="bg-white bg-opacity-10 border border-white border-opacity-10 rounded-3 p-2 px-3 me-lg-2 text-start">
-                            <div class="text-white-50 text-uppercase" style="font-size: 0.65rem; font-weight: 700;">Portfolio Value</div>
-                            <div class="fw-bold text-cyan font-heading fs-5">${{ metrics.total_contract_value|floatformat:2 }}</div>
-                        </div>
-                        <a href="{% url 'contracts_list' %}" class="btn btn-light btn-md rounded-pill fw-bold px-3 shadow-sm">
-                            <i class="fa-solid fa-file-contract me-1 text-primary"></i> Contract Register
-                        </a>
-                        <a href="{% url 'contract_create' %}" class="btn btn-cyan btn-md rounded-pill fw-bold px-3 shadow-sm">
-                            <i class="fa-solid fa-plus me-1"></i> New Draft
-                        </a>
+                <div class="d-flex flex-wrap align-items-center gap-2 justify-content-start justify-content-lg-end">
+                    <div class="bg-light border rounded-3 p-2 px-3 text-start">
+                        <div class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.05em;">Portfolio Value</div>
+                        <div class="fw-bold text-primary font-heading fs-5">${{ metrics.total_contract_value|floatformat:2 }}</div>
                     </div>
+                    <a href="{% url 'contracts_list' %}" class="btn btn-outline-primary px-3 py-2 rounded-3 fw-semibold d-flex align-items-center">
+                        <i class="fa-solid fa-file-contract me-2"></i> Contract Register
+                    </a>
+                    <a href="{% url 'contract_create' %}" class="btn btn-primary px-3 py-2 rounded-3 fw-semibold d-flex align-items-center shadow-sm">
+                        <i class="fa-solid fa-plus me-2"></i> New Draft
+                    </a>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Executive Metric Cards -->
-<div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="stat-card stat-card-gradient-warning hover-elevate shadow-sm h-100 border-start border-warning border-4">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="text-uppercase fw-bold text-secondary" style="font-size: 0.72rem; letter-spacing: 0.05em;">PENDING LEGAL REVIEW</span>
-                <div class="icon-avatar icon-avatar-warning shadow-sm">
-                    <i class="fa-solid fa-gavel"></i>
-                </div>
-            </div>
-            <div class="d-flex align-items-baseline gap-2">
-                <div class="metric-value text-warning fs-1">{{ metrics.pending_legal_review }}</div>
-                {% if metrics.pending_legal_review > 0 %}
-                    <span class="badge bg-warning text-dark rounded-pill small px-2 py-1"><i class="fa-solid fa-bell me-1"></i> Action Required</span>
-                {% else %}
-                    <span class="badge bg-success text-white rounded-pill small px-2 py-1"><i class="fa-solid fa-check me-1"></i> All Clear</span>
-                {% endif %}
-            </div>
-            <div class="text-muted small mt-2 d-flex align-items-center">
-                <i class="fa-solid fa-clock me-1 text-warning"></i> Awaiting legal manager signature
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="stat-card stat-card-gradient-primary hover-elevate shadow-sm h-100 border-start border-primary border-4">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="text-uppercase fw-bold text-secondary" style="font-size: 0.72rem; letter-spacing: 0.05em;">ACTIVE CONTRACTS</span>
-                <div class="icon-avatar icon-avatar-primary shadow-sm">
-                    <i class="fa-solid fa-file-contract"></i>
-                </div>
-            </div>
-            <div class="d-flex align-items-baseline gap-2">
-                <div class="metric-value text-navy fs-1">{{ metrics.active_contracts }}</div>
-                <span class="badge bg-primary text-white rounded-pill small px-2 py-1">Executing</span>
-            </div>
-            <div class="text-muted small mt-2 d-flex align-items-center">
-                <i class="fa-solid fa-circle-check me-1 text-success"></i> Active supplier agreements
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="stat-card stat-card-gradient-danger hover-elevate shadow-sm h-100 border-start border-danger border-4">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="text-uppercase fw-bold text-secondary" style="font-size: 0.72rem; letter-spacing: 0.05em;">EXPIRING (&lt;30 DAYS)</span>
-                <div class="icon-avatar icon-avatar-danger shadow-sm">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
-                </div>
-            </div>
-            <div class="d-flex align-items-baseline gap-2">
-                <div class="metric-value text-danger fs-1">{{ metrics.expiring_soon }}</div>
-                {% if metrics.expiring_soon > 0 %}
-                    <span class="badge bg-danger text-white rounded-pill small px-2 py-1"><i class="fa-solid fa-triangle-exclamation me-1"></i> Renewal Due</span>
-                {% else %}
-                    <span class="badge bg-light text-muted border rounded-pill small px-2 py-1">None Expiring</span>
-                {% endif %}
-            </div>
-            <div class="text-muted small mt-2 d-flex align-items-center">
-                <i class="fa-solid fa-exclamation-circle me-1 text-danger"></i> Renewal notice active
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="stat-card stat-card-gradient-success hover-elevate shadow-sm h-100 border-start border-success border-4">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="text-uppercase fw-bold text-secondary" style="font-size: 0.72rem; letter-spacing: 0.05em;">TOTAL CONTRACT VALUE</span>
-                <div class="icon-avatar icon-avatar-success shadow-sm">
-                    <i class="fa-solid fa-sack-dollar"></i>
-                </div>
-            </div>
-            <div class="metric-value text-success fs-2">${{ metrics.total_contract_value|floatformat:2 }}</div>
-            <div class="text-muted small mt-2 d-flex align-items-center">
-                <i class="fa-solid fa-vault me-1 text-success"></i> Total committed portfolio value
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Main Action Queue & Chart Analytics Row -->
-<div class="row g-4 mb-4">
-    <!-- Pending Legal Review Queue (8 Columns) -->
-    <div class="col-12 col-xl-8">
-        <div class="glass-card p-3 p-md-4 shadow-sm h-100">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 pb-2 border-bottom">
-                <div class="d-flex align-items-center">
-                    <div class="icon-avatar icon-avatar-warning me-2" style="width:36px; height:36px;">
-                        <i class="fa-solid fa-gavel fs-6"></i>
-                    </div>
-                    <div>
-                        <h5 class="fw-bold text-dark mb-0 font-heading">Pending Legal Review Queue</h5>
-                        <div class="text-muted small" style="font-size:0.75rem;">Contracts submitted by Procurement Managers awaiting legal sign-off</div>
-                    </div>
-                </div>
-                <span class="badge bg-warning text-dark rounded-pill px-3 py-2 fw-bold">
-                    {{ metrics.pending_legal_review }} Pending Action
-                </span>
-            </div>
-
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr class="small text-uppercase text-muted">
-                            <th class="ps-3">Contract Code & Title</th>
-                            <th>Supplier / Vendor</th>
-                            <th>Value</th>
-                            <th>Term Dates</th>
-                            <th class="text-end pe-3">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for contract in pending_legal_list %}
-                        <tr>
-                            <td class="ps-3">
-                                <a href="{% url 'contract_detail' contract_id=contract.id %}" class="fw-bold text-primary text-decoration-none">
-                                    <code>{{ contract.contract_number }}</code>
-                                </a>
-                                <div class="text-muted small fw-semibold">{{ contract.title }}</div>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="user-avatar bg-secondary me-2" style="width:28px; height:28px; font-size:0.75rem;">
-                                        {{ contract.vendor.legal_name|slice:":1" }}
-                                    </div>
-                                    <div class="fw-semibold text-dark small">{{ contract.vendor.legal_name }}</div>
+    <!-- 4 Colorful KPI Metric Cards (Stores Treatment Reference) -->
+    <div class="row g-3 g-md-4 mb-4">
+        <!-- 1. Pending Legal Review -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a href="{% url 'contracts_list' %}?status=LEGAL_REVIEW" class="kpi-card-link" title="View contracts pending legal review">
+                <div class="card kpi-card border-0 shadow-sm rounded-4 h-100 bg-white border-start border-4 border-warning">
+                    <div class="card-body p-3 p-md-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em; font-size: 0.7rem;">Pending Legal Review</span>
                                 </div>
-                            </td>
-                            <td class="fw-bold text-success small">${{ contract.contract_value|floatformat:2 }}</td>
-                            <td class="small text-muted">{{ contract.start_date|date:"M d, Y" }} &rarr; {{ contract.end_date|date:"M d, Y" }}</td>
-                            <td class="text-end pe-3">
-                                <a href="{% url 'contract_detail' contract_id=contract.id %}" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold text-dark shadow-sm">
-                                    <i class="fa-solid fa-gavel me-1"></i> Review
-                                </a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center py-4 text-muted small">
-                                <i class="fa-solid fa-circle-check text-success me-1 fs-5"></i> No contracts currently pending legal review.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Portfolio SLA & Status Chart Breakdown (4 Columns) -->
-    <div class="col-12 col-xl-4">
-        <div class="glass-card p-3 p-md-4 shadow-sm h-100">
-            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
-                <h5 class="fw-bold text-dark mb-0 font-heading">
-                    <i class="fa-solid fa-chart-donut text-primary me-2"></i> Status Distribution
-                </h5>
-                <span class="badge bg-light text-dark border rounded-pill">SLA Health</span>
-            </div>
-
-            <div class="d-flex justify-content-center align-items-center py-2" style="height: 200px;">
-                <canvas id="contractStatusChart"></canvas>
-            </div>
-
-            <div class="mt-3 pt-2 border-top">
-                <div class="d-flex justify-content-between align-items-center py-1 small">
-                    <span class="text-muted"><i class="fa-solid fa-circle text-success me-1"></i> Active Contracts</span>
-                    <span class="fw-bold text-dark">{{ metrics.active_contracts }}</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center py-1 small">
-                    <span class="text-muted"><i class="fa-solid fa-circle text-warning me-1"></i> Pending Legal Review</span>
-                    <span class="fw-bold text-dark">{{ metrics.pending_legal_review }}</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center py-1 small">
-                    <span class="text-muted"><i class="fa-solid fa-circle text-danger me-1"></i> Renewal Due (&lt;30d)</span>
-                    <span class="fw-bold text-dark">{{ metrics.expiring_soon }}</span>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Secondary Schedule & Obligations Row -->
-<div class="row g-4">
-    <!-- Renewal Notice Schedule (7 Columns) -->
-    <div class="col-12 col-lg-7">
-        <div class="glass-card p-3 p-md-4 shadow-sm h-100">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 pb-2 border-bottom">
-                <div class="d-flex align-items-center">
-                    <div class="icon-avatar icon-avatar-danger me-2" style="width:36px; height:36px;">
-                        <i class="fa-solid fa-hourglass-half fs-6"></i>
-                    </div>
-                    <div>
-                        <h5 class="fw-bold text-dark mb-0 font-heading">Renewal Notice Schedule</h5>
-                        <div class="text-muted small" style="font-size:0.75rem;">Contracts reaching end-of-term notice window</div>
-                    </div>
-                </div>
-                <a href="{% url 'contracts_list' %}?status=RENEWAL_DUE" class="btn btn-outline-secondary btn-sm rounded-pill px-3">View All Expirations</a>
-            </div>
-
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr class="small text-uppercase text-muted">
-                            <th class="ps-3">Contract</th>
-                            <th>Vendor</th>
-                            <th>Expiry Date</th>
-                            <th>Status</th>
-                            <th class="text-end pe-3">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for contract in expiring_contracts_list %}
-                        <tr>
-                            <td class="ps-3">
-                                <code>{{ contract.contract_number }}</code>
-                                <div class="text-muted small text-truncate" style="max-width: 160px;">{{ contract.title }}</div>
-                            </td>
-                            <td class="small fw-semibold text-dark">{{ contract.vendor.legal_name }}</td>
-                            <td class="small text-danger fw-bold">{{ contract.end_date|date:"M d, Y" }}</td>
-                            <td>
-                                {% if contract.status == 'RENEWAL_DUE' %}
-                                    <span class="badge bg-danger rounded-pill px-2">RENEWAL DUE</span>
-                                {% else %}
-                                    <span class="badge bg-success rounded-pill px-2">ACTIVE</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-end pe-3">
-                                <a href="{% url 'contract_detail' contract_id=contract.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">Renew</a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="5" class="text-center py-4 text-muted small"><i class="fa-solid fa-circle-check text-success me-1"></i> No contracts expiring within 30 days.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Pending Legal Obligations (5 Columns) -->
-    <div class="col-12 col-lg-5">
-        <div class="glass-card p-3 p-md-4 shadow-sm h-100">
-            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
-                <div class="d-flex align-items-center">
-                    <div class="icon-avatar icon-avatar-info me-2" style="width:36px; height:36px;">
-                        <i class="fa-solid fa-scale-balanced fs-6"></i>
-                    </div>
-                    <div>
-                        <h5 class="fw-bold text-dark mb-0 font-heading">Pending Obligations</h5>
-                        <div class="text-muted small" style="font-size:0.75rem;">Contractual deliverables & legal milestones</div>
-                    </div>
-                </div>
-                <span class="badge bg-warning text-dark rounded-pill px-2 py-1">{{ metrics.open_obligations }} Pending</span>
-            </div>
-
-            <div class="list-group list-group-flush">
-                {% for ob in pending_obligations_list %}
-                <div class="list-group-item bg-transparent border-0 px-0 py-2 border-bottom">
-                    <div class="d-flex justify-content-between align-items-center gap-2">
-                        <div>
-                            <div class="fw-bold text-dark small">{{ ob.title }}</div>
-                            <div class="text-muted" style="font-size: 0.75rem;">
-                                <code>{{ ob.contract.contract_number }}</code> &bull; Due: <span class="text-danger fw-semibold">{{ ob.due_date|date:"M d, Y" }}</span>
+                                <div class="d-flex align-items-baseline gap-2 mt-1">
+                                    <h3 class="fw-bold mb-0 text-warning fs-1">{{ metrics.pending_legal_review }}</h3>
+                                    {% if metrics.pending_legal_review > 0 %}
+                                        <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill small px-2 py-1 fw-bold">
+                                            <i class="fa-solid fa-bell me-1"></i> Action Required
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill small px-2 py-1 fw-bold">
+                                            <i class="fa-solid fa-check me-1"></i> All Clear
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="text-warning mt-2 fw-semibold small d-flex align-items-center" style="font-size: 0.75rem;">
+                                    <span>Review Queue</span>
+                                    <i class="fa-solid fa-arrow-right ms-1"></i>
+                                </div>
+                            </div>
+                            <div class="p-3 bg-warning bg-opacity-10 text-warning rounded-4 ms-2">
+                                <i class="fa-solid fa-gavel fs-4"></i>
                             </div>
                         </div>
-                        <a href="{% url 'contract_detail' contract_id=ob.contract.id %}" class="btn btn-sm btn-light border rounded-pill px-3">View</a>
                     </div>
                 </div>
-                {% empty %}
-                <div class="text-center py-4 text-muted small"><i class="fa-solid fa-check-double text-success me-1"></i> No pending legal obligations logged.</div>
-                {% endfor %}
+            </a>
+        </div>
+
+        <!-- 2. Active Contracts -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a href="{% url 'contracts_list' %}?status=ACTIVE" class="kpi-card-link" title="View active supplier agreements">
+                <div class="card kpi-card border-0 shadow-sm rounded-4 h-100 bg-white border-start border-4 border-primary">
+                    <div class="card-body p-3 p-md-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="flex-grow-1">
+                                <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em; font-size: 0.7rem;">Active Contracts</span>
+                                <div class="d-flex align-items-baseline gap-2 mt-1">
+                                    <h3 class="fw-bold mb-0 text-primary fs-1">{{ metrics.active_contracts }}</h3>
+                                    <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill small px-2 py-1 fw-bold">
+                                        Executing
+                                    </span>
+                                </div>
+                                <div class="text-primary mt-2 fw-semibold small d-flex align-items-center" style="font-size: 0.75rem;">
+                                    <span>Active Agreements</span>
+                                    <i class="fa-solid fa-arrow-right ms-1"></i>
+                                </div>
+                            </div>
+                            <div class="p-3 bg-primary bg-opacity-10 text-primary rounded-4 ms-2">
+                                <i class="fa-solid fa-file-contract fs-4"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 3. Expiring Contracts (<30 Days) -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a href="{% url 'contracts_list' %}?status=RENEWAL_DUE" class="kpi-card-link" title="View expiring contracts">
+                <div class="card kpi-card border-0 shadow-sm rounded-4 h-100 bg-white border-start border-4 border-danger">
+                    <div class="card-body p-3 p-md-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="flex-grow-1">
+                                <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em; font-size: 0.7rem;">Expiring (&lt;30 Days)</span>
+                                <div class="d-flex align-items-baseline gap-2 mt-1">
+                                    <h3 class="fw-bold mb-0 text-danger fs-1">{{ metrics.expiring_soon }}</h3>
+                                    {% if metrics.expiring_soon > 0 %}
+                                        <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill small px-2 py-1 fw-bold">
+                                            <i class="fa-solid fa-triangle-exclamation me-1"></i> Renewal Due
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-light text-muted border rounded-pill small px-2 py-1">
+                                            None Expiring
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="text-danger mt-2 fw-semibold small d-flex align-items-center" style="font-size: 0.75rem;">
+                                    <span>Renewal Schedule</span>
+                                    <i class="fa-solid fa-arrow-right ms-1"></i>
+                                </div>
+                            </div>
+                            <div class="p-3 bg-danger bg-opacity-10 text-danger rounded-4 ms-2">
+                                <i class="fa-solid fa-clock-rotate-left fs-4"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 4. Total Contract Value -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a href="{% url 'contracts_list' %}" class="kpi-card-link" title="View all portfolio contracts">
+                <div class="card kpi-card border-0 shadow-sm rounded-4 h-100 bg-white border-start border-4 border-success">
+                    <div class="card-body p-3 p-md-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="flex-grow-1">
+                                <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em; font-size: 0.7rem;">Total Contract Value</span>
+                                <div class="d-flex align-items-baseline gap-2 mt-1">
+                                    <h3 class="fw-bold mb-0 text-success fs-2">${{ metrics.total_contract_value|floatformat:2 }}</h3>
+                                </div>
+                                <div class="text-success mt-2 fw-semibold small d-flex align-items-center" style="font-size: 0.75rem;">
+                                    <span>Committed Portfolio</span>
+                                    <i class="fa-solid fa-arrow-right ms-1"></i>
+                                </div>
+                            </div>
+                            <div class="p-3 bg-success bg-opacity-10 text-success rounded-4 ms-2">
+                                <i class="fa-solid fa-vault fs-4"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Operational Panels Row -->
+    <div class="row g-4 mb-4">
+        <!-- Pending Legal Review Queue (8 Columns) -->
+        <div class="col-12 col-xl-8">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-white panel-card">
+                <div class="card-header bg-white border-0 py-3 px-3 px-md-4 d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom">
+                    <div class="d-flex align-items-center">
+                        <div class="p-2 bg-warning bg-opacity-10 text-warning rounded-3 me-3 d-inline-flex align-items-center justify-content-center" style="width:38px; height:38px;">
+                            <i class="fa-solid fa-gavel fs-6"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-dark mb-0 font-heading">Pending Legal Review Queue</h5>
+                            <div class="text-muted small" style="font-size:0.75rem;">Contracts submitted by Procurement Managers awaiting legal sign-off</div>
+                        </div>
+                    </div>
+                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-3 py-2 fw-bold">
+                        <i class="fa-solid fa-clock me-1"></i> {{ metrics.pending_legal_review }} Pending Action
+                    </span>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr class="small text-uppercase text-muted">
+                                    <th class="ps-3 py-3" style="width: 32%;">Contract Code & Title</th>
+                                    <th class="py-3" style="width: 25%;">Supplier / Vendor</th>
+                                    <th class="py-3" style="width: 15%;">Value</th>
+                                    <th class="py-3" style="width: 16%;">Term Dates</th>
+                                    <th class="text-end pe-3 py-3" style="width: 12%;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for contract in pending_legal_list %}
+                                <tr>
+                                    <td class="ps-3">
+                                        <a href="{% url 'contract_detail' contract_id=contract.id %}" class="fw-bold text-primary text-decoration-none">
+                                            <code>{{ contract.contract_number }}</code>
+                                        </a>
+                                        <div class="text-muted small fw-semibold text-truncate" style="max-width: 280px;" title="{{ contract.title }}">{{ contract.title }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle bg-secondary bg-opacity-10 text-secondary d-flex align-items-center justify-content-center me-2 fw-bold" style="width:28px; height:28px; font-size:0.75rem;">
+                                                {{ contract.vendor.legal_name|slice:":1" }}
+                                            </div>
+                                            <div class="fw-semibold text-dark small text-truncate" style="max-width: 200px;" title="{{ contract.vendor.legal_name }}">{{ contract.vendor.legal_name }}</div>
+                                        </div>
+                                    </td>
+                                    <td class="fw-bold text-success small">${{ contract.contract_value|floatformat:2 }}</td>
+                                    <td class="small text-muted text-nowrap">{{ contract.start_date|date:"M d, Y" }} &rarr; {{ contract.end_date|date:"M d, Y" }}</td>
+                                    <td class="text-end pe-3">
+                                        <a href="{% url 'contract_detail' contract_id=contract.id %}" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold text-dark shadow-sm">
+                                            <i class="fa-solid fa-gavel me-1"></i> Review
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted small">
+                                        <div class="d-flex flex-column align-items-center justify-content-center">
+                                            <i class="fa-solid fa-circle-check text-success fs-2 mb-2"></i>
+                                            <span class="fw-semibold">All clear! No contracts currently pending legal review.</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Distribution & SLA Health (4 Columns) -->
+        <div class="col-12 col-xl-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-white panel-card">
+                <div class="card-header bg-white border-0 py-3 px-3 px-md-4 d-flex align-items-center justify-content-between border-bottom">
+                    <div class="d-flex align-items-center">
+                        <div class="p-2 bg-primary bg-opacity-10 text-primary rounded-3 me-3 d-inline-flex align-items-center justify-content-center" style="width:38px; height:38px;">
+                            <i class="fa-solid fa-chart-pie fs-6"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-dark mb-0 font-heading">Status Distribution</h5>
+                            <div class="text-muted small" style="font-size:0.75rem;">Active portfolio balance</div>
+                        </div>
+                    </div>
+                    <span class="badge bg-light text-dark border rounded-pill px-3 py-1 fw-semibold">SLA Health</span>
+                </div>
+
+                <div class="card-body p-3 p-md-4 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-center align-items-center py-2" style="height: 200px; position: relative;">
+                        <canvas id="contractStatusChart"></canvas>
+                    </div>
+
+                    <div class="mt-3 pt-3 border-top">
+                        <div class="d-flex justify-content-between align-items-center py-2 small border-bottom border-light">
+                            <span class="text-muted d-flex align-items-center">
+                                <span class="d-inline-block rounded-circle bg-success me-2" style="width: 8px; height: 8px;"></span> Active Contracts
+                            </span>
+                            <span class="fw-bold text-dark badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-1">{{ metrics.active_contracts }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center py-2 small border-bottom border-light">
+                            <span class="text-muted d-flex align-items-center">
+                                <span class="d-inline-block rounded-circle bg-warning me-2" style="width: 8px; height: 8px;"></span> Pending Legal Review
+                            </span>
+                            <span class="fw-bold text-dark badge bg-warning bg-opacity-10 text-warning rounded-pill px-2 py-1">{{ metrics.pending_legal_review }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center py-2 small">
+                            <span class="text-muted d-flex align-items-center">
+                                <span class="d-inline-block rounded-circle bg-danger me-2" style="width: 8px; height: 8px;"></span> Renewal Due (&lt;30d)
+                            </span>
+                            <span class="fw-bold text-dark badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-1">{{ metrics.expiring_soon }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secondary Schedule & Obligations Row -->
+    <div class="row g-4 mb-4">
+        <!-- Renewal Notice Schedule (7 Columns) -->
+        <div class="col-12 col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-white panel-card">
+                <div class="card-header bg-white border-0 py-3 px-3 px-md-4 d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom">
+                    <div class="d-flex align-items-center">
+                        <div class="p-2 bg-danger bg-opacity-10 text-danger rounded-3 me-3 d-inline-flex align-items-center justify-content-center" style="width:38px; height:38px;">
+                            <i class="fa-solid fa-hourglass-half fs-6"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-dark mb-0 font-heading">Renewal Notice Schedule</h5>
+                            <div class="text-muted small" style="font-size:0.75rem;">Contracts reaching end-of-term notice window</div>
+                        </div>
+                    </div>
+                    <a href="{% url 'contracts_list' %}?status=RENEWAL_DUE" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold">
+                        View All Expirations <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr class="small text-uppercase text-muted">
+                                    <th class="ps-3 py-3" style="width: 30%;">Contract</th>
+                                    <th class="py-3" style="width: 25%;">Vendor</th>
+                                    <th class="py-3" style="width: 18%;">Expiry Date</th>
+                                    <th class="py-3" style="width: 15%;">Status</th>
+                                    <th class="text-end pe-3 py-3" style="width: 12%;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for contract in expiring_contracts_list %}
+                                <tr>
+                                    <td class="ps-3">
+                                        <code>{{ contract.contract_number }}</code>
+                                        <div class="text-muted small text-truncate" style="max-width: 220px;" title="{{ contract.title }}">{{ contract.title }}</div>
+                                    </td>
+                                    <td class="small fw-semibold text-dark text-truncate" style="max-width: 180px;" title="{{ contract.vendor.legal_name }}">{{ contract.vendor.legal_name }}</td>
+                                    <td class="small text-danger fw-bold text-nowrap">{{ contract.end_date|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if contract.status == 'RENEWAL_DUE' %}
+                                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2 py-1 fw-bold">
+                                                RENEWAL DUE
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 py-1 fw-bold">
+                                                ACTIVE
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end pe-3">
+                                        <a href="{% url 'contract_detail' contract_id=contract.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold">
+                                            Renew
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted small">
+                                        <div class="d-flex flex-column align-items-center justify-content-center">
+                                            <i class="fa-solid fa-circle-check text-success fs-2 mb-2"></i>
+                                            <span class="fw-semibold">No contracts expiring within 30 days.</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Legal Obligations (5 Columns) -->
+        <div class="col-12 col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-white panel-card">
+                <div class="card-header bg-white border-0 py-3 px-3 px-md-4 d-flex align-items-center justify-content-between border-bottom">
+                    <div class="d-flex align-items-center">
+                        <div class="p-2 bg-info bg-opacity-10 text-info rounded-3 me-3 d-inline-flex align-items-center justify-content-center" style="width:38px; height:38px;">
+                            <i class="fa-solid fa-scale-balanced fs-6"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-dark mb-0 font-heading">Pending Obligations</h5>
+                            <div class="text-muted small" style="font-size:0.75rem;">Contractual deliverables & legal milestones</div>
+                        </div>
+                    </div>
+                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-3 py-1 fw-bold">
+                        {{ metrics.open_obligations }} Pending
+                    </span>
+                </div>
+
+                <div class="card-body p-3 p-md-4">
+                    <div class="list-group list-group-flush">
+                        {% for ob in pending_obligations_list %}
+                        <div class="list-group-item bg-transparent border-0 px-0 py-2 border-bottom">
+                            <div class="d-flex justify-content-between align-items-center gap-2">
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <div class="fw-bold text-dark small text-truncate" title="{{ ob.title }}">{{ ob.title }}</div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">
+                                        <code>{{ ob.contract.contract_number }}</code> &bull; Due: <span class="text-danger fw-semibold">{{ ob.due_date|date:"M d, Y" }}</span>
+                                    </div>
+                                </div>
+                                <a href="{% url 'contract_detail' contract_id=ob.contract.id %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold">
+                                    View
+                                </a>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-5 text-muted small">
+                            <div class="d-flex flex-column align-items-center justify-content-center">
+                                <i class="fa-solid fa-check-double text-success fs-2 mb-2"></i>
+                                <span class="fw-semibold">No pending legal obligations logged.</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -330,10 +455,11 @@
                         backgroundColor: [
                             '#10B981', // Emerald
                             '#F59E0B', // Amber
-                            '#F43F5E'  // Rose
+                            '#EF4444'  // Rose/Red
                         ],
                         borderWidth: 2,
-                        borderColor: '#ffffff'
+                        borderColor: '#ffffff',
+                        hoverOffset: 4
                     }]
                 },
                 options: {
@@ -351,12 +477,10 @@
                             }
                         }
                     },
-                    cutout: '70%'
+                    cutout: '72%'
                 }
             });
         }
     });
 </script>
 {% endblock %}
-
-
