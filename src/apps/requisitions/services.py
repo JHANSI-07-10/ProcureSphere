@@ -53,12 +53,22 @@ def create_purchase_requisition_service(
 
     total = Decimal("0.00")
     for item in line_items:
+        qty = Decimal(str(item["quantity"]))
+        unit_price = Decimal(str(item["estimated_unit_price"]))
+        if qty <= Decimal("0.00"):
+            raise ValidationError(
+                f"Quantity for line item '{item.get('item_description', '')}' must be greater than zero."
+            )
+        if unit_price < Decimal("0.00"):
+            raise ValidationError(
+                f"Estimated unit price for line item '{item.get('item_description', '')}' cannot be negative."
+            )
         line = PRLine.objects.create(
             requisition=pr,
             item_description=item["item_description"],
-            quantity=Decimal(str(item["quantity"])),
+            quantity=qty,
             unit_of_measure=item.get("unit_of_measure", "EA"),
-            estimated_unit_price=Decimal(str(item["estimated_unit_price"])),
+            estimated_unit_price=unit_price,
             specifications=item.get("specifications", ""),
         )
         total += line.estimated_total
@@ -195,6 +205,11 @@ def approve_purchase_requisition_service(
     ]
     if requisition.status not in allowed_statuses:
         raise ValidationError(f"Cannot approve requisition in status '{requisition.status}'.")
+
+    if requisition.requester_id == approver.id and not approver.is_superuser:
+        raise ValidationError(
+            "Self-approval is strictly prohibited: Requesters cannot approve their own Purchase Requisitions."
+        )
 
     previous_status = requisition.status
 

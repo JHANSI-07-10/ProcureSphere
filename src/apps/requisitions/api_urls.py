@@ -42,6 +42,14 @@ class PRLineSerializer(serializers.ModelSerializer):
             attrs.pop("unit_price")
         if "estimated_unit_price" not in attrs:
             raise serializers.ValidationError({"estimated_unit_price": "This field is required."})
+        if attrs.get("quantity") is not None and attrs["quantity"] <= Decimal("0.00"):
+            raise serializers.ValidationError({"quantity": "Quantity must be greater than zero."})
+        if attrs.get("estimated_unit_price") is not None and attrs[
+            "estimated_unit_price"
+        ] < Decimal("0.00"):
+            raise serializers.ValidationError(
+                {"estimated_unit_price": "Estimated unit price cannot be negative."}
+            )
         return attrs
 
 
@@ -340,6 +348,21 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
         pr.save(update_fields=["status", "updated_at"])
         release_budget_reservation_service(requisition=pr, user=user, reason="PR cancelled by user")
         return Response(self.get_serializer(pr).data, status=status.HTTP_200_OK)
+
+    def destroy(self, request, *args, **kwargs):
+        pr = self.get_object()
+        user = request.user
+        if pr.status != PurchaseRequisition.STATUS_DRAFT:
+            raise serializers.ValidationError(
+                {
+                    "status": f"Cannot delete requisition in '{pr.status}' status. Only DRAFT requisitions can be deleted."
+                }
+            )
+        if pr.requester_id != user.id and not user.is_superuser:
+            raise permissions.exceptions.PermissionDenied(
+                "You do not have permission to delete this requisition."
+            )
+        return super().destroy(request, *args, **kwargs)
 
 
 router = DefaultRouter()

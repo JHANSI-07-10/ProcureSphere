@@ -380,6 +380,24 @@ class VendorViewSet(viewsets.ModelViewSet):
 
         return qs
 
+    def perform_create(self, serializer):
+        vendor = serializer.save()
+        from apps.audit.models import AuditLog
+
+        AuditLog.objects.create(
+            actor=self.request.user if self.request.user.is_authenticated else None,
+            action=AuditLog.ACTION_CREATE,
+            target_model="Vendor",
+            target_object_id=str(vendor.id),
+            previous_state={},
+            new_state={
+                "vendor_number": vendor.vendor_number,
+                "legal_name": vendor.legal_name,
+                "status": vendor.status,
+            },
+            ip_address=self.request.META.get("REMOTE_ADDR", ""),
+        )
+
     @action(
         detail=True,
         methods=["get", "post"],
@@ -584,6 +602,14 @@ class VendorRiskRecordViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = self.queryset
+        user = self.request.user
+        if getattr(user, "is_vendor", False) or getattr(user, "vendor_id", None):
+            if getattr(user, "vendor_id", None):
+                qs = qs.filter(vendor_id=user.vendor_id)
+            elif getattr(user, "vendor", None):
+                qs = qs.filter(vendor=user.vendor)
+            else:
+                return qs.none()
         risk_level = self.request.query_params.get("risk_level")
         vendor_id = self.request.query_params.get("vendor_id")
         if risk_level:

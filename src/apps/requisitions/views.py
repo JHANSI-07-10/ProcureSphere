@@ -115,8 +115,12 @@ def create_view(request):
         attachments = request.FILES.getlist("attachments")
         action_type = request.POST.get("action_type", "save_draft")
 
-        if not (title and department_id and cost_center_id and requested_delivery_date):
-            messages.error(request, "Please fill in all required fields.")
+        if not (
+            title and justification and department_id and cost_center_id and requested_delivery_date
+        ):
+            messages.error(
+                request, "Please fill in all required fields including business justification."
+            )
             return redirect("requisition_create")
 
         try:
@@ -382,6 +386,11 @@ def detail_view(request, pk):
         pk=pk,
     )
 
+    if role_code == Role.VENDOR_USER and not user.is_superuser:
+        from django.core.exceptions import PermissionDenied
+
+        raise PermissionDenied("Vendors are not permitted to view internal Purchase Requisitions.")
+
     if role_code == Role.REQUESTER and pr.requester != user:
         messages.error(request, "You do not have permission to view this requisition.")
         return redirect("requisitions_list")
@@ -601,6 +610,7 @@ def cancel_view(request, pk):
 
         try:
             with transaction.atomic():
+                prev_status = pr.status
                 pr.status = PurchaseRequisition.STATUS_CANCELLED
                 pr.save(update_fields=["status", "updated_at"])
 
@@ -611,7 +621,7 @@ def cancel_view(request, pk):
                     action=AuditLog.ACTION_UPDATE,
                     target_model="PurchaseRequisition",
                     target_object_id=str(pr.pk),
-                    previous_state={"status": pr.status},
+                    previous_state={"status": prev_status},
                     new_state={"status": PurchaseRequisition.STATUS_CANCELLED},
                     ip_address=request.META.get("REMOTE_ADDR", ""),
                 )
@@ -646,8 +656,10 @@ def attachment_download_view(request, pk, attachment_id):
     """
     import mimetypes
     import os
+
     from django.core.exceptions import PermissionDenied
     from django.http import FileResponse
+
     from apps.audit.models import AuditLog
 
     user = request.user
@@ -659,7 +671,9 @@ def attachment_download_view(request, pk, attachment_id):
 
     # Scoping check
     if role_code == Role.REQUESTER and pr.requester != user:
-        raise PermissionDenied("You do not have permission to access attachments for this requisition.")
+        raise PermissionDenied(
+            "You do not have permission to access attachments for this requisition."
+        )
 
     if not user.is_superuser and role_code not in [
         Role.FINANCE_AP,
@@ -672,9 +686,18 @@ def attachment_download_view(request, pk, attachment_id):
         user_org = getattr(user_dept, "organization", None) if user_dept else None
         pr_org = getattr(getattr(pr, "department", None), "organization", None)
         if user_org and pr_org and user_org.id != pr_org.id:
-            raise PermissionDenied("You do not have permission to view requisitions from another organization.")
-        if role_code == Role.DEPT_APPROVER and user_dept and pr.department and user_dept.id != pr.department.id:
-            raise PermissionDenied("You do not have permission to access attachments for another department's requisition.")
+            raise PermissionDenied(
+                "You do not have permission to view requisitions from another organization."
+            )
+        if (
+            role_code == Role.DEPT_APPROVER
+            and user_dept
+            and pr.department
+            and user_dept.id != pr.department.id
+        ):
+            raise PermissionDenied(
+                "You do not have permission to access attachments for another department's requisition."
+            )
 
     attachment = get_object_or_404(PRAttachment, pk=attachment_id, requisition=pr)
 
@@ -687,7 +710,7 @@ def attachment_download_view(request, pk, attachment_id):
         return redirect("requisition_detail", pk=pr.pk)
 
     action = request.GET.get("action", "download")
-    as_attachment = (action != "view")
+    as_attachment = action != "view"
 
     AuditLog.objects.create(
         actor=user,
@@ -716,4 +739,3 @@ def attachment_download_view(request, pk, attachment_id):
     if not as_attachment:
         response["Content-Disposition"] = f'inline; filename="{filename}"'
     return response
-

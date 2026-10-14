@@ -44,6 +44,9 @@ class CanManageBudget(BasePermission):
 
 class BudgetSerializer(serializers.ModelSerializer):
     available_amount = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
+    reserved_amount = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
+    committed_amount = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
+    actual_amount = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
     cost_center_code = serializers.CharField(source="cost_center.code", read_only=True)
 
     class Meta:

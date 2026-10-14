@@ -40,7 +40,9 @@ urlpatterns = [
     path("", include("apps.audit.urls")),
     path("budgets/", include("apps.budgets.urls")),
     # OpenAPI Schema & Swagger Docs
+    path("api/schema", SpectacularAPIView.as_view()),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("api/docs", SpectacularSwaggerView.as_view(url_name="schema")),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     # Session Authentication Endpoints
     path("api/v1/auth/login/", SessionLoginView.as_view(), name="session_login"),
