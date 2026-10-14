@@ -123,6 +123,20 @@ def create_view(request):
             )
             return redirect("requisition_create")
 
+        if requested_delivery_date:
+            try:
+                from datetime import datetime
+
+                deliv_date = datetime.strptime(
+                    str(requested_delivery_date).strip(), "%Y-%m-%d"
+                ).date()
+                if deliv_date < timezone.now().date():
+                    messages.error(request, "Required delivery date cannot be in the past.")
+                    return redirect("requisition_create")
+            except ValueError:
+                messages.error(request, "Invalid delivery date format.")
+                return redirect("requisition_create")
+
         try:
             department = Department.objects.get(id=department_id)
             cost_center = CostCenter.objects.get(id=cost_center_id)
@@ -137,6 +151,23 @@ def create_view(request):
                 desc = item_descriptions[i].strip()
                 if not desc:
                     continue
+                try:
+                    qty_num = Decimal(str(quantities[i]))
+                    if qty_num <= Decimal("0"):
+                        messages.error(
+                            request, f"Quantity for line item '{desc}' must be greater than zero."
+                        )
+                        return redirect("requisition_create")
+                    if qty_num % 1 != 0:
+                        messages.error(
+                            request,
+                            f"Quantity for line item '{desc}' must be a whole number (no decimal points allowed).",
+                        )
+                        return redirect("requisition_create")
+                except Exception:
+                    messages.error(request, f"Invalid quantity for line item '{desc}'.")
+                    return redirect("requisition_create")
+
                 line_items.append(
                     {
                         "item_description": desc,
@@ -243,7 +274,11 @@ def create_view(request):
     return render(
         request,
         "pages/requisitions/create.html",
-        {"departments": departments, "cost_centers": cost_centers},
+        {
+            "departments": departments,
+            "cost_centers": cost_centers,
+            "today": timezone.now().date().isoformat(),
+        },
     )
 
 
@@ -301,6 +336,18 @@ def edit_view(request, pk):
             pr.department = department
             pr.cost_center = cost_center
             if requested_delivery_date:
+                try:
+                    from datetime import datetime
+
+                    deliv_date = datetime.strptime(
+                        str(requested_delivery_date).strip(), "%Y-%m-%d"
+                    ).date()
+                    if deliv_date < timezone.now().date():
+                        messages.error(request, "Required delivery date cannot be in the past.")
+                        return redirect("requisition_edit", pk=pr.pk)
+                except ValueError:
+                    messages.error(request, "Invalid delivery date format.")
+                    return redirect("requisition_edit", pk=pr.pk)
                 pr.requested_delivery_date = requested_delivery_date
 
             # Extract Line Items
@@ -314,24 +361,41 @@ def edit_view(request, pk):
                     # Delete existing lines and recreate if new line items provided
                     pr.lines.all().delete()
 
-                    total_amount = 0
+                    total_amount = Decimal("0.00")
                     for i in range(len(item_descriptions)):
                         desc = item_descriptions[i].strip()
                         if not desc:
                             continue
 
-                        qty = float(quantities[i])
-                        price = float(unit_prices[i])
+                        try:
+                            qty_val = Decimal(str(quantities[i]))
+                            if qty_val <= Decimal("0"):
+                                messages.error(
+                                    request,
+                                    f"Quantity for line item '{desc}' must be greater than zero.",
+                                )
+                                return redirect("requisition_edit", pk=pr.pk)
+                            if qty_val % 1 != 0:
+                                messages.error(
+                                    request,
+                                    f"Quantity for line item '{desc}' must be a whole number (no decimal points allowed).",
+                                )
+                                return redirect("requisition_edit", pk=pr.pk)
+                        except Exception:
+                            messages.error(request, f"Invalid quantity for line item '{desc}'.")
+                            return redirect("requisition_edit", pk=pr.pk)
+
+                        price = Decimal(str(unit_prices[i]))
                         uom = uoms[i] if i < len(uoms) else "EA"
 
                         PRLine.objects.create(
                             requisition=pr,
                             item_description=desc,
-                            quantity=qty,
+                            quantity=qty_val,
                             unit_of_measure=uom,
                             estimated_unit_price=price,
                         )
-                        total_amount += qty * price
+                        total_amount += qty_val * price
 
                     # Validate budget before saving PR total
                     validate_budget_availability_service(
@@ -369,7 +433,12 @@ def edit_view(request, pk):
     return render(
         request,
         "pages/requisitions/edit.html",
-        {"pr": pr, "departments": departments, "cost_centers": cost_centers},
+        {
+            "pr": pr,
+            "departments": departments,
+            "cost_centers": cost_centers,
+            "today": timezone.now().date().isoformat(),
+        },
     )
 
 

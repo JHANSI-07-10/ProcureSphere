@@ -42,8 +42,15 @@ class PRLineSerializer(serializers.ModelSerializer):
             attrs.pop("unit_price")
         if "estimated_unit_price" not in attrs:
             raise serializers.ValidationError({"estimated_unit_price": "This field is required."})
-        if attrs.get("quantity") is not None and attrs["quantity"] <= Decimal("0.00"):
-            raise serializers.ValidationError({"quantity": "Quantity must be greater than zero."})
+        if attrs.get("quantity") is not None:
+            if attrs["quantity"] <= Decimal("0.00"):
+                raise serializers.ValidationError(
+                    {"quantity": "Quantity must be greater than zero."}
+                )
+            if attrs["quantity"] % 1 != 0:
+                raise serializers.ValidationError(
+                    {"quantity": "Quantity must be a whole number (no decimal points allowed)."}
+                )
         if attrs.get("estimated_unit_price") is not None and attrs[
             "estimated_unit_price"
         ] < Decimal("0.00"):
@@ -78,6 +85,13 @@ class PurchaseRequisitionSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def validate_requested_delivery_date(self, value):
+        from django.utils import timezone
+
+        if value and value < timezone.now().date():
+            raise serializers.ValidationError("Requested delivery date cannot be in the past.")
+        return value
+
     def create(self, validated_data):
         lines_data = self.initial_data.get("line_items", self.initial_data.get("lines", []))
         validated_data.pop("lines", None)
@@ -93,6 +107,14 @@ class PurchaseRequisitionSerializer(serializers.ModelSerializer):
         total = Decimal("0.00")
         for item in lines_data:
             qty = Decimal(str(item.get("quantity", 1)))
+            if qty <= Decimal("0.00"):
+                raise serializers.ValidationError(
+                    {"quantity": "Quantity must be greater than zero."}
+                )
+            if qty % 1 != 0:
+                raise serializers.ValidationError(
+                    {"quantity": "Quantity must be a whole number (no decimal points allowed)."}
+                )
             price = Decimal(
                 str(
                     item.get("estimated_unit_price")
@@ -131,6 +153,14 @@ class PurchaseRequisitionSerializer(serializers.ModelSerializer):
             total = Decimal("0.00")
             for item in lines_data:
                 qty = Decimal(str(item.get("quantity", 1)))
+                if qty <= Decimal("0.00"):
+                    raise serializers.ValidationError(
+                        {"quantity": "Quantity must be greater than zero."}
+                    )
+                if qty % 1 != 0:
+                    raise serializers.ValidationError(
+                        {"quantity": "Quantity must be a whole number (no decimal points allowed)."}
+                    )
                 price = Decimal(
                     str(
                         item.get("estimated_unit_price")

@@ -36,6 +36,28 @@ def create_purchase_requisition_service(
     if not line_items:
         raise ValidationError("Purchase Requisition must contain at least one line item.")
 
+    if requested_delivery_date:
+        from datetime import date, datetime
+
+        if isinstance(requested_delivery_date, str):
+            try:
+                deliv_obj = datetime.strptime(
+                    str(requested_delivery_date).split("T")[0], "%Y-%m-%d"
+                ).date()
+            except ValueError:
+                deliv_obj = None
+        elif isinstance(requested_delivery_date, (datetime, date)):
+            deliv_obj = (
+                requested_delivery_date
+                if isinstance(requested_delivery_date, date)
+                else requested_delivery_date.date()
+            )
+        else:
+            deliv_obj = None
+
+        if deliv_obj and deliv_obj < timezone.now().date():
+            raise ValidationError("Requested delivery date cannot be in the past.")
+
     pr_count = PurchaseRequisition.objects.count() + 1
     pr_number = f"PR-{timezone.now().strftime('%Y')}-{pr_count:05d}"
 
@@ -58,6 +80,10 @@ def create_purchase_requisition_service(
         if qty <= Decimal("0.00"):
             raise ValidationError(
                 f"Quantity for line item '{item.get('item_description', '')}' must be greater than zero."
+            )
+        if qty % 1 != 0:
+            raise ValidationError(
+                f"Quantity for line item '{item.get('item_description', '')}' must be a whole number (no decimal points allowed)."
             )
         if unit_price < Decimal("0.00"):
             raise ValidationError(
