@@ -6,7 +6,7 @@ from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.accounts.api_views import SessionLoginView, SessionLogoutView
-from apps.accounts.views import portal_login_view, portal_logout_view
+from apps.accounts.views import password_change_view, portal_login_view, portal_logout_view
 from apps.core.views import custom_404_view
 
 from .healthchecks import health, readyz
@@ -19,6 +19,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("login/", portal_login_view, name="login"),
     path("logout/", portal_logout_view, name="logout"),
+    path("password-change/", password_change_view, name="password_change"),
     # Superadmin, Manager & Vendor Portals
     path("superadmin/", include("apps.core.superadmin_urls")),
     path("manager/", include("apps.core.manager_urls")),

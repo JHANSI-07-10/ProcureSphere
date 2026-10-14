@@ -93,6 +93,11 @@ class User(AbstractUser):
         help_text="If user belongs to a vendor self-service account",
     )
 
+    must_change_password = models.BooleanField(
+        default=False,
+        help_text="Set for accounts issued with a temporary password; cleared on first change.",
+    )
+
     objects = UserManager()
 
     USERNAME_FIELD = "email"

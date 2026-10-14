@@ -1,5 +1,7 @@
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import SetPasswordForm
 from django.shortcuts import redirect, render
 
 
@@ -76,6 +78,39 @@ def portal_logout_view(request):
     logout(request)
     messages.info(request, "You have been logged out successfully.")
     return redirect("/login/")
+
+
+@login_required(login_url="/login/")
+def password_change_view(request):
+    """Lets a user replace their password; mandatory on first login with a temporary password."""
+    forced = request.user.must_change_password
+    form = SetPasswordForm(request.user, request.POST or None)
+    if request.method == "POST":
+        current = request.POST.get("current_password", "")
+        if not request.user.check_password(current):
+            form.add_error(None, "Current (temporary) password is incorrect.")
+        elif form.is_valid() and not form.errors:
+            user = form.save()
+            user.must_change_password = False
+            user.save(update_fields=["must_change_password"])
+            update_session_auth_hash(request, user)
+
+            from apps.audit.models import AuditLog
+            from apps.audit.services import create_audit_log_service
+
+            create_audit_log_service(
+                actor=user,
+                action=AuditLog.ACTION_UPDATE,
+                target_model="User",
+                target_object_id=str(user.id),
+                previous_state={"must_change_password": forced},
+                new_state={"must_change_password": False, "event": "password_changed"},
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            )
+            messages.success(request, "Password updated.")
+            return redirect("/")
+    return render(request, "pages/password_change.html", {"form": form, "forced": forced})
 
 
 # Aliases for route compatibility

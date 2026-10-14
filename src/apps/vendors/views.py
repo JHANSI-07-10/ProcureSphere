@@ -32,6 +32,7 @@ from .selectors import (
 from .services import (
     allowed_governance_transitions,
     approve_vendor_service,
+    issue_vendor_credentials_service,
     record_vendor_risk_assessment_service,
     register_vendor_service,
     set_vendor_status_governance_service,
@@ -165,6 +166,7 @@ def vendor_detail_view(request, vendor_id):
         "sourcing_history": get_vendor_sourcing_history(vendor),
         "purchase_orders": get_vendor_purchase_orders(vendor),
         "transitions": transitions,
+        "last_dispatch": vendor.credential_dispatches.first(),
         "risk_form": RiskAssessmentForm(),
         "risk_flag_choices": VendorRiskRecord.RISK_FLAG_CHOICES,
         "risk_level_choices": VendorRiskRecord.RISK_CHOICES,
@@ -425,4 +427,59 @@ def vendor_kyc_htmx_view(request, vendor_id, kyc_action):
         )
         response["HX-Trigger"] = "vendor-updated"
         return response
+    return redirect("vendor_detail", vendor_id=vendor.id)
+
+
+# ------------------------------------------------------------------------------------------
+# Procurement Executive Dashboard - register a vendor and email portal credentials
+# ------------------------------------------------------------------------------------------
+
+
+@login_required(login_url="/login/")
+def vendor_register_modal_view(request):
+    """HTMX modal: register a vendor (DRAFT) with basic details, then offer credential issue."""
+    _require_governance_operate(request.user)
+    form = VendorRegistrationForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            vendor = register_vendor_service(**form.cleaned_data, created_by_user=request.user)
+        except ValidationError as exc:
+            form.add_error(None, exc)
+        else:
+            response = render(
+                request, "vendors/partials/htmx_register_done.html", {"vendor": vendor}
+            )
+            response["HX-Trigger"] = "vendor-updated"
+            return response
+    return render(
+        request,
+        "vendors/partials/htmx_register_modal.html",
+        {"form": form},
+        status=400 if request.method == "POST" else 200,
+    )
+
+
+@login_required(login_url="/login/")
+@require_POST
+def vendor_issue_credentials_view(request, vendor_id):
+    """Creates/resets the vendor login and emails credentials + portal link(s)."""
+    _require_governance_operate(request.user)
+    vendor = get_object_or_404(Vendor, pk=vendor_id)
+    error = None
+    dispatch = None
+    try:
+        dispatch = issue_vendor_credentials_service(vendor=vendor, issued_by=request.user)
+    except ValidationError as exc:
+        error = " ".join(exc.messages)
+    if _is_htmx(request):
+        return render(
+            request,
+            "vendors/partials/htmx_register_done.html",
+            {"vendor": vendor, "dispatch": dispatch, "error": error},
+            status=400 if error else 200,
+        )
+    if error:
+        messages.error(request, error)
+    else:
+        messages.success(request, f"Credentials emailed to {dispatch.sent_to}.")
     return redirect("vendor_detail", vendor_id=vendor.id)
