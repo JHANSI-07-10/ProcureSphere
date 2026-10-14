@@ -2,6 +2,7 @@ import os
 from datetime import timedelta
 from decimal import Decimal
 from io import BytesIO
+
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
@@ -34,8 +35,12 @@ def test_supporting_document_workflow_and_approver_access(db_roles):
     org = Organization.objects.create(name="HPE Tech Org", code="HPE-ORG")
     other_org = Organization.objects.create(name="Other Org", code="OTHER-ORG")
 
-    dept = Department.objects.create(organization=org, name="IT Infrastructure Operations", code="IT-OPS")
-    other_dept = Department.objects.create(organization=other_org, name="Finance Dept", code="FIN-DEPT")
+    dept = Department.objects.create(
+        organization=org, name="IT Infrastructure Operations", code="IT-OPS"
+    )
+    other_dept = Department.objects.create(
+        organization=other_org, name="Finance Dept", code="FIN-DEPT"
+    )
 
     approver_user = User.objects.create_user(
         email="approver@hpe.com",
@@ -82,7 +87,9 @@ def test_supporting_document_workflow_and_approver_access(db_roles):
         "Aurexion_TRD_Document.pdf", pdf_content, content_type="application/pdf"
     )
     docx_file = SimpleUploadedFile(
-        "Technical_Spec.docx", b"DOCX dummy binary content", content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        "Technical_Spec.docx",
+        b"PK\x03\x04DOCX dummy binary content",
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )
 
     pr = create_purchase_requisition_service(
@@ -112,7 +119,10 @@ def test_supporting_document_workflow_and_approver_access(db_roles):
     # 3. Submit requisition for approval
     submit_purchase_requisition_service(requisition=pr, user=requester_user)
     pr.refresh_from_db()
-    assert pr.status in [PurchaseRequisition.STATUS_MANAGER_REVIEW, PurchaseRequisition.STATUS_BUDGET_REVIEW]
+    assert pr.status in [
+        PurchaseRequisition.STATUS_MANAGER_REVIEW,
+        PurchaseRequisition.STATUS_BUDGET_REVIEW,
+    ]
     # Ensure attachments remain associated
     assert pr.attachments.count() == 2
 
@@ -164,12 +174,20 @@ def test_requisition_without_attachments_handled_gracefully(db_roles):
     org = Organization.objects.create(name="HPE Tech Org 2", code="HPE-ORG-2")
     dept = Department.objects.create(organization=org, name="IT Ops", code="IT-01")
     approver = User.objects.create_user(
-        email="approver2@hpe.com", password="Password123!", role=db_roles[Role.DEPT_APPROVER], department=dept
+        email="approver2@hpe.com",
+        password="Password123!",
+        role=db_roles[Role.DEPT_APPROVER],
+        department=dept,
     )
     requester = User.objects.create_user(
-        email="requester2@hpe.com", password="Password123!", role=db_roles[Role.REQUESTER], department=dept
+        email="requester2@hpe.com",
+        password="Password123!",
+        role=db_roles[Role.REQUESTER],
+        department=dept,
     )
-    cost_center = CostCenter.objects.create(department=dept, code="CC-IT-02", name="Ops", manager=approver)
+    cost_center = CostCenter.objects.create(
+        department=dept, code="CC-IT-02", name="Ops", manager=approver
+    )
 
     pr = create_purchase_requisition_service(
         title="Office supplies",

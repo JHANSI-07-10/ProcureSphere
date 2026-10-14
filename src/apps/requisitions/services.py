@@ -13,6 +13,7 @@ from apps.budgets.services import (
     check_and_reserve_budget_service,
     release_budget_reservation_service,
 )
+from apps.core.validators import validate_pr_attachment
 from apps.organization.models import CostCenter, Department
 
 from .models import PRAttachment, PRLine, PurchaseRequisition
@@ -108,6 +109,7 @@ def create_purchase_requisition_service(
 
     if attachments:
         for uploaded_file in attachments:
+            validate_pr_attachment(uploaded_file)
             PRAttachment.objects.create(
                 requisition=pr,
                 uploaded_by=requester,
