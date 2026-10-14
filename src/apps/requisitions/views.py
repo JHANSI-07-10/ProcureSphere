@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -12,6 +13,7 @@ from apps.approvals.models import ApprovalAction
 from apps.approvals.services import process_approval_action_service
 from apps.budgets.models import Budget
 from apps.budgets.services import validate_budget_availability_service
+from apps.core.validators import validate_pr_attachment
 from apps.organization.models import CostCenter, Department
 from apps.requisitions.models import PRAttachment, PRLine, PurchaseRequisition
 from apps.requisitions.services import (
@@ -132,12 +134,20 @@ def create_view(request):
                 ).date()
                 if deliv_date < timezone.now().date():
                     messages.error(request, "Required delivery date cannot be in the past.")
-                    return redirect("requisition_create")
             except ValueError:
                 messages.error(request, "Invalid delivery date format.")
                 return redirect("requisition_create")
 
+        if attachments:
+            for att in attachments:
+                try:
+                    validate_pr_attachment(att)
+                except ValidationError:
+                    messages.error(request, "Invalid file format.")
+                    return redirect("requisition_create")
+
         try:
+
             department = Department.objects.get(id=department_id)
             cost_center = CostCenter.objects.get(id=cost_center_id)
 
@@ -350,7 +360,16 @@ def edit_view(request, pk):
                     return redirect("requisition_edit", pk=pr.pk)
                 pr.requested_delivery_date = requested_delivery_date
 
+            if attachments:
+                for att in attachments:
+                    try:
+                        validate_pr_attachment(att)
+                    except ValidationError:
+                        messages.error(request, "Invalid file format.")
+                        return redirect("requisition_edit", pk=pr.pk)
+
             # Extract Line Items
+
             item_descriptions = request.POST.getlist("item_description[]")
             quantities = request.POST.getlist("quantity[]")
             unit_prices = request.POST.getlist("estimated_unit_price[]")
