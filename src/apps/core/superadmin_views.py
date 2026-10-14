@@ -6,12 +6,14 @@ from django.core.paginator import Paginator
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 
-from apps.accounts.models import User
+from apps.accounts.models import Role, User
 from apps.approvals.models import ApprovalPolicy
 from apps.audit.models import AuditLog
 from apps.budgets.models import Budget
 from apps.core.superadmin_forms import (
     BudgetAdminForm,
+    CostCenterAdminForm,
+    DepartmentAdminForm,
     OrganizationAdminForm,
     PolicyAdminForm,
     UserAdminForm,
@@ -52,15 +54,37 @@ def user_edit_view(request, user_id):
     return render(request, "pages/dashboards/superadmin/user_form.html", {"form": form})
 
 
+def _is_super_admin(user):
+    return user.is_authenticated and (
+        user.is_superuser
+        or getattr(user, "role_code", None) == Role.SUPER_ADMIN
+        or (hasattr(user, "role") and user.role and user.role.code == Role.SUPER_ADMIN)
+    )
+
+
 @login_required
 def org_list_view(request):
-    orgs = Organization.objects.all()
-    departments = Department.objects.select_related("organization").all()
-    cost_centers = CostCenter.objects.select_related("department").all()
+    orgs = Organization.objects.all().order_by("name")
+    departments = Department.objects.select_related("organization").all().order_by("name")
+    cost_centers = CostCenter.objects.select_related("department", "manager").all().order_by("code")
+    selected_dept = request.GET.get("department", "").strip()
+    if selected_dept:
+        try:
+            import uuid
+            uuid.UUID(selected_dept)
+            cost_centers = cost_centers.filter(department_id=selected_dept)
+        except (ValueError, AttributeError):
+            selected_dept = ""
+
     return render(
         request,
         "pages/dashboards/superadmin/organizations.html",
-        {"orgs": orgs, "departments": departments, "cost_centers": cost_centers},
+        {
+            "orgs": orgs,
+            "departments": departments,
+            "cost_centers": cost_centers,
+            "selected_dept": selected_dept,
+        },
     )
 
 
@@ -87,6 +111,187 @@ def org_edit_view(request, org_id):
     else:
         form = OrganizationAdminForm(instance=org)
     return render(request, "pages/dashboards/superadmin/org_form.html", {"form": form})
+
+
+@login_required
+def dept_create_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
+    if request.method == "POST":
+        form = DepartmentAdminForm(request.POST)
+        if form.is_valid():
+            dept = form.save(commit=False)
+            if hasattr(dept, "created_by_id") and not dept.created_by_id:
+                dept.created_by = request.user
+            dept.save()
+
+            from apps.audit.services import create_audit_log_service
+
+            create_audit_log_service(
+                actor=request.user,
+                action=AuditLog.ACTION_CREATE,
+                target_model="Department",
+                target_object_id=str(dept.id),
+                previous_state=None,
+                new_state={
+                    "code": dept.code,
+                    "name": dept.name,
+                    "organization": dept.organization.code,
+                    "description": dept.description,
+                },
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            )
+
+            return HttpResponse("<script>window.location.reload();</script>")
+    else:
+        form = DepartmentAdminForm()
+    return render(request, "pages/dashboards/superadmin/dept_form.html", {"form": form, "is_edit": False})
+
+
+@login_required
+def dept_edit_view(request, dept_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
+    dept = get_object_or_404(Department, pk=dept_id)
+    if request.method == "POST":
+        old_state = {
+            "code": dept.code,
+            "name": dept.name,
+            "organization": dept.organization.code,
+            "description": dept.description,
+        }
+        form = DepartmentAdminForm(request.POST, instance=dept)
+        if form.is_valid():
+            dept = form.save()
+
+            from apps.audit.services import create_audit_log_service
+
+            create_audit_log_service(
+                actor=request.user,
+                action=AuditLog.ACTION_UPDATE,
+                target_model="Department",
+                target_object_id=str(dept.id),
+                previous_state=old_state,
+                new_state={
+                    "code": dept.code,
+                    "name": dept.name,
+                    "organization": dept.organization.code,
+                    "description": dept.description,
+                },
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            )
+
+            return HttpResponse("<script>window.location.reload();</script>")
+    else:
+        form = DepartmentAdminForm(instance=dept)
+    return render(request, "pages/dashboards/superadmin/dept_form.html", {"form": form, "is_edit": True, "dept": dept})
+
+
+@login_required
+def cost_center_create_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
+    if request.method == "POST":
+        form = CostCenterAdminForm(request.POST)
+        if form.is_valid():
+            cleaned = form.cleaned_data
+            from apps.organization.services import create_cost_center_service
+
+            cost_center = create_cost_center_service(
+                department=cleaned["department"],
+                code=cleaned["code"],
+                name=cleaned["name"],
+                manager=cleaned.get("manager"),
+            )
+
+            from apps.audit.services import create_audit_log_service
+
+            create_audit_log_service(
+                actor=request.user,
+                action=AuditLog.ACTION_CREATE,
+                target_model="CostCenter",
+                target_object_id=str(cost_center.id),
+                previous_state=None,
+                new_state={
+                    "code": cost_center.code,
+                    "name": cost_center.name,
+                    "department": cost_center.department.code,
+                    "manager": cost_center.manager.email if cost_center.manager else None,
+                },
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            )
+
+            return HttpResponse("<script>window.location.reload();</script>")
+    else:
+        form = CostCenterAdminForm()
+    return render(
+        request,
+        "pages/dashboards/superadmin/cost_center_form.html",
+        {"form": form, "is_edit": False},
+    )
+
+
+@login_required
+def cost_center_edit_view(request, cc_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
+    cost_center = get_object_or_404(CostCenter, pk=cc_id)
+    if request.method == "POST":
+        old_state = {
+            "code": cost_center.code,
+            "name": cost_center.name,
+            "department": cost_center.department.code,
+            "manager": cost_center.manager.email if cost_center.manager else None,
+        }
+        form = CostCenterAdminForm(request.POST, instance=cost_center)
+        if form.is_valid():
+            cost_center = form.save()
+
+            from apps.audit.services import create_audit_log_service
+
+            create_audit_log_service(
+                actor=request.user,
+                action=AuditLog.ACTION_UPDATE,
+                target_model="CostCenter",
+                target_object_id=str(cost_center.id),
+                previous_state=old_state,
+                new_state={
+                    "code": cost_center.code,
+                    "name": cost_center.name,
+                    "department": cost_center.department.code,
+                    "manager": cost_center.manager.email if cost_center.manager else None,
+                },
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            )
+
+            return HttpResponse("<script>window.location.reload();</script>")
+    else:
+        form = CostCenterAdminForm(instance=cost_center)
+    return render(
+        request,
+        "pages/dashboards/superadmin/cost_center_form.html",
+        {"form": form, "is_edit": True, "cost_center": cost_center},
+    )
 
 
 @login_required
