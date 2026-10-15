@@ -15,18 +15,16 @@
     <!-- ========================================================================= -->
     <!-- 1. STICKY DARK SIDEBAR (ProcureSphere 360 Theme: Navy #002B49 / #0F172A)  -->
     <!-- ========================================================================= -->
-    <aside id="auditorSidebar" class="auditor-sidebar bg-hpe-navy text-white d-flex flex-column flex-shrink-0 shadow-lg">
+    <aside id="auditorSidebar" class="auditor-sidebar bg-dark text-white border-end border-secondary border-opacity-25 d-flex flex-column flex-shrink-0 shadow-sm" style="width: 268px;">
         
         <!-- Sidebar Brand Header -->
-        <div class="sidebar-brand-box px-3 py-3 border-bottom border-white-10 d-flex align-items-center justify-content-between">
+        <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
             <a href="/audit/dashboard/" class="d-flex align-items-center text-white text-decoration-none">
-                <div class="brand-badge-square me-2 d-flex align-items-center justify-content-center bg-cyan-gradient rounded-3 text-dark fw-bold shadow-sm">
-                    <span>PS</span>
-                </div>
+                <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
                 <div>
-                    <div class="brand-title fw-bold font-heading lh-1 text-white fs-6">ProcureSphere</div>
-                    <span class="badge bg-cyan text-dark rounded-pill fw-bold" style="font-size: 0.62rem; letter-spacing: 0.04em;">
-                        AUDITOR (READ-ONLY)
+                    <div class="brand-title fw-bold font-heading lh-1 text-white fs-6">ProcureSphere <span class="text-primary fw-light">360</span></div>
+                    <span class="badge bg-info text-dark rounded-pill fw-bold mt-1" style="font-size: 0.62rem; letter-spacing: 0.04em;">
+                        COMPLIANCE AUDITOR
                     </span>
                 </div>
             </a>
@@ -38,75 +36,99 @@
 
         <!-- Sidebar Navigation Items (Dedicated Routes) -->
         <div class="sidebar-nav-container flex-grow-1 overflow-y-auto px-2 py-3">
-            <ul class="nav nav-pills flex-column gap-1" id="sidebarMenu">
+            <ul class="nav nav-pills flex-column gap-1 small" id="sidebarMenu">
+                <li class="nav-section-label text-uppercase text-secondary fw-bold px-2 pt-1 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">
+                    AUDIT &amp; TRACEABILITY
+                </li>
                 <li class="nav-item">
-                    <a href="/audit/dashboard/" class="nav-link auditor-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white {% if request.path == '/audit/dashboard/' or request.path == '/' or request.path == '/audit/' %}active{% endif %}">
-                        <i class="fa-solid fa-chart-pie me-3 fs-6 text-cyan"></i>
-                        <span class="fw-semibold">Executive Dashboard</span>
+                    <a href="/audit/dashboard/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if request.path == '/audit/dashboard/' or request.path == '/' or request.path == '/audit/' %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-chart-pie me-2"></i>
+                        <span>Executive Dashboard</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/audit/logs/" class="nav-link auditor-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/audit/logs/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-fingerprint me-3 fs-6 text-cyan"></i>
-                        <span class="fw-semibold">Audit Logs</span>
+                    <a href="/audit/logs/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/logs/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-fingerprint me-2"></i>
+                        <span>Audit Logs</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/audit/sourcing-activity/" class="nav-link auditor-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/audit/sourcing-activity/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-gavel me-3 fs-6 text-cyan"></i>
-                        <span class="fw-semibold">Sourcing & Bids</span>
+                    <a href="/audit/sourcing-activity/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/sourcing-activity/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-gavel me-2"></i>
+                        <span>Sourcing &amp; Bids</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/audit/approvals/" class="nav-link auditor-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/audit/approvals/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-signature me-3 fs-6 text-cyan"></i>
-                        <span class="fw-semibold">Approvals & Gate Trail</span>
+                    <a href="/audit/approvals/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/approvals/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-signature me-2"></i>
+                        <span>Approvals &amp; Gate Trail</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/audit/po-changes/" class="nav-link auditor-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/audit/po-changes/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-cart-shopping me-3 fs-6 text-cyan"></i>
-                        <span class="fw-semibold">PO Changes & Records</span>
+                    <a href="/audit/po-changes/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/po-changes/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-cart-shopping me-2"></i>
+                        <span>PO Changes &amp; Records</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/audit/invoice-exceptions/" class="nav-link auditor-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/audit/invoice-exceptions/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-triangle-exclamation me-3 fs-6 text-warning"></i>
-                        <span class="fw-semibold">Invoice Exceptions</span>
+                    <a href="/audit/invoice-exceptions/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/invoice-exceptions/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+                        <span>Invoice Exceptions</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/audit/vendors/" class="nav-link auditor-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/audit/vendors/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-building-shield me-3 fs-6 text-emerald"></i>
-                        <span class="fw-semibold">Vendor Compliance</span>
+                    <a href="/audit/vendors/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/vendors/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-building-shield me-2"></i>
+                        <span>Vendor Compliance</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/audit/contract-changes/" class="nav-link auditor-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/audit/contract-changes/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-file-contract me-3 fs-6 text-cyan"></i>
-                        <span class="fw-semibold">Contracts & SLA Risk</span>
+                    <a href="/audit/contract-changes/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/contract-changes/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-file-contract me-2"></i>
+                        <span>Contracts &amp; SLA Risk</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/audit/security-events/" class="nav-link auditor-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/audit/security-events/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-shield-halved me-3 fs-6 text-info"></i>
-                        <span class="fw-semibold">Security & Auth Events</span>
+                    <a href="/audit/security-events/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/security-events/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-shield-halved me-2"></i>
+                        <span>Security &amp; Auth Events</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/audit/lifecycle/" class="nav-link auditor-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/audit/lifecycle/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-diagram-project me-3 fs-6 text-cyan"></i>
-                        <span class="fw-semibold">Lifecycle Explorer</span>
+                    <a href="/audit/lifecycle/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/lifecycle/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-diagram-project me-2"></i>
+                        <span>Lifecycle Explorer</span>
                     </a>
                 </li>
-                <li class="nav-item my-2 border-top border-white-10"></li>
+                <li class="nav-item my-2 border-top border-secondary border-opacity-25"></li>
                 <li class="nav-item">
-                    <a href="/reports/hub/" class="nav-link auditor-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/reports/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-chart-line me-3 fs-6 text-cyan"></i>
-                        <span class="fw-semibold">Financial Reports</span>
+                    <a href="/reports/hub/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/reports/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-chart-line me-2"></i>
+                        <span>Financial Reports</span>
                     </a>
                 </li>
             </ul>
+        </div>
+
+        <!-- Sidebar Footer -->
+        <div class="sidebar-footer border-top border-secondary border-opacity-25 px-3 py-3 mt-auto">
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                <div class="d-flex align-items-center" style="min-width: 0;">
+                    <i class="fa-solid fa-circle-user text-info fs-4 me-2"></i>
+                    <div style="min-width: 0;">
+                        <div class="small fw-semibold text-white text-truncate" title="{{ user.email }}">{{ user.email|default:"auditor@hpe.com" }}</div>
+                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Compliance Auditor</div>
+                    </div>
+                </div>
+                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill" title="Sign out"><i class="fa-solid fa-arrow-right-from-bracket"></i><span class="visually-hidden">Sign out</span></a>
+            </div>
+            <div class="d-flex align-items-center justify-content-between small text-white-50 pt-2 border-top border-secondary border-opacity-25">
+                <span class="d-flex align-items-center text-truncate me-2">
+                    <i class="fa-solid fa-shield-halved me-2 text-info"></i>
+                    <span class="text-truncate">Read-Only Evidence Vault</span>
+                </span>
+                <span class="badge bg-secondary bg-opacity-25 text-white-50 border border-secondary border-opacity-50">v2026.1</span>
+            </div>
         </div>
     </aside>
 
@@ -126,7 +148,7 @@
                 <!-- Scope Switcher Dropdown -->
                 <div class="dropdown">
                     <button class="btn btn-sm btn-light border dropdown-toggle fw-semibold rounded-pill px-2 px-md-3 py-1 text-dark d-flex align-items-center gap-1 gap-md-2 shadow-2xs" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fa-solid fa-globe text-cyan"></i>
+                        <i class="fa-solid fa-globe text-primary"></i>
                         <span id="activeScopeLabel" class="d-none d-sm-inline">Scope: All Business Units (Global)</span>
                         <span class="d-inline d-sm-none">Global</span>
                     </button>
@@ -142,15 +164,15 @@
             <!-- User Pill & Signout Button -->
             <div class="d-flex align-items-center gap-2 gap-md-3">
                 <div class="d-flex align-items-center gap-2">
-                    <div class="avatar-circle-sm bg-hpe-navy text-white fw-bold d-flex align-items-center justify-content-center rounded-circle flex-shrink-0">
+                    <div class="avatar-circle-sm bg-primary text-white fw-bold d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 shadow-2xs">
                         {{ user.email|slice:":1"|upper|default:"A" }}
                     </div>
                     <div class="d-none d-md-block text-start leading-tight">
                         <div class="fw-bold text-dark small">{{ user.email|default:"auditor@hpe.com" }}</div>
-                        <div class="text-muted" style="font-size: 0.7rem;">Compliance Auditor</div>
+                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Compliance Auditor</div>
                     </div>
                 </div>
-                <a href="/logout/" class="btn btn-outline-danger btn-sm rounded-pill px-2 px-md-3 fw-semibold d-flex align-items-center gap-1 shadow-2xs">
+                <a href="/logout/" class="btn btn-outline-secondary btn-sm rounded-pill px-2 px-md-3 fw-semibold d-flex align-items-center gap-1 shadow-2xs">
                     <i class="fa-solid fa-arrow-right-from-bracket"></i>
                     <span class="d-none d-sm-inline">Sign out</span>
                 </a>
@@ -172,15 +194,15 @@
 <div class="modal fade" id="auditDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content bg-white rounded-4 border-0 shadow-lg overflow-hidden">
-            <div class="modal-header bg-hpe-navy text-white px-4 py-3">
+            <div class="modal-header bg-dark text-white px-4 py-3 border-bottom border-secondary border-opacity-25">
                 <h6 class="modal-title fw-bold font-heading d-flex align-items-center gap-2 mb-0">
-                    <i class="fa-solid fa-code-compare text-cyan"></i> State Transition & Audit Diff Inspector
+                    <i class="fa-solid fa-code-compare text-info"></i> State Transition &amp; Audit Diff Inspector
                 </h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4" id="auditDetailModalBody">
                 <div class="text-center py-4">
-                    <div class="spinner-border text-cyan"></div>
+                    <div class="spinner-border text-primary"></div>
                 </div>
             </div>
         </div>
@@ -188,9 +210,9 @@
 </div>
 
 <style>
-    /* ProcureSphere 360 Auditor Design Tokens */
+    /* ProcureSphere 360 Auditor Design Tokens - Unified with Procurement Executive */
     :root {
-        --hpe-navy: #002B49;
+        --hpe-navy: #0F172A;
         --hpe-cyan: #00B0B9;
         --hpe-emerald: #10B981;
         --hpe-rose: #F43F5E;
@@ -200,13 +222,13 @@
         --slate-200: #E2E8F0;
     }
 
-    .bg-hpe-navy { background-color: var(--hpe-navy) !important; }
+    .bg-hpe-navy { background-color: #212529 !important; }
     .bg-slate-50 { background-color: var(--slate-50) !important; }
     .bg-slate-100 { background-color: var(--slate-100) !important; }
-    .text-cyan { color: var(--hpe-cyan) !important; }
+    .text-cyan { color: #00B0B9 !important; }
     .text-emerald { color: var(--hpe-emerald) !important; }
     .text-indigo { color: var(--hpe-indigo) !important; }
-    .bg-cyan { background-color: var(--hpe-cyan) !important; }
+    .bg-cyan { background-color: #00B0B9 !important; }
     .bg-cyan-10 { background-color: rgba(0, 176, 185, 0.12) !important; }
     .bg-emerald-10 { background-color: rgba(16, 185, 129, 0.12) !important; }
     .bg-rose-10 { background-color: rgba(244, 63, 94, 0.12) !important; }
@@ -225,12 +247,13 @@
         background-color: rgba(255, 255, 255, 0.98) !important;
         backdrop-filter: blur(12px) !important;
         -webkit-backdrop-filter: blur(12px) !important;
-        box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.08) !important;
+        border-bottom: 1px solid #E2E8F0 !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
     }
 
     .auditor-main-content {
         min-width: 0;
-        overflow-x: clip; /* clip does NOT create an overflow scroll container, preserving position: sticky */
+        overflow-x: clip;
     }
 
     .auditor-sidebar,
@@ -242,13 +265,15 @@
     /* Desktop Sidebar (>= 992px) */
     @media (min-width: 992px) {
         .auditor-sidebar {
-            width: 260px;
-            min-width: 260px;
+            width: 268px !important;
+            min-width: 268px !important;
             height: 100vh;
             position: -webkit-sticky;
             position: sticky;
             top: 0;
             z-index: 1020;
+            background-color: #212529 !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
         }
         .auditor-backdrop {
             display: none !important;
@@ -268,6 +293,7 @@
             z-index: 1050;
             transform: translateX(-100%);
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background-color: #212529 !important;
             box-shadow: none;
         }
         .auditor-sidebar.show {
@@ -282,7 +308,7 @@
             bottom: 0;
             width: 100vw;
             height: 100vh;
-            background-color: rgba(0, 43, 73, 0.6);
+            background-color: rgba(15, 23, 42, 0.6);
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
             z-index: 1040;
@@ -299,21 +325,30 @@
     .brand-badge-square {
         width: 36px;
         height: 36px;
-        background: linear-gradient(135deg, #00B0B9 0%, #008891 100%);
+        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
     }
 
+    /* Navigation links matching Procurement Executive */
     .auditor-nav-link {
-        transition: all 0.2s ease;
-        font-size: 0.88rem;
+        font-size: 0.875rem !important;
+        transition: all 0.18s ease-in-out;
+        border: 1px solid transparent;
+        color: rgba(255, 255, 255, 0.75) !important;
     }
     .auditor-nav-link:hover {
         background-color: rgba(255, 255, 255, 0.08) !important;
         color: #FFFFFF !important;
+        transform: none;
     }
     .auditor-nav-link.active {
-        background: linear-gradient(90deg, rgba(0, 176, 185, 0.25) 0%, rgba(0, 176, 185, 0.08) 100%) !important;
+        background-color: #0d6efd !important;
         color: #FFFFFF !important;
-        border-left: 3px solid var(--hpe-cyan);
+        font-weight: 700 !important;
+        border-color: transparent !important;
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.25) !important;
+    }
+    .auditor-nav-link.active i {
+        color: #FFFFFF !important;
     }
 
     /* Top-Accent KPI Cards */

@@ -21,6 +21,9 @@ django-axes>=6.3.0
 django-cors-headers>=4.3.1
 whitenoise>=6.6.0
 
+# HTTP client (used for Brevo transactional email API — avoids SMTP port 587)
+requests>=2.31.0
+
 # Reporting & Export Utilities
 openpyxl>=3.1.2
 reportlab>=4.1.0

@@ -85,8 +85,8 @@
 
                 <li class="nav-item mt-2">
                     <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Analytics</div>
-                    <a href="/reports/" class="nav-link rounded sidebar-link {% if request.path == '/reports/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-chart-line me-2 {% if request.path == '/reports/' %}text-white{% else %}text-success{% endif %} w-20px text-center"></i> Reports & Exports
+                    <a href="/reports/" class="nav-link rounded sidebar-link {% if '/reports/' in request.path or request.path == '/reports/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
+                        <i class="fa-solid fa-chart-line me-2 {% if '/reports/' in request.path or request.path == '/reports/' %}text-white{% else %}text-success{% endif %} w-20px text-center"></i> Reports & Exports
                     </a>
                 </li>
 
@@ -154,7 +154,7 @@
 
                 <li class="nav-item mt-2">
                     <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Analytics</div>
-                    <a href="/reports/" class="nav-link rounded sidebar-link {% if request.path == '/reports/' %}active bg-danger fw-bold text-white{% else %}text-light{% endif %}">
+                    <a href="/reports/" class="nav-link rounded sidebar-link {% if '/reports/' in request.path or request.path == '/reports/' %}active bg-danger fw-bold text-white{% else %}text-light{% endif %}">
                         <i class="fa-solid fa-chart-line me-2 text-center" style="width: 20px;"></i> Reports & Exports
                     </a>
                 </li>

@@ -35,6 +35,7 @@ from .selectors import (
     get_bid_attachments_for_evaluator,
     get_eligible_vendors_for_event,
     get_invitation_rows,
+    get_pending_onboarding_vendors,
     get_sourcing_dashboard_metrics,
     search_sourcing_events,
 )
@@ -273,12 +274,36 @@ def sourcing_detail_view(request, event_id):
         eligible_vendors = get_eligible_vendors_for_event(
             event, category_id=request.GET.get("inv_cat") or None, q=request.GET.get("inv_q", "")
         )[:100]
+    pending_vendors = (
+        get_pending_onboarding_vendors(
+            event, category_id=request.GET.get("inv_cat") or None, q=request.GET.get("inv_q", "")
+        )[:50]
+        if can_invite
+        else []
+    )
 
     from apps.orders.models import PurchaseOrder
 
     evaluation_rows = []
     if caps["can_read_bids"] and event.bids_visible_to_evaluators:
         evaluation_rows = build_evaluation_rows(event, request.user)
+
+    bid_portal_rows = []
+    bid_portal_summary = None
+    if caps["can_read_bids"] and event.status != SourcingEvent.STATUS_DRAFT:
+        services.sync_event_window_status(event=event)
+        bid_portal_rows = get_bid_portal_rows(event)
+        responses = (VendorBid.STATUS_SUBMITTED, VendorBid.STATUS_AMENDED)
+        bid_portal_summary = {
+            "invited": len(bid_portal_rows),
+            "responded": sum(1 for r in bid_portal_rows if r["invite"].is_responded),
+            "submitted": sum(
+                1 for r in bid_portal_rows if r["bid"] and r["bid"].status in responses
+            ),
+            "invalid": sum(
+                1 for r in bid_portal_rows if r["validation"] and not r["validation"]["is_valid"]
+            ),
+        }
 
     context = {
         "event": event,
@@ -292,6 +317,7 @@ def sourcing_detail_view(request, event_id):
         "invitation_rows": get_invitation_rows(event),
         "can_invite": can_invite,
         "eligible_vendors": eligible_vendors,
+        "pending_vendors": pending_vendors,
         "categories": VendorCategory.objects.order_by("name"),
         "inv_q": request.GET.get("inv_q", ""),
         "inv_cat": request.GET.get("inv_cat", ""),
@@ -302,6 +328,9 @@ def sourcing_detail_view(request, event_id):
             "-created_at"
         ),
         "evaluation_rows": evaluation_rows,
+        "bid_portal_rows": bid_portal_rows,
+        "bid_portal_summary": bid_portal_summary,
+        "sealed": not event.bids_visible_to_evaluators,
         "current_decision": event.award_decision,
         "purchase_orders": PurchaseOrder.objects.filter(sourcing_event=event).order_by(
             "-created_at"
@@ -719,6 +748,11 @@ def sourcing_invites_htmx_view(request, event_id):
         ),
         "eligible_vendors": (
             get_eligible_vendors_for_event(event)[:100]
+            if sourcing_capabilities(request.user)["can_manage"]
+            else []
+        ),
+        "pending_vendors": (
+            get_pending_onboarding_vendors(event)[:50]
             if sourcing_capabilities(request.user)["can_manage"]
             else []
         ),

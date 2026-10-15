@@ -722,7 +722,7 @@
                             <button onclick="openDossierModal('${v.id}')" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-1" title="View Supplier Dossier">
                                 <i class="fa-solid fa-folder-open me-1"></i> Dossier
                             </button>
-                            <button onclick="openRiskModal('${v.id}', '${v.legal_name}', '${v.vendor_number}', '${v.current_risk_level || 'LOW'}')" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1" title="Assess Risk Level">
+                            <button onclick="openRiskModal('${v.id}', '${v.legal_name}', '${v.vendor_number}', '${v.current_risk_level || 'LOW'}', '${v.status}')" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1" title="Assess Risk Level">
                                 <i class="fa-solid fa-triangle-exclamation"></i>
                             </button>
                             <button onclick="openGovernanceModal('${v.id}', '${v.legal_name}', '${v.status}')" class="btn btn-sm btn-outline-warning rounded-pill px-2 py-1" title="Change Governance Status">
@@ -787,13 +787,53 @@
         renderVendorTable();
     }
 
-    function openRiskModal(vendorId, vendorName, vendorNumber, currentRisk) {
+    function openRiskModal(vendorId, vendorName, vendorNumber, currentRisk, currentStatus) {
         document.getElementById('riskVendorId').value = vendorId;
         document.getElementById('riskModalVendorName').textContent = vendorName;
         document.getElementById('riskModalVendorNumber').textContent = vendorNumber;
         document.getElementById('riskModalLevel').value = currentRisk || 'LOW';
         document.getElementById('riskModalNotes').value = '';
-        document.getElementById('riskModalGovStatus').value = '';
+
+        const govStatusEl = document.getElementById('riskModalGovStatus');
+        if (govStatusEl) {
+            if (['DRAFT', 'SUBMITTED', 'KYC_REVIEW'].includes(currentStatus)) {
+                govStatusEl.innerHTML = `
+                    <option value="">Keep current governance status</option>
+                    <option value="ACTIVE">Approve & Set to ACTIVE</option>
+                    <option value="REJECTED">Reject Qualification</option>
+                `;
+            } else if (currentStatus === 'ACTIVE') {
+                govStatusEl.innerHTML = `
+                    <option value="">Keep current governance status</option>
+                    <option value="ON_HOLD">Place ON_HOLD (Block new bids &amp; POs)</option>
+                    <option value="SUSPENDED">SUSPEND (Full blacklist)</option>
+                `;
+            } else if (currentStatus === 'ON_HOLD') {
+                govStatusEl.innerHTML = `
+                    <option value="">Keep current governance status</option>
+                    <option value="ACTIVE">Release Hold (Set to ACTIVE)</option>
+                    <option value="SUSPENDED">SUSPEND (Full blacklist)</option>
+                `;
+            } else if (currentStatus === 'SUSPENDED') {
+                govStatusEl.innerHTML = `
+                    <option value="">Keep current governance status</option>
+                    <option value="ACTIVE">Reinstate (Set to ACTIVE)</option>
+                `;
+            } else if (currentStatus === 'REJECTED') {
+                govStatusEl.innerHTML = `
+                    <option value="">Keep current governance status</option>
+                    <option value="ACTIVE">Reconsider & Approve (Set to ACTIVE)</option>
+                `;
+            } else {
+                govStatusEl.innerHTML = `
+                    <option value="">Keep current governance status</option>
+                    <option value="ACTIVE">Set to ACTIVE</option>
+                    <option value="ON_HOLD">Place ON_HOLD</option>
+                    <option value="SUSPENDED">SUSPEND</option>
+                `;
+            }
+            govStatusEl.value = '';
+        }
 
         const modalEl = document.getElementById('vendorRiskModal');
         if (modalEl && window.bootstrap) {
@@ -851,8 +891,42 @@
         document.getElementById('govVendorId').value = vendorId;
         document.getElementById('govVendorName').textContent = vendorName;
         document.getElementById('govCurrentStatus').textContent = currentStatus;
-        document.getElementById('govTargetStatus').value = currentStatus === 'ON_HOLD' ? 'ACTIVE' : (currentStatus === 'SUSPENDED' ? 'ACTIVE' : 'ON_HOLD');
         document.getElementById('govReason').value = '';
+
+        const selectEl = document.getElementById('govTargetStatus');
+        if (selectEl) {
+            if (['DRAFT', 'SUBMITTED', 'KYC_REVIEW'].includes(currentStatus)) {
+                selectEl.innerHTML = `
+                    <option value="ACTIVE" selected>ACTIVE — Approve & Authorize Supplier</option>
+                    <option value="REJECTED">REJECTED — Reject Qualification</option>
+                `;
+            } else if (currentStatus === 'ACTIVE') {
+                selectEl.innerHTML = `
+                    <option value="ON_HOLD" selected>ON_HOLD — Restrict New Bids & PO Issuance</option>
+                    <option value="SUSPENDED">SUSPENDED — Complete Supplier Blacklist</option>
+                `;
+            } else if (currentStatus === 'ON_HOLD') {
+                selectEl.innerHTML = `
+                    <option value="ACTIVE" selected>ACTIVE — Release Hold & Reinstate Authorization</option>
+                    <option value="SUSPENDED">SUSPENDED — Complete Supplier Blacklist</option>
+                `;
+            } else if (currentStatus === 'SUSPENDED') {
+                selectEl.innerHTML = `
+                    <option value="ACTIVE" selected>ACTIVE — Reinstate Supplier Authorization</option>
+                `;
+            } else if (currentStatus === 'REJECTED') {
+                selectEl.innerHTML = `
+                    <option value="ACTIVE" selected>ACTIVE — Reconsider & Approve Supplier</option>
+                `;
+            } else {
+                selectEl.innerHTML = `
+                    <option value="ACTIVE" selected>ACTIVE — Full Bidding & PO Authorization</option>
+                    <option value="ON_HOLD">ON_HOLD — Restrict New Bids & PO Issuance</option>
+                    <option value="SUSPENDED">SUSPENDED — Complete Supplier Blacklist</option>
+                    <option value="REJECTED">REJECTED — Rejected Qualification</option>
+                `;
+            }
+        }
 
         const modalEl = document.getElementById('vendorGovernanceModal');
         if (modalEl && window.bootstrap) {

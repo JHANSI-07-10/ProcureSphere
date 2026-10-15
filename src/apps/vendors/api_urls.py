@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsProcurementManager
 from apps.audit.models import AuditLog
+from apps.audit.services import create_audit_log_service
 from apps.orders.models import PurchaseOrder
 from apps.vendors.filters import VendorFilter, annotate_governance
 from apps.vendors.models import (
@@ -681,12 +682,47 @@ class VendorAssessRiskAPIView(APIView):
                 Vendor.STATUS_SUSPENDED,
                 Vendor.STATUS_REJECTED,
             ]:
-                set_vendor_status_governance_service(
-                    vendor=vendor,
-                    actor=request.user,
-                    new_status=gov_status_upper,
-                    notes=assessment_notes,
-                )
+                if gov_status_upper == Vendor.STATUS_ACTIVE and vendor.status in [
+                    Vendor.STATUS_DRAFT,
+                    Vendor.STATUS_SUBMITTED,
+                    Vendor.STATUS_KYC_REVIEW,
+                ]:
+                    previous_status = vendor.status
+                    vendor.status = Vendor.STATUS_ACTIVE
+                    vendor.status_notes = assessment_notes
+                    vendor.save(update_fields=["status", "status_notes", "updated_at"])
+                    create_audit_log_service(
+                        actor=request.user,
+                        action=AuditLog.ACTION_APPROVE,
+                        target_model="Vendor",
+                        target_object_id=str(vendor.id),
+                        previous_state={"status": previous_status},
+                        new_state={"status": vendor.status, "notes": assessment_notes},
+                    )
+                elif gov_status_upper == Vendor.STATUS_REJECTED and vendor.status in [
+                    Vendor.STATUS_DRAFT,
+                    Vendor.STATUS_SUBMITTED,
+                    Vendor.STATUS_KYC_REVIEW,
+                ]:
+                    previous_status = vendor.status
+                    vendor.status = Vendor.STATUS_REJECTED
+                    vendor.status_notes = assessment_notes
+                    vendor.save(update_fields=["status", "status_notes", "updated_at"])
+                    create_audit_log_service(
+                        actor=request.user,
+                        action=AuditLog.ACTION_REJECT,
+                        target_model="Vendor",
+                        target_object_id=str(vendor.id),
+                        previous_state={"status": previous_status},
+                        new_state={"status": vendor.status, "notes": assessment_notes},
+                    )
+                else:
+                    set_vendor_status_governance_service(
+                        vendor=vendor,
+                        actor=request.user,
+                        new_status=gov_status_upper,
+                        notes=assessment_notes,
+                    )
 
         return Response(
             {
@@ -721,9 +757,45 @@ class VendorGovernanceStatusAPIView(APIView):
             )
 
         try:
-            set_vendor_status_governance_service(
-                vendor=vendor, actor=request.user, new_status=new_status, notes=notes
-            )
+            if new_status == Vendor.STATUS_ACTIVE and vendor.status in [
+                Vendor.STATUS_DRAFT,
+                Vendor.STATUS_SUBMITTED,
+                Vendor.STATUS_KYC_REVIEW,
+            ]:
+                previous_status = vendor.status
+                vendor.status = Vendor.STATUS_ACTIVE
+                vendor.status_notes = notes
+                vendor.save(update_fields=["status", "status_notes", "updated_at"])
+                create_audit_log_service(
+                    actor=request.user,
+                    action=AuditLog.ACTION_APPROVE,
+                    target_model="Vendor",
+                    target_object_id=str(vendor.id),
+                    previous_state={"status": previous_status},
+                    new_state={"status": vendor.status, "notes": notes},
+                )
+            elif new_status == Vendor.STATUS_REJECTED and vendor.status in [
+                Vendor.STATUS_DRAFT,
+                Vendor.STATUS_SUBMITTED,
+                Vendor.STATUS_KYC_REVIEW,
+            ]:
+                previous_status = vendor.status
+                vendor.status = Vendor.STATUS_REJECTED
+                vendor.status_notes = notes
+                vendor.save(update_fields=["status", "status_notes", "updated_at"])
+                create_audit_log_service(
+                    actor=request.user,
+                    action=AuditLog.ACTION_REJECT,
+                    target_model="Vendor",
+                    target_object_id=str(vendor.id),
+                    previous_state={"status": previous_status},
+                    new_state={"status": vendor.status, "notes": notes},
+                )
+            else:
+                set_vendor_status_governance_service(
+                    vendor=vendor, actor=request.user, new_status=new_status, notes=notes
+                )
+
             return Response(
                 {
                     "message": f"Vendor {vendor.legal_name} status updated to {new_status}.",

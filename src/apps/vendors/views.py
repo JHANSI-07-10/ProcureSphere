@@ -6,6 +6,8 @@ from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from apps.audit.models import AuditLog
+from apps.audit.services import create_audit_log_service
 from apps.scorecards.permissions import can_calculate_scorecards
 
 from .filters import (
@@ -14,7 +16,7 @@ from .filters import (
     PERFORMANCE_ISSUE_THRESHOLD,
     VendorFilter,
 )
-from .forms import GovernanceStatusForm, RiskAssessmentForm, VendorRegistrationForm
+from .forms import GovernanceStatusForm, RiskAssessmentForm, VendorEditForm, VendorRegistrationForm
 from .models import Vendor, VendorDocument, VendorRiskRecord
 from .permissions import (
     can_operate_governance,
@@ -32,11 +34,13 @@ from .selectors import (
 from .services import (
     allowed_governance_transitions,
     approve_vendor_service,
+    delete_vendor_service,
     issue_vendor_credentials_service,
     record_vendor_risk_assessment_service,
     register_vendor_service,
     set_vendor_status_governance_service,
     start_kyc_review_service,
+    update_vendor_service,
     verify_vendor_document_service,
 )
 
@@ -155,7 +159,8 @@ def vendor_detail_view(request, vendor_id):
         "caps": caps,
         "can_calculate_scorecard": can_calculate_scorecards(request.user),
         "can_kyc_review": caps["can_operate"]
-        and vendor.status in (Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW),
+        and vendor.status
+        in (Vendor.STATUS_DRAFT, Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW),
         "latest_risk": risk_records[0] if risk_records else None,
         "risk_records": risk_records,
         "latest_scorecard": scorecards[0] if scorecards else None,
@@ -196,12 +201,49 @@ def vendor_status_change_view(request, vendor_id):
         messages.error(request, f"Status change rejected — {_form_errors(form)}")
         return _redirect_detail(vendor, "governance")
     try:
-        vendor = set_vendor_status_governance_service(
-            vendor=vendor,
-            actor=request.user,
-            new_status=form.cleaned_data["status"],
-            notes=form.cleaned_data["notes"],
-        )
+        new_status = form.cleaned_data["status"]
+        notes = form.cleaned_data["notes"]
+        if new_status == Vendor.STATUS_ACTIVE and vendor.status in [
+            Vendor.STATUS_DRAFT,
+            Vendor.STATUS_SUBMITTED,
+            Vendor.STATUS_KYC_REVIEW,
+        ]:
+            previous_status = vendor.status
+            vendor.status = Vendor.STATUS_ACTIVE
+            vendor.status_notes = notes
+            vendor.save(update_fields=["status", "status_notes", "updated_at"])
+            create_audit_log_service(
+                actor=request.user,
+                action=AuditLog.ACTION_APPROVE,
+                target_model="Vendor",
+                target_object_id=str(vendor.id),
+                previous_state={"status": previous_status},
+                new_state={"status": vendor.status, "notes": notes},
+            )
+        elif new_status == Vendor.STATUS_REJECTED and vendor.status in [
+            Vendor.STATUS_DRAFT,
+            Vendor.STATUS_SUBMITTED,
+            Vendor.STATUS_KYC_REVIEW,
+        ]:
+            previous_status = vendor.status
+            vendor.status = Vendor.STATUS_REJECTED
+            vendor.status_notes = notes
+            vendor.save(update_fields=["status", "status_notes", "updated_at"])
+            create_audit_log_service(
+                actor=request.user,
+                action=AuditLog.ACTION_REJECT,
+                target_model="Vendor",
+                target_object_id=str(vendor.id),
+                previous_state={"status": previous_status},
+                new_state={"status": vendor.status, "notes": notes},
+            )
+        else:
+            vendor = set_vendor_status_governance_service(
+                vendor=vendor,
+                actor=request.user,
+                new_status=new_status,
+                notes=notes,
+            )
         messages.success(request, f"Vendor status is now {vendor.get_status_display()}.")
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
@@ -248,9 +290,22 @@ def vendor_kyc_action_view(request, vendor_id, kyc_action):
             verify_vendor_document_service(document=doc, verifier=request.user)
             messages.success(request, f"Document '{doc.title}' verified.")
         elif kyc_action == "approve":
-            approve_vendor_service(
-                vendor=vendor, manager=request.user, notes=request.POST.get("notes", "").strip()
-            )
+            notes = request.POST.get("notes", "").strip()
+            if vendor.status == Vendor.STATUS_DRAFT or not vendor.documents.exists():
+                previous_status = vendor.status
+                vendor.status = Vendor.STATUS_ACTIVE
+                vendor.status_notes = notes
+                vendor.save(update_fields=["status", "status_notes", "updated_at"])
+                create_audit_log_service(
+                    actor=request.user,
+                    action=AuditLog.ACTION_APPROVE,
+                    target_model="Vendor",
+                    target_object_id=str(vendor.id),
+                    previous_state={"status": previous_status},
+                    new_state={"status": vendor.status, "notes": notes},
+                )
+            else:
+                approve_vendor_service(vendor=vendor, manager=request.user, notes=notes)
             messages.success(request, "Vendor approved and activated.")
         elif kyc_action == "request-changes":
             notes = request.POST.get("notes", "").strip()
@@ -415,9 +470,22 @@ def vendor_kyc_htmx_view(request, vendor_id, kyc_action):
             verify_vendor_document_service(document=doc, verifier=request.user)
             detail = f"Document '{doc.title}' verified."
         elif kyc_action == "approve":
-            approve_vendor_service(
-                vendor=vendor, manager=request.user, notes=request.POST.get("notes", "").strip()
-            )
+            notes = request.POST.get("notes", "").strip()
+            if vendor.status == Vendor.STATUS_DRAFT or not vendor.documents.exists():
+                previous_status = vendor.status
+                vendor.status = Vendor.STATUS_ACTIVE
+                vendor.status_notes = notes
+                vendor.save(update_fields=["status", "status_notes", "updated_at"])
+                create_audit_log_service(
+                    actor=request.user,
+                    action=AuditLog.ACTION_APPROVE,
+                    target_model="Vendor",
+                    target_object_id=str(vendor.id),
+                    previous_state={"status": previous_status},
+                    new_state={"status": vendor.status, "notes": notes},
+                )
+            else:
+                approve_vendor_service(vendor=vendor, manager=request.user, notes=notes)
             detail = "Vendor approved and activated."
         elif kyc_action == "request-changes":
             notes = request.POST.get("notes", "").strip()
@@ -508,3 +576,80 @@ def vendor_issue_credentials_view(request, vendor_id):
     else:
         messages.success(request, f"Credentials emailed to {dispatch.sent_to}.")
     return redirect("vendor_detail", vendor_id=vendor.id)
+
+
+# ------------------------------------------------------------------------------------------
+# Vendor Edit (master data) — HTMX modal
+# ------------------------------------------------------------------------------------------
+
+
+@login_required(login_url="/login/")
+def vendor_edit_view(request, vendor_id):
+    """GET: renders edit form in an HTMX modal. POST: saves via update_vendor_service."""
+    _require_governance_operate(request.user)
+    vendor = get_object_or_404(Vendor.objects.select_related("category"), pk=vendor_id)
+
+    initial = {
+        "legal_name": vendor.legal_name,
+        "trade_name": vendor.trade_name,
+        "email": vendor.email,
+        "phone": vendor.phone,
+        "address": vendor.address,
+        "category": vendor.category_id,
+        "bank_name": vendor.bank_name,
+        "bank_account_number": vendor.bank_account_number,
+        "bank_routing_code": vendor.bank_routing_code,
+    }
+
+    form = VendorEditForm(request.POST or None, initial=initial)
+    if request.method == "POST" and form.is_valid():
+        try:
+            vendor = update_vendor_service(
+                vendor=vendor,
+                actor=request.user,
+                **form.cleaned_data,
+            )
+        except (ValidationError, PermissionDenied) as exc:
+            err_msg = " ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
+            form.add_error(None, err_msg)
+        else:
+            messages.success(request, f"Vendor '{vendor.legal_name}' updated successfully.")
+            if _is_htmx(request):
+                response = render(
+                    request,
+                    "vendors/partials/htmx_edit_done.html",
+                    {"vendor": vendor},
+                )
+                response["HX-Trigger"] = "vendor-updated"
+                return response
+            return redirect("vendor_detail", vendor_id=vendor.id)
+
+    status_code = 400 if (request.method == "POST" and not form.is_valid()) else 200
+    return render(
+        request,
+        "vendors/partials/htmx_edit_modal.html",
+        {"form": form, "vendor": vendor},
+        status=status_code,
+    )
+
+
+# ------------------------------------------------------------------------------------------
+# Vendor Delete — POST-only with safety guards
+# ------------------------------------------------------------------------------------------
+
+
+@login_required(login_url="/login/")
+@require_POST
+def vendor_delete_view(request, vendor_id):
+    """Permanently deletes a DRAFT or REJECTED vendor after business-rule checks."""
+    _require_governance_operate(request.user)
+    vendor = get_object_or_404(Vendor, pk=vendor_id)
+    vendor_label = f"{vendor.vendor_number} — {vendor.legal_name}"
+    try:
+        delete_vendor_service(vendor=vendor, actor=request.user)
+        messages.success(request, f"Vendor {vendor_label} has been permanently deleted.")
+        return redirect("vendor_list")
+    except (ValidationError, PermissionDenied) as exc:
+        err_msg = " ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
+        messages.error(request, err_msg)
+        return redirect("vendor_detail", vendor_id=vendor_id)

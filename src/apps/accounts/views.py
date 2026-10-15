@@ -50,21 +50,24 @@ def portal_login_view(request):
             login(request, user)
 
             # Record AuditLog for authentication
-            from apps.audit.models import AuditLog
-            from apps.audit.services import create_audit_log_service
+            try:
+                from apps.audit.models import AuditLog
+                from apps.audit.services import create_audit_log_service
 
-            create_audit_log_service(
-                actor=user,
-                action=AuditLog.ACTION_LOGIN,
-                target_model="User",
-                target_object_id=str(user.id),
-                new_state={
-                    "email": user.email,
-                    "role": user.role_code if hasattr(user, "role_code") else None,
-                },
-                ip_address=request.META.get("REMOTE_ADDR"),
-                user_agent=request.META.get("HTTP_USER_AGENT", ""),
-            )
+                create_audit_log_service(
+                    actor=user,
+                    action=AuditLog.ACTION_LOGIN,
+                    target_model="User",
+                    target_object_id=str(user.id),
+                    new_state={
+                        "email": user.email,
+                        "role": user.role_code if hasattr(user, "role_code") else None,
+                    },
+                    ip_address=request.META.get("REMOTE_ADDR"),
+                    user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                )
+            except (ImportError, Exception):
+                pass
 
 <<<<<<< Updated upstream
             next_url = request.GET.get("next")
