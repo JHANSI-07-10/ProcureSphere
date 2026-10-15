@@ -53,4 +53,16 @@ urlpatterns = [
         views.vendor_kyc_htmx_view,
         name="vendors_kyc_htmx",
     ),
+    # Edit vendor master data (HTMX modal)
+    path(
+        "vendors/<uuid:vendor_id>/edit/",
+        views.vendor_edit_view,
+        name="vendor_edit",
+    ),
+    # Delete vendor (POST-only, DRAFT/REJECTED only)
+    path(
+        "vendors/<uuid:vendor_id>/delete/",
+        views.vendor_delete_view,
+        name="vendor_delete",
+    ),
 ]

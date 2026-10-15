@@ -249,3 +249,26 @@ def get_eligible_vendors_for_event(event: SourcingEvent, category_id=None, q="")
             Q(legal_name__icontains=q) | Q(vendor_number__icontains=q) | Q(trade_name__icontains=q)
         )
     return qs
+
+
+PENDING_ONBOARDING_STATUSES = ["DRAFT", "SUBMITTED", "KYC_REVIEW"]
+
+
+def get_pending_onboarding_vendors(event: SourcingEvent, category_id=None, q=""):
+    """Newly registered vendors that cannot be invited yet (KYC not approved). Display only."""
+    from apps.vendors.models import Vendor
+
+    invited = BidInvite.objects.filter(event=event).values("vendor_id")
+    qs = (
+        Vendor.objects.filter(status__in=PENDING_ONBOARDING_STATUSES)
+        .exclude(id__in=invited)
+        .select_related("category")
+        .order_by("legal_name")
+    )
+    if category_id:
+        qs = qs.filter(category_id=category_id)
+    if q:
+        qs = qs.filter(
+            Q(legal_name__icontains=q) | Q(vendor_number__icontains=q) | Q(trade_name__icontains=q)
+        )
+    return qs

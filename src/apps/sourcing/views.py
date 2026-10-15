@@ -35,6 +35,7 @@ from .selectors import (
     get_bid_attachments_for_evaluator,
     get_eligible_vendors_for_event,
     get_invitation_rows,
+    get_pending_onboarding_vendors,
     get_sourcing_dashboard_metrics,
     search_sourcing_events,
 )
@@ -273,6 +274,13 @@ def sourcing_detail_view(request, event_id):
         eligible_vendors = get_eligible_vendors_for_event(
             event, category_id=request.GET.get("inv_cat") or None, q=request.GET.get("inv_q", "")
         )[:100]
+    pending_vendors = (
+        get_pending_onboarding_vendors(
+            event, category_id=request.GET.get("inv_cat") or None, q=request.GET.get("inv_q", "")
+        )[:50]
+        if can_invite
+        else []
+    )
 
     from apps.orders.models import PurchaseOrder
 
@@ -309,6 +317,7 @@ def sourcing_detail_view(request, event_id):
         "invitation_rows": get_invitation_rows(event),
         "can_invite": can_invite,
         "eligible_vendors": eligible_vendors,
+        "pending_vendors": pending_vendors,
         "categories": VendorCategory.objects.order_by("name"),
         "inv_q": request.GET.get("inv_q", ""),
         "inv_cat": request.GET.get("inv_cat", ""),
@@ -739,6 +748,11 @@ def sourcing_invites_htmx_view(request, event_id):
         ),
         "eligible_vendors": (
             get_eligible_vendors_for_event(event)[:100]
+            if sourcing_capabilities(request.user)["can_manage"]
+            else []
+        ),
+        "pending_vendors": (
+            get_pending_onboarding_vendors(event)[:50]
             if sourcing_capabilities(request.user)["can_manage"]
             else []
         ),

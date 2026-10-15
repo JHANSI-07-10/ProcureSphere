@@ -13,10 +13,13 @@ Settings required in .env:
     EMAIL_USE_TLS=True
     DEFAULT_FROM_EMAIL=Name <email>
 """
+
 from django.conf import settings
 
 
-def build_credentials_html(*, vendor_name: str, vendor_number: str, email: str, password: str) -> str:
+def build_credentials_html(
+    *, vendor_name: str, vendor_number: str, email: str, password: str
+) -> str:
     """Returns a styled HTML email body for vendor credential dispatch."""
     login_links_html = "".join(
         f'<li><a href="{url}" style="color:#2563eb;">{url}</a></li>'

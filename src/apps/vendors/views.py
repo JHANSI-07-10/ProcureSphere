@@ -16,7 +16,7 @@ from .filters import (
     PERFORMANCE_ISSUE_THRESHOLD,
     VendorFilter,
 )
-from .forms import GovernanceStatusForm, RiskAssessmentForm, VendorRegistrationForm
+from .forms import GovernanceStatusForm, RiskAssessmentForm, VendorEditForm, VendorRegistrationForm
 from .models import Vendor, VendorDocument, VendorRiskRecord
 from .permissions import (
     can_operate_governance,
@@ -34,11 +34,13 @@ from .selectors import (
 from .services import (
     allowed_governance_transitions,
     approve_vendor_service,
+    delete_vendor_service,
     issue_vendor_credentials_service,
     record_vendor_risk_assessment_service,
     register_vendor_service,
     set_vendor_status_governance_service,
     start_kyc_review_service,
+    update_vendor_service,
     verify_vendor_document_service,
 )
 
@@ -574,3 +576,80 @@ def vendor_issue_credentials_view(request, vendor_id):
     else:
         messages.success(request, f"Credentials emailed to {dispatch.sent_to}.")
     return redirect("vendor_detail", vendor_id=vendor.id)
+
+
+# ------------------------------------------------------------------------------------------
+# Vendor Edit (master data) — HTMX modal
+# ------------------------------------------------------------------------------------------
+
+
+@login_required(login_url="/login/")
+def vendor_edit_view(request, vendor_id):
+    """GET: renders edit form in an HTMX modal. POST: saves via update_vendor_service."""
+    _require_governance_operate(request.user)
+    vendor = get_object_or_404(Vendor.objects.select_related("category"), pk=vendor_id)
+
+    initial = {
+        "legal_name": vendor.legal_name,
+        "trade_name": vendor.trade_name,
+        "email": vendor.email,
+        "phone": vendor.phone,
+        "address": vendor.address,
+        "category": vendor.category_id,
+        "bank_name": vendor.bank_name,
+        "bank_account_number": vendor.bank_account_number,
+        "bank_routing_code": vendor.bank_routing_code,
+    }
+
+    form = VendorEditForm(request.POST or None, initial=initial)
+    if request.method == "POST" and form.is_valid():
+        try:
+            vendor = update_vendor_service(
+                vendor=vendor,
+                actor=request.user,
+                **form.cleaned_data,
+            )
+        except (ValidationError, PermissionDenied) as exc:
+            err_msg = " ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
+            form.add_error(None, err_msg)
+        else:
+            messages.success(request, f"Vendor '{vendor.legal_name}' updated successfully.")
+            if _is_htmx(request):
+                response = render(
+                    request,
+                    "vendors/partials/htmx_edit_done.html",
+                    {"vendor": vendor},
+                )
+                response["HX-Trigger"] = "vendor-updated"
+                return response
+            return redirect("vendor_detail", vendor_id=vendor.id)
+
+    status_code = 400 if (request.method == "POST" and not form.is_valid()) else 200
+    return render(
+        request,
+        "vendors/partials/htmx_edit_modal.html",
+        {"form": form, "vendor": vendor},
+        status=status_code,
+    )
+
+
+# ------------------------------------------------------------------------------------------
+# Vendor Delete — POST-only with safety guards
+# ------------------------------------------------------------------------------------------
+
+
+@login_required(login_url="/login/")
+@require_POST
+def vendor_delete_view(request, vendor_id):
+    """Permanently deletes a DRAFT or REJECTED vendor after business-rule checks."""
+    _require_governance_operate(request.user)
+    vendor = get_object_or_404(Vendor, pk=vendor_id)
+    vendor_label = f"{vendor.vendor_number} — {vendor.legal_name}"
+    try:
+        delete_vendor_service(vendor=vendor, actor=request.user)
+        messages.success(request, f"Vendor {vendor_label} has been permanently deleted.")
+        return redirect("vendor_list")
+    except (ValidationError, PermissionDenied) as exc:
+        err_msg = " ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
+        messages.error(request, err_msg)
+        return redirect("vendor_detail", vendor_id=vendor_id)

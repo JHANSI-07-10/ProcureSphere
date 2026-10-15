@@ -144,7 +144,7 @@
 
             {% if can_invite %}
                 <div class="border rounded p-3">
-                    <div class="small fw-semibold mb-2">Invite eligible vendors <span class="text-muted fw-normal">(only ACTIVE vendors; on-hold, suspended and un-approved vendors are excluded)</span></div>
+                    <div class="small fw-semibold mb-2">Invite eligible vendors <span class="text-muted fw-normal">(only ACTIVE vendors can be invited; new vendors appear below until KYC is approved)</span></div>
                     <form method="get" class="d-flex flex-wrap gap-2 mb-2" action="#invitations">
                         <input type="search" name="inv_q" value="{{ inv_q }}" class="form-control form-control-sm" style="max-width:240px" placeholder="Search vendor" aria-label="Search eligible vendors">
                         <select name="inv_cat" class="form-select form-select-sm" style="max-width:220px" aria-label="Vendor category">
@@ -166,6 +166,21 @@
                         </div>
                         {% if eligible_vendors %}<button class="btn btn-sm btn-info text-white"><i class="fa-solid fa-paper-plane me-1"></i>Invite selected</button>{% endif %}
                     </form>
+                {% if pending_vendors %}
+                <div class="border rounded p-3 mt-3 small bg-light">
+                    <div class="fw-semibold mb-1"><i class="fa-solid fa-user-clock text-warning me-1"></i>Newly registered vendors awaiting KYC approval</div>
+                    <div class="text-muted mb-2">They can be invited once the vendor submits KYC documents and the registration is approved (status ACTIVE).</div>
+                    <ul class="list-unstyled mb-0">
+                    {% for v in pending_vendors %}
+                        <li class="d-flex justify-content-between flex-wrap gap-2 py-1 border-top">
+                            <span>{{ v.legal_name }} <span class="text-muted">· {{ v.category.name }}</span></span>
+                            <span><span class="badge bg-secondary">{{ v.get_status_display }}</span>
+                            <a class="ms-2" href="{% url 'vendor_detail' v.id %}">Review onboarding</a></span>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
                 </div>
             {% endif %}
         </div>
