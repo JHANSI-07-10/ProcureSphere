@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends base_layout|default:'base.html' %}
 
 {% block title %}{{ event.event_number }} — Evaluation &amp; Award{% endblock %}
 
@@ -13,7 +13,11 @@
         <h2 class="fw-bold text-dark mb-0">Evaluation &amp; Award — {{ event.title }}</h2>
     </div>
     <div class="d-flex flex-wrap gap-2">
+        {% if user.role_code == 'PROC_MGR' %}
+        <a href="/manager/awards/" class="btn btn-outline-secondary rounded-pill px-3"><i class="fa-solid fa-arrow-left me-1"></i>Back to Awards</a>
+        {% else %}
         <a href="{% url 'evaluation_dashboard' %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="fa-solid fa-arrow-left me-1"></i>Evaluation &amp; Award</a>
+        {% endif %}
         <a href="{% url 'bid_portal_event' event.id %}" class="btn btn-outline-secondary rounded-pill px-3">Bid portal</a>
         <a href="{% url 'sourcing_detail' event.id %}" class="btn btn-outline-secondary rounded-pill px-3">Event setup</a>
     </div>

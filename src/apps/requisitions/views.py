@@ -1,3 +1,4 @@
+import os
 from decimal import Decimal
 
 from django.contrib import messages
@@ -5,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -743,10 +745,8 @@ def attachment_download_view(request, pk, attachment_id):
     department/organization scoping, and audit logging.
     """
     import mimetypes
-    import os
 
     from django.core.exceptions import PermissionDenied
-    from django.http import FileResponse
 
     from apps.audit.models import AuditLog
 
@@ -789,11 +789,22 @@ def attachment_download_view(request, pk, attachment_id):
 
     attachment = get_object_or_404(PRAttachment, pk=attachment_id, requisition=pr)
 
+    file_path = None
     if (
-        not attachment.file
-        or not hasattr(attachment.file, "path")
-        or not os.path.exists(attachment.file.path)
+        attachment.file
+        and hasattr(attachment.file, "path")
+        and os.path.exists(attachment.file.path)
     ):
+        file_path = attachment.file.path
+    else:
+        try:
+            from .utils import ensure_attachment_file_exists
+
+            file_path = ensure_attachment_file_exists(attachment)
+        except Exception:
+            file_path = None
+
+    if not file_path or not os.path.exists(file_path):
         messages.error(request, "Requested supporting document file was not found on storage.")
         return redirect("requisition_detail", pk=pr.pk)
 
@@ -808,18 +819,18 @@ def attachment_download_view(request, pk, attachment_id):
         new_state={
             "pr_number": pr.pr_number,
             "attachment_title": attachment.title,
-            "file_name": os.path.basename(attachment.file.name),
+            "file_name": os.path.basename(file_path),
             "access_type": action,
         },
     )
 
-    content_type, _ = mimetypes.guess_type(attachment.file.path)
+    content_type, _ = mimetypes.guess_type(attachment.title or file_path)
     if not content_type:
         content_type = "application/octet-stream"
 
-    filename = os.path.basename(attachment.file.name)
+    filename = attachment.title or os.path.basename(file_path)
     response = FileResponse(
-        open(attachment.file.path, "rb"),
+        open(file_path, "rb"),
         as_attachment=as_attachment,
         filename=filename if as_attachment else None,
         content_type=content_type,

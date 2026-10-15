@@ -66,6 +66,29 @@ class SourcingEventViewSet(
         qs = get_sourcing_events_for_user(self.request.user)
         return search_sourcing_events(qs, self.request.query_params)
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+
+        base_qs = get_sourcing_events_for_user(self.request.user)
+        summary = {
+            "total_events": base_qs.count(),
+            "bidding_open": base_qs.filter(status=SourcingEvent.STATUS_BID_WINDOW).count(),
+            "technical_review": base_qs.filter(
+                status=SourcingEvent.STATUS_TECHNICAL_REVIEW
+            ).count(),
+            "award_approval": base_qs.filter(status=SourcingEvent.STATUS_AWARD_APPROVAL).count(),
+        }
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            res = self.get_paginated_response(serializer.data)
+            res.data["summary"] = summary
+            return res
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({"results": serializer.data, "summary": summary})
+
     def get_object(self):
         event = super().get_object()
         services.sync_event_window_status(event=event)

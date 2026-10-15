@@ -13,8 +13,9 @@
     --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-body.app-body {
+body, body.app-body {
     font-family: var(--font-body);
+    font-size: 0.875rem;
     background-color: #F8FAFC;
     color: #1E293B;
     min-height: 100vh;
@@ -246,7 +247,6 @@ h1, h2, h3, h4, h5, h6, .font-heading {
     max-height: 380px;
     overflow-y: auto;
 }
-
 /* Mobile Optimization & Responsive Viewport Fixes */
 html, body {
     overflow-x: clip;
@@ -283,5 +283,38 @@ html, body {
     .breadcrumb {
         font-size: 0.75rem !important;
     }
+}
+
+/* Unified Manager & Auditor Navigation styling (matches Procurement Executive) */
+.manager-nav-link, .auditor-nav-link {
+    font-size: 0.875rem !important;
+    transition: all 0.18s ease-in-out;
+    border: 1px solid transparent;
+    color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.manager-nav-link:hover, .auditor-nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #FFFFFF !important;
+}
+
+.manager-nav-link.active, .auditor-nav-link.active {
+    background-color: #0d6efd !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    border-color: transparent !important;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.25) !important;
+}
+
+.manager-nav-link.active i, .auditor-nav-link.active i {
+    color: #FFFFFF !important;
+}
+
+/* Unified Sidebar Width & Style */
+.manager-sidebar, .auditor-sidebar {
+    width: 268px !important;
+    min-width: 268px !important;
+    background-color: #212529 !important; /* Bootstrap bg-dark matching proc exec sidebar */
+    border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
 }
 

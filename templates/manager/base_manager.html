@@ -15,17 +15,15 @@
     <!-- ========================================================================= -->
     <!-- 1. STICKY DARK SIDEBAR (ProcureSphere 360 Theme: Navy #002B49 / #0F172A)  -->
     <!-- ========================================================================= -->
-    <aside id="managerSidebar" class="manager-sidebar bg-hpe-navy text-white d-flex flex-column flex-shrink-0 shadow-lg">
+    <aside id="managerSidebar" class="manager-sidebar bg-dark text-white border-end border-secondary border-opacity-25 d-flex flex-column flex-shrink-0 shadow-sm" style="width: 268px;">
         
         <!-- Sidebar Brand Header -->
-        <div class="sidebar-brand-box px-3 py-3 border-bottom border-white-10 d-flex align-items-center justify-content-between">
-            <a href="/manager/" class="d-flex align-items-center text-white text-decoration-none">
-                <div class="brand-badge-square me-2 d-flex align-items-center justify-content-center bg-amber-gradient rounded-3 text-dark fw-bold shadow-sm">
-                    <span>PM</span>
-                </div>
+        <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
+            <a href="/manager/" class="d-flex align-items-center text-white text-decoration-none" id="managerSidebarLabel">
+                <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
                 <div>
-                    <div class="brand-title fw-bold font-heading lh-1 text-white fs-6">ProcureSphere</div>
-                    <span class="badge bg-amber text-dark rounded-pill fw-bold" style="font-size: 0.62rem; letter-spacing: 0.04em;">
+                    <div class="brand-title fw-bold font-heading lh-1 text-white fs-6">ProcureSphere <span class="text-primary fw-light">360</span></div>
+                    <span class="badge bg-info text-dark rounded-pill fw-bold" style="font-size: 0.62rem; letter-spacing: 0.04em;">
                         PROCUREMENT MANAGER
                     </span>
                 </div>
@@ -38,108 +36,118 @@
 
         <!-- Sidebar Navigation Menu -->
         <div class="sidebar-nav-container flex-grow-1 overflow-y-auto px-2 py-3">
-            <ul class="nav nav-pills flex-column gap-1" id="managerSidebarMenu">
+            <ul class="nav nav-pills flex-column gap-1 small" id="managerSidebarMenu">
                 
                 <!-- DASHBOARD SECTION -->
-                <li class="nav-section-label px-3 pt-1 pb-1 text-white-50 fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.08em;">
+                <li class="nav-section-label text-uppercase text-secondary fw-bold px-2 pt-1 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">
                     DASHBOARD
                 </li>
                 <li class="nav-item">
-                    <a href="/manager/" class="nav-link manager-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white {% if request.path == '/manager/' %}active{% endif %}">
-                        <i class="fa-solid fa-chart-pie me-3 fs-6 text-amber"></i>
-                        <span class="fw-semibold">Executive Dashboard</span>
+                    <a href="/manager/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small {% if request.path == '/manager/' %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-chart-pie me-2"></i>
+                        <span>Executive Dashboard</span>
                     </a>
                 </li>
 
                 <!-- PROCUREMENT SECTION -->
-                <li class="nav-section-label px-3 pt-3 pb-1 text-white-50 fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.08em;">
+                <li class="nav-section-label text-uppercase text-secondary fw-bold px-2 pt-3 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">
                     PROCUREMENT
                 </li>
                 <li class="nav-item">
-                    <a href="/manager/pipeline/" class="nav-link manager-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/manager/pipeline/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-filter-circle-dollar me-3 fs-6 text-cyan"></i>
-                        <span class="fw-semibold">Procurement Pipeline</span>
+                    <a href="/manager/pipeline/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small {% if '/manager/pipeline/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-filter-circle-dollar me-2"></i>
+                        <span>Procurement Pipeline</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/manager/pr-aging/" class="nav-link manager-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/manager/pr-aging/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-clock-rotate-left me-3 fs-6 text-warning"></i>
-                        <span class="fw-semibold">PR Aging & Bottlenecks</span>
+                    <a href="/manager/pr-aging/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small {% if '/manager/pr-aging/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-clock-rotate-left me-2"></i>
+                        <span>PR Aging &amp; Bottlenecks</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/manager/sourcing/" class="nav-link manager-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/manager/sourcing/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-gavel me-3 fs-6 text-info"></i>
-                        <span class="fw-semibold">Sourcing Events</span>
+                    <a href="/manager/sourcing/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small {% if '/manager/sourcing/' in request.path or '/sourcing-events/' in request.path or '/sourcing/bid-portal/' in request.path or request.path == '/sourcing/' %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-gavel me-2"></i>
+                        <span>Sourcing Events</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/manager/awards/" class="nav-link manager-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/manager/awards/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-award me-3 fs-6 text-amber"></i>
-                        <span class="fw-semibold">Award Approvals</span>
+                    <a href="/manager/awards/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small {% if '/manager/awards/' in request.path or '/sourcing/evaluation' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-award me-2"></i>
+                        <span>Award Approvals</span>
                     </a>
                 </li>
 
                 <!-- ORDERS SECTION -->
-                <li class="nav-section-label px-3 pt-3 pb-1 text-white-50 fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.08em;">
+                <li class="nav-section-label text-uppercase text-secondary fw-bold px-2 pt-3 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">
                     ORDERS
                 </li>
                 <li class="nav-item">
-                    <a href="/manager/purchase-orders/" class="nav-link manager-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/manager/purchase-orders/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-cart-shopping me-3 fs-6 text-emerald"></i>
-                        <span class="fw-semibold">Purchase Orders</span>
+                    <a href="/manager/purchase-orders/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small {% if '/manager/purchase-orders/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-cart-shopping me-2"></i>
+                        <span>Purchase Orders</span>
                     </a>
                 </li>
 
                 <!-- SUPPLIERS SECTION -->
-                <li class="nav-section-label px-3 pt-3 pb-1 text-white-50 fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.08em;">
+                <li class="nav-section-label text-uppercase text-secondary fw-bold px-2 pt-3 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">
                     SUPPLIERS
                 </li>
                 <li class="nav-item">
-                    <a href="/manager/vendor-risk/" class="nav-link manager-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/manager/vendor-risk/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-shield-halved me-3 fs-6 text-rose"></i>
-                        <span class="fw-semibold">Vendor Risk</span>
+                    <a href="/manager/vendor-risk/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small {% if '/manager/vendor-risk/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-shield-halved me-2"></i>
+                        <span>Vendor Risk</span>
                     </a>
                 </li>
 
                 <!-- ANALYTICS SECTION -->
-                <li class="nav-section-label px-3 pt-3 pb-1 text-white-50 fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.08em;">
+                <li class="nav-section-label text-uppercase text-secondary fw-bold px-2 pt-3 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">
                     ANALYTICS
                 </li>
                 <li class="nav-item">
-                    <a href="/manager/spend/" class="nav-link manager-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/manager/spend/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-chart-line me-3 fs-6 text-indigo"></i>
-                        <span class="fw-semibold">Spend Analysis</span>
+                    <a href="/manager/spend/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small {% if '/manager/spend/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-chart-line me-2"></i>
+                        <span>Spend Analysis</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/manager/performance/" class="nav-link manager-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/manager/performance/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-star-half-stroke me-3 fs-6 text-amber"></i>
-                        <span class="fw-semibold">Supplier Performance</span>
+                    <a href="/manager/performance/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small {% if '/manager/performance/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-star-half-stroke me-2"></i>
+                        <span>Supplier Performance</span>
                     </a>
                 </li>
 
                 <!-- WORKFLOW SECTION -->
-                <li class="nav-section-label px-3 pt-3 pb-1 text-white-50 fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.08em;">
+                <li class="nav-section-label text-uppercase text-secondary fw-bold px-2 pt-3 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">
                     WORKFLOW
                 </li>
                 <li class="nav-item">
-                    <a href="/manager/notifications/" class="nav-link manager-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/manager/notifications/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-bell me-3 fs-6 text-cyan"></i>
-                        <span class="fw-semibold">Notifications & Alerts</span>
+                    <a href="/manager/notifications/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small {% if '/manager/notifications/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-bell me-2"></i>
+                        <span>Notifications &amp; Alerts</span>
                     </a>
                 </li>
             </ul>
         </div>
 
         <!-- Sidebar Footer -->
-        <div class="sidebar-footer p-3 border-top border-white-10 bg-black-20">
-            <div class="d-flex align-items-center justify-content-between small text-white-50">
+        <div class="sidebar-footer border-top border-secondary border-opacity-25 px-3 py-3 mt-auto">
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                <div class="d-flex align-items-center" style="min-width: 0;">
+                    <i class="fa-solid fa-circle-user text-info fs-4 me-2"></i>
+                    <div style="min-width: 0;">
+                        <div class="small fw-semibold text-white text-truncate" title="{{ user.email }}">{{ user.email }}</div>
+                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Procurement Manager</div>
+                    </div>
+                </div>
+                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill" title="Sign out"><i class="fa-solid fa-arrow-right-from-bracket"></i><span class="visually-hidden">Sign out</span></a>
+            </div>
+            <div class="d-flex align-items-center justify-content-between small text-white-50 pt-2 border-top border-secondary border-opacity-25">
                 <span class="d-flex align-items-center text-truncate me-2" title="Organization: {{ user_org_name|default:'Global Enterprise' }}">
-                    <i class="fa-solid fa-building me-2 text-cyan"></i>
+                    <i class="fa-solid fa-building me-2 text-info"></i>
                     <span class="text-truncate">{{ user_org_name|default:'Global Enterprise' }}</span>
                 </span>
-                <span class="badge bg-dark border border-white-10 text-amber">v2026.1</span>
+                <span class="badge bg-secondary bg-opacity-25 text-white-50 border border-secondary border-opacity-50">v2026.1</span>
             </div>
         </div>
     </aside>
@@ -177,10 +185,10 @@
             <div class="d-flex align-items-center gap-2 gap-md-3">
                 
                 <!-- Organization / Scope Badge (Authoritative Backend Tenant Context) -->
-                <div class="d-none d-md-flex align-items-center px-3 py-1 bg-slate-100 border rounded-pill text-dark small" title="Scope is determined by authenticated tenant isolation">
-                    <i class="fa-solid fa-building-circle-check text-emerald me-2"></i>
+                <div class="d-none d-md-flex align-items-center px-3 py-1 bg-light border rounded-pill text-dark small" title="Scope is determined by authenticated tenant isolation">
+                    <i class="fa-solid fa-building-circle-check text-primary me-2"></i>
                     <span class="fw-semibold me-1">Scope:</span>
-                    <span class="text-muted text-truncate" style="max-width: 180px;">{{ user_org_name|default:'Global Enterprise' }}</span>
+                    <span class="text-secondary text-truncate" style="max-width: 180px;">{{ user_org_name|default:'Global Enterprise' }}</span>
                 </div>
 
                 <!-- Notifications Quick Indicator -->
@@ -193,19 +201,19 @@
 
                 <!-- User Profile Pill -->
                 <div class="d-flex align-items-center gap-2">
-                    <div class="avatar-circle-sm bg-hpe-navy text-amber fw-bold d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 shadow-2xs">
+                    <div class="avatar-circle-sm bg-primary text-white fw-bold d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 shadow-2xs">
                         {{ user.email|slice:":1"|upper|default:"M" }}
                     </div>
                     <div class="d-none d-lg-block text-start leading-tight">
                         <div class="fw-bold text-dark small">{{ user.email }}</div>
-                        <div class="badge bg-amber-10 text-dark border border-amber-30 rounded-pill" style="font-size: 0.65rem;">
+                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">
                             Procurement Manager
                         </div>
                     </div>
                 </div>
 
                 <!-- Signout Button -->
-                <a href="/logout/" class="btn btn-outline-danger btn-sm rounded-pill px-2 px-md-3 fw-semibold d-flex align-items-center gap-1 shadow-2xs">
+                <a href="/logout/" class="btn btn-outline-secondary btn-sm rounded-pill px-2 px-md-3 fw-semibold d-flex align-items-center gap-1 shadow-2xs">
                     <i class="fa-solid fa-arrow-right-from-bracket"></i>
                     <span class="d-none d-sm-inline">Sign out</span>
                 </a>
@@ -225,9 +233,9 @@
 </div>
 
 <style>
-    /* ProcureSphere 360 Procurement Manager Design Tokens */
+    /* ProcureSphere 360 Procurement Manager Design Tokens - Unified with Procurement Executive */
     :root {
-        --hpe-navy: #002B49;
+        --hpe-navy: #0F172A;
         --hpe-cyan: #00B0B9;
         --hpe-emerald: #10B981;
         --hpe-amber: #F59E0B;
@@ -238,15 +246,15 @@
         --slate-200: #E2E8F0;
     }
 
-    .bg-hpe-navy { background-color: var(--hpe-navy) !important; }
+    .bg-hpe-navy { background-color: #212529 !important; }
     .bg-slate-50 { background-color: var(--slate-50) !important; }
     .bg-slate-100 { background-color: var(--slate-100) !important; }
-    .text-cyan { color: var(--hpe-cyan) !important; }
+    .text-cyan { color: #00B0B9 !important; }
     .text-emerald { color: var(--hpe-emerald) !important; }
     .text-amber { color: var(--hpe-amber) !important; }
     .text-rose { color: var(--hpe-rose) !important; }
     .text-indigo { color: var(--hpe-indigo) !important; }
-    .bg-cyan { background-color: var(--hpe-cyan) !important; }
+    .bg-cyan { background-color: #00B0B9 !important; }
     .bg-amber { background-color: var(--hpe-amber) !important; }
     .bg-emerald { background-color: var(--hpe-emerald) !important; }
     .bg-amber-10 { background-color: rgba(245, 158, 11, 0.12) !important; }
@@ -266,7 +274,7 @@
         font-size: 0.85rem;
     }
     .bg-amber-gradient {
-        background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
     }
 
     .avatar-circle-sm {
@@ -284,7 +292,8 @@
         background-color: rgba(255, 255, 255, 0.98) !important;
         backdrop-filter: blur(12px) !important;
         -webkit-backdrop-filter: blur(12px) !important;
-        box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.06) !important;
+        border-bottom: 1px solid #E2E8F0 !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
     }
 
     .manager-main-content {
@@ -301,13 +310,15 @@
     /* Desktop Sidebar (>= 992px) */
     @media (min-width: 992px) {
         .manager-sidebar {
-            width: 260px;
-            min-width: 260px;
+            width: 268px !important;
+            min-width: 268px !important;
             height: 100vh;
             position: -webkit-sticky !important;
             position: sticky !important;
             top: 0 !important;
             z-index: 1020;
+            background-color: #212529 !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
         }
         .manager-backdrop {
             display: none !important;
@@ -325,6 +336,7 @@
             z-index: 1050;
             transform: translateX(-100%);
             transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            background-color: #212529 !important;
         }
         .manager-sidebar.show {
             transform: translateX(0);
@@ -345,25 +357,27 @@
         }
     }
 
-    /* Sidebar Navigation Links */
+    /* Sidebar Navigation Links matching Procurement Executive */
     .manager-nav-link {
-        font-size: 0.88rem;
+        font-size: 0.875rem !important;
         transition: all 0.18s ease-in-out;
         border: 1px solid transparent;
+        color: rgba(255, 255, 255, 0.75) !important;
     }
     .manager-nav-link:hover {
-        background-color: rgba(255, 255, 255, 0.08);
+        background-color: rgba(255, 255, 255, 0.08) !important;
         color: #FFFFFF !important;
-        transform: translateX(3px);
+        transform: none;
     }
     .manager-nav-link.active {
-        background-color: rgba(245, 158, 11, 0.2) !important;
+        background-color: #0d6efd !important;
         color: #FFFFFF !important;
-        border-color: rgba(245, 158, 11, 0.5) !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        font-weight: 700 !important;
+        border-color: transparent !important;
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.25) !important;
     }
     .manager-nav-link.active i {
-        color: var(--hpe-amber) !important;
+        color: #FFFFFF !important;
     }
 
     /* UI State Containers: Loading, Empty, Error */

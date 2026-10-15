@@ -1,6 +1,15 @@
-{% extends 'base.html' %}
+{% extends base_layout|default:'base.html' %}
 
-{% block title %}{{ event.event_number }} — Bid Portal{% endblock %}
+{% block title %}{{ event.event_number }} — Bid Portal Monitor — ProcureSphere 360{% endblock %}
+
+{% block manager_breadcrumbs %}
+<li class="breadcrumb-item"><a href="/manager/" class="text-decoration-none text-muted">Manager</a></li>
+<li class="breadcrumb-item"><a href="/manager/sourcing/" class="text-decoration-none text-muted">Sourcing</a></li>
+<li class="breadcrumb-item"><a href="{% url 'sourcing_detail' event.id %}" class="text-decoration-none text-muted">{{ event.event_number }}</a></li>
+<li class="breadcrumb-item active text-dark fw-semibold" aria-current="page">Bid Portal Monitor</li>
+{% endblock manager_breadcrumbs %}
+
+{% block mobile_page_title %}Bid Portal Monitor{% endblock mobile_page_title %}
 
 {% block content %}
 <div class="d-flex flex-wrap gap-2 align-items-start justify-content-between mb-3">
@@ -13,8 +22,8 @@
         <h2 class="fw-bold text-dark mb-0">Vendor Bid Portal — {{ event.title }}</h2>
     </div>
     <div class="d-flex flex-wrap gap-2">
-        <a href="{% url 'bid_portal_dashboard' %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="fa-solid fa-arrow-left me-1"></i>Bid Portal</a>
-        <a href="{% url 'sourcing_detail' event.id %}" class="btn btn-outline-secondary rounded-pill px-3">Event setup</a>
+        <a href="{% url 'sourcing_detail' event.id %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="fa-solid fa-arrow-left me-1"></i>Back to Event</a>
+        <a href="{% url 'bid_portal_dashboard' %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="fa-solid fa-list me-1"></i>All Bid Windows</a>
         {% if caps.can_manage and event.status == 'BID_WINDOW' and is_deadline_passed %}
             <form method="post" action="{% url 'sourcing_action' event.id 'close' %}">{% csrf_token %}
                 <button class="btn btn-dark rounded-pill px-3"><i class="fa-solid fa-lock me-1"></i>Close bidding</button>

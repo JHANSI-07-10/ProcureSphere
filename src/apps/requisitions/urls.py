@@ -43,4 +43,9 @@ urlpatterns = [
         views.attachment_download_view,
         name="requisition_attachment_download_alias",
     ),
+    path(
+        "<uuid:pk>/attachments/<uuid:attachment_id>/download/",
+        views.attachment_download_view,
+        name="requisition_attachment_download_alias_dl",
+    ),
 ]

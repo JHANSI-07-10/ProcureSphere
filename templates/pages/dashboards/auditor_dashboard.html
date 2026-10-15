@@ -3,34 +3,35 @@
 {% block title %}Executive Dashboard — Compliance & Audit Portal{% endblock %}
 
 {% block auditor_content %}
-<!-- Page Title Header Section -->
-<div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
-    <div>
-        <div class="text-muted small fw-semibold text-uppercase letter-spacing-1 mb-1">
-            <span class="badge bg-dark text-cyan rounded-pill px-3 py-1 me-2 fw-bold">COMPLIANCE AUDITOR HUB</span>
-            <span class="text-secondary"><i class="fa-solid fa-shield-halved text-cyan me-1"></i> Executive Overview</span>
+<!-- Page Title Header Section (Glass-card dark matching Procurement Executive) -->
+<div class="glass-card-dark p-4 mb-4">
+    <div class="row align-items-center g-3">
+        <div class="col-lg-8">
+            <span class="badge bg-info text-dark rounded-pill fw-bold px-3 py-1 mb-2">
+                <i class="fa-solid fa-shield-halved me-1"></i> COMPLIANCE AUDITOR HUB
+            </span>
+            <h1 class="fw-bold text-white mb-1 h3 font-heading">Executive Governance &amp; Audit Dashboard</h1>
+            <p class="text-white-50 mb-0 small">
+                Audit Trail, Governance & Lifecycle Traceability &mdash; Full historical system trail, procurement oversight, financial reconciliation, and anomaly verification.
+            </p>
         </div>
-        <h1 class="fw-bold text-dark h2 mb-1 font-heading">Executive Governance & Audit Dashboard</h1>
-        <h2 class="h6 text-muted mb-0 fw-normal">
-            Audit Trail, Governance & Lifecycle Traceability &mdash; Full historical system trail, procurement oversight, financial reconciliation, and anomaly verification.
-        </h2>
-    </div>
-    <div class="d-flex flex-wrap align-items-center gap-2">
-        <div class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 fw-semibold d-flex align-items-center">
-            <span class="status-dot-pulse me-2"></span> IMMUTABLE LEDGER ACTIVE
-        </div>
-        <div class="dropdown">
-            <button class="btn btn-outline-dark btn-sm rounded-pill fw-semibold px-3 py-2 dropdown-toggle shadow-xs" type="button" data-bs-toggle="dropdown">
-                <i class="fa-solid fa-file-export me-1 text-cyan"></i> Export Evidence
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 small">
-                <li><h6 class="dropdown-header text-uppercase fw-bold text-muted">Evidence Formats</h6></li>
-                <li><a class="dropdown-item" href="javascript:void(0)" onclick="triggerAuditorExport('audit_logs', 'csv')"><i class="fa-solid fa-file-csv text-primary me-2"></i> Export Audit Logs (.CSV)</a></li>
-                <li><a class="dropdown-item" href="javascript:void(0)" onclick="triggerAuditorExport('audit_logs', 'json')"><i class="fa-solid fa-file-code text-info me-2"></i> Export Audit Logs (.JSON)</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="javascript:void(0)" onclick="triggerAuditorExport('invoice_exceptions', 'csv')"><i class="fa-solid fa-triangle-exclamation text-warning me-2"></i> Export Match Exceptions (.CSV)</a></li>
-                <li><a class="dropdown-item" href="javascript:void(0)" onclick="triggerAuditorExport('vendor_compliance', 'csv')"><i class="fa-solid fa-building-shield text-success me-2"></i> Export Vendor Compliance (.CSV)</a></li>
-            </ul>
+        <div class="col-lg-4 text-lg-end d-flex flex-wrap gap-2 justify-content-lg-end">
+            <div class="badge bg-success bg-opacity-25 text-white border border-success border-opacity-50 rounded-pill px-3 py-2 fw-semibold d-flex align-items-center">
+                <span class="status-dot-pulse me-2"></span> IMMUTABLE LEDGER ACTIVE
+            </div>
+            <div class="dropdown">
+                <button class="btn btn-warning text-dark rounded-pill fw-bold px-4 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa-solid fa-file-export me-1"></i> Export Evidence
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 small">
+                    <li><h6 class="dropdown-header text-uppercase fw-bold text-muted">Evidence Formats</h6></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="triggerAuditorExport('audit_logs', 'csv')"><i class="fa-solid fa-file-csv text-primary me-2"></i> Export Audit Logs (.CSV)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="triggerAuditorExport('audit_logs', 'json')"><i class="fa-solid fa-file-code text-info me-2"></i> Export Audit Logs (.JSON)</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="triggerAuditorExport('invoice_exceptions', 'csv')"><i class="fa-solid fa-triangle-exclamation text-warning me-2"></i> Export Match Exceptions (.CSV)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="triggerAuditorExport('vendor_compliance', 'csv')"><i class="fa-solid fa-building-shield text-success me-2"></i> Export Vendor Compliance (.CSV)</a></li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>
@@ -42,17 +43,15 @@
     <!-- Card 1: Total Audit Logs -->
     <div class="col-sm-6 col-xl-3">
         <a href="/audit/logs/" class="text-decoration-none">
-            <div class="auditor-kpi-card bg-white rounded-4 p-3 border shadow-xs h-100 position-relative border-top-accent-cyan">
+            <div class="stat-card h-100 border-start border-4 border-info">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-bold text-uppercase letter-spacing-1">TOTAL AUDIT LOGS</span>
-                    <div class="kpi-icon-box bg-cyan-10 text-cyan rounded-3 p-2">
-                        <i class="fa-solid fa-clipboard-check fs-6"></i>
-                    </div>
+                    <span class="text-muted small fw-semibold text-uppercase">TOTAL AUDIT LOGS</span>
+                    <span class="badge bg-info-subtle text-info rounded-pill small"><i class="fa-solid fa-clipboard-check me-1"></i>Verified</span>
                 </div>
-                <div class="kpi-value text-dark fs-3 fw-bold font-heading">{{ metrics.total_audit_logs|default:"0" }}</div>
-                <div class="text-muted small mt-1 d-flex justify-content-between">
-                    <span>Period: <strong>{{ audit_data.metrics.total_logs_period|default:"0" }}</strong></span>
-                    <span class="text-success"><i class="fa-solid fa-circle-check me-1"></i>Verified</span>
+                <div class="metric-value text-dark">{{ metrics.total_audit_logs|default:"0" }}</div>
+                <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center small text-muted">
+                    <span>Period: <strong class="text-dark">{{ audit_data.metrics.total_logs_period|default:"0" }}</strong></span>
+                    <span class="text-info fw-semibold">View Logs <i class="fa-solid fa-arrow-right ms-1"></i></span>
                 </div>
             </div>
         </a>
@@ -61,17 +60,15 @@
     <!-- Card 2: Approvals Executed -->
     <div class="col-sm-6 col-xl-3">
         <a href="/audit/approvals/" class="text-decoration-none">
-            <div class="auditor-kpi-card bg-white rounded-4 p-3 border shadow-xs h-100 position-relative border-top-accent-emerald">
+            <div class="stat-card h-100 border-start border-4 border-success">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-bold text-uppercase letter-spacing-1">APPROVALS EXECUTED</span>
-                    <div class="kpi-icon-box bg-emerald-10 text-emerald rounded-3 p-2">
-                        <i class="fa-solid fa-signature fs-6"></i>
-                    </div>
+                    <span class="text-muted small fw-semibold text-uppercase">APPROVALS EXECUTED</span>
+                    <span class="badge bg-success-subtle text-success rounded-pill small"><i class="fa-solid fa-signature me-1"></i>Signatures</span>
                 </div>
-                <div class="kpi-value text-success fs-3 fw-bold font-heading">{{ metrics.total_approvals|default:"0" }}</div>
-                <div class="text-muted small mt-1 d-flex justify-content-between">
+                <div class="metric-value text-success">{{ metrics.total_approvals|default:"0" }}</div>
+                <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center small text-muted">
                     <span>Rejections: <strong class="text-danger">{{ metrics.total_rejections|default:"0" }}</strong></span>
-                    <span>Signatures</span>
+                    <span class="text-success fw-semibold">Audit Trail <i class="fa-solid fa-arrow-right ms-1"></i></span>
                 </div>
             </div>
         </a>
@@ -80,19 +77,17 @@
     <!-- Card 3: Open Invoice Exceptions -->
     <div class="col-sm-6 col-xl-3">
         <a href="/audit/invoice-exceptions/" class="text-decoration-none">
-            <div class="auditor-kpi-card bg-white rounded-4 p-3 border shadow-xs h-100 position-relative border-top-accent-rose">
+            <div class="stat-card h-100 border-start border-4 border-danger">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-bold text-uppercase letter-spacing-1">OPEN INVOICE EXCEPTIONS</span>
-                    <div class="kpi-icon-box bg-rose-10 text-danger rounded-3 p-2">
-                        <i class="fa-solid fa-triangle-exclamation fs-6"></i>
-                    </div>
-                </div>
-                <div class="kpi-value text-danger fs-3 fw-bold font-heading">{{ metrics.open_exceptions|default:"0" }}</div>
-                <div class="text-muted small mt-1 d-flex justify-content-between">
-                    <span>3-Way Match Discrepancies</span>
-                    <span class="badge {% if metrics.open_exceptions > 0 %}bg-warning-subtle text-warning{% else %}bg-success-subtle text-success{% endif %}">
+                    <span class="text-muted small fw-semibold text-uppercase">OPEN INVOICE EXCEPTIONS</span>
+                    <span class="badge {% if metrics.open_exceptions > 0 %}bg-danger-subtle text-danger{% else %}bg-success-subtle text-success{% endif %} rounded-pill small">
                         {% if metrics.open_exceptions > 0 %}Action Required{% else %}Clear{% endif %}
                     </span>
+                </div>
+                <div class="metric-value text-danger">{{ metrics.open_exceptions|default:"0" }}</div>
+                <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center small text-muted">
+                    <span>3-Way Match Discrepancies</span>
+                    <span class="text-danger fw-semibold">Resolve <i class="fa-solid fa-arrow-right ms-1"></i></span>
                 </div>
             </div>
         </a>
@@ -101,17 +96,15 @@
     <!-- Card 4: Vendor Compliance -->
     <div class="col-sm-6 col-xl-3">
         <a href="/audit/vendors/" class="text-decoration-none">
-            <div class="auditor-kpi-card bg-white rounded-4 p-3 border shadow-xs h-100 position-relative border-top-accent-indigo">
+            <div class="stat-card h-100 border-start border-4 border-primary">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-bold text-uppercase letter-spacing-1">VENDOR COMPLIANCE</span>
-                    <div class="kpi-icon-box bg-indigo-10 text-indigo rounded-3 p-2">
-                        <i class="fa-solid fa-building-shield fs-6"></i>
-                    </div>
+                    <span class="text-muted small fw-semibold text-uppercase">VENDOR COMPLIANCE</span>
+                    <span class="badge bg-primary-subtle text-primary rounded-pill small"><i class="fa-solid fa-building-shield me-1"></i>Active</span>
                 </div>
-                <div class="kpi-value text-dark fs-3 fw-bold font-heading">{{ metrics.compliance_rate|default:"100" }}%</div>
-                <div class="text-muted small mt-1 d-flex justify-content-between">
-                    <span>OVERDUE OBLIGATIONS: <strong class="text-danger">{{ metrics.overdue_obligations|default:"0" }}</strong></span>
-                    <span>Active Vendors</span>
+                <div class="metric-value text-dark">{{ metrics.compliance_rate|default:"100" }}%</div>
+                <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center small text-muted">
+                    <span>Overdue Obligations: <strong class="text-danger">{{ metrics.overdue_obligations|default:"0" }}</strong></span>
+                    <span class="text-primary fw-semibold">Details <i class="fa-solid fa-arrow-right ms-1"></i></span>
                 </div>
             </div>
         </a>
@@ -124,13 +117,13 @@
 <div class="row g-4 mb-4">
     <!-- Left: Open 3-Way Match Discrepancies -->
     <div class="col-lg-6">
-        <div class="card bg-white border border-warning border-opacity-50 rounded-4 shadow-xs h-100 overflow-hidden">
-            <div class="card-header bg-warning bg-opacity-10 border-bottom p-3 d-flex align-items-center justify-content-between">
+        <div class="glass-card shadow-sm h-100 overflow-hidden">
+            <div class="card-header bg-white border-bottom p-3 d-flex align-items-center justify-content-between">
                 <div class="d-flex align-items-center gap-2">
                     <i class="fa-solid fa-triangle-exclamation text-warning"></i>
                     <h6 class="fw-bold text-dark mb-0 font-heading">Open 3-Way Match Discrepancies</h6>
                 </div>
-                <a href="/audit/invoice-exceptions/" class="badge bg-warning text-dark text-decoration-none rounded-pill px-3 py-1">
+                <a href="/audit/invoice-exceptions/" class="badge bg-warning text-dark text-decoration-none rounded-pill px-3 py-1 fw-bold">
                     {{ metrics.open_exceptions|default:0 }} Open &rarr;
                 </a>
             </div>
@@ -146,7 +139,7 @@
                             <div class="text-muted small mb-1 text-truncate">{{ exc.invoice.vendor.legal_name }}</div>
                             <div class="d-flex align-items-center justify-content-between text-muted small">
                                 <span>Variance</span>
-                                <span class="fw-bold text-danger fs-6">${{ exc.variance_amount }}</span>
+                                <span class="fw-bold text-danger fs-6">${{ exc.variance_amount|floatformat:2 }}</span>
                             </div>
                         </div>
                     {% empty %}
@@ -171,7 +164,7 @@
                                     <td class="ps-3 text-nowrap"><strong class="text-dark font-monospace">{{ exc.invoice.invoice_number }}</strong></td>
                                     <td class="text-muted small text-truncate" style="max-width: 140px;" title="{{ exc.invoice.vendor.legal_name }}">{{ exc.invoice.vendor.legal_name|truncatechars:20 }}</td>
                                     <td class="text-nowrap"><span class="badge bg-light text-dark border">{{ exc.get_exception_type_display }}</span></td>
-                                    <td class="text-end pe-3 fw-bold text-danger text-nowrap">${{ exc.variance_amount }}</td>
+                                    <td class="text-end pe-3 fw-bold text-danger text-nowrap">${{ exc.variance_amount|floatformat:2 }}</td>
                                 </tr>
                             {% empty %}
                                 <tr>
@@ -187,13 +180,13 @@
 
     <!-- Right: Suspended & At-Risk Vendors -->
     <div class="col-lg-6">
-        <div class="card bg-white border border-danger border-opacity-50 rounded-4 shadow-xs h-100 overflow-hidden">
-            <div class="card-header bg-danger bg-opacity-10 border-bottom p-3 d-flex align-items-center justify-content-between">
+        <div class="glass-card shadow-sm h-100 overflow-hidden">
+            <div class="card-header bg-white border-bottom p-3 d-flex align-items-center justify-content-between">
                 <div class="d-flex align-items-center gap-2">
                     <i class="fa-solid fa-ban text-danger"></i>
                     <h6 class="fw-bold text-dark mb-0 font-heading">Suspended & At-Risk Vendors</h6>
                 </div>
-                <a href="/audit/vendors/" class="badge bg-danger text-white text-decoration-none rounded-pill px-3 py-1">
+                <a href="/audit/vendors/" class="badge bg-danger text-white text-decoration-none rounded-pill px-3 py-1 fw-bold">
                     {{ metrics.suspended_vendors|default:0 }} Suspended &rarr;
                 </a>
             </div>
@@ -255,10 +248,10 @@
 <div class="row g-4 mb-4">
     <!-- Left: Purchase Orders -->
     <div class="col-lg-6">
-        <div class="card bg-white border rounded-4 shadow-xs h-100 overflow-hidden">
+        <div class="glass-card shadow-sm h-100 overflow-hidden">
             <div class="card-header bg-white border-bottom p-3 d-flex align-items-center justify-content-between">
                 <div class="d-flex align-items-center gap-2">
-                    <i class="fa-solid fa-cart-shopping text-cyan"></i>
+                    <i class="fa-solid fa-cart-shopping text-primary"></i>
                     <h6 class="fw-bold text-dark mb-0 font-heading">Recent Purchase Orders</h6>
                 </div>
                 <a href="/audit/po-changes/" class="badge bg-light text-dark border text-decoration-none rounded-pill px-3 py-1">
@@ -271,13 +264,13 @@
                     {% for po in po_changes.results|slice:":5" %}
                         <div class="list-group-item p-3 border-bottom">
                             <div class="d-flex align-items-center justify-content-between mb-1">
-                                <span class="badge bg-hpe-navy text-cyan px-2 py-1 font-monospace fw-bold">{{ po.po_number|default:po.id }}</span>
+                                <span class="badge bg-dark text-white px-2 py-1 font-monospace fw-bold">{{ po.po_number|default:po.id }}</span>
                                 <span class="badge bg-light text-dark border">{{ po.status|default:"ISSUED" }}</span>
                             </div>
                             <div class="fw-semibold text-dark mb-1 text-truncate">{{ po.vendor_name|default:"Vendor" }}</div>
                             <div class="d-flex align-items-center justify-content-between text-muted small">
                                 <span>Order Amount</span>
-                                <span class="fw-bold text-dark fs-6">${{ po.total_amount|default:"0.00" }}</span>
+                                <span class="fw-bold text-dark fs-6">${{ po.total_amount|floatformat:2|default:"0.00" }}</span>
                             </div>
                         </div>
                     {% empty %}
@@ -299,10 +292,10 @@
                         <tbody>
                             {% for po in po_changes.results|slice:":5" %}
                                 <tr class="border-top">
-                                    <td class="ps-3 text-nowrap"><span class="badge bg-hpe-navy text-cyan font-monospace fw-bold">{{ po.po_number|default:po.id }}</span></td>
+                                    <td class="ps-3 text-nowrap"><span class="badge bg-dark text-white font-monospace fw-bold">{{ po.po_number|default:po.id }}</span></td>
                                     <td class="text-dark fw-medium small text-truncate" style="max-width: 150px;" title="{{ po.vendor_name }}">{{ po.vendor_name|default:"Vendor" }}</td>
                                     <td class="text-nowrap"><span class="badge bg-light text-dark border">{{ po.status|default:"ISSUED" }}</span></td>
-                                    <td class="text-end pe-3 fw-bold text-dark text-nowrap">${{ po.total_amount|default:"0.00" }}</td>
+                                    <td class="text-end pe-3 fw-bold text-dark text-nowrap">${{ po.total_amount|floatformat:2|default:"0.00" }}</td>
                                 </tr>
                             {% empty %}
                                 <tr>
@@ -318,10 +311,10 @@
 
     <!-- Right: Active Contracts & SLAs -->
     <div class="col-lg-6">
-        <div class="card bg-white border rounded-4 shadow-xs h-100 overflow-hidden">
+        <div class="glass-card shadow-sm h-100 overflow-hidden">
             <div class="card-header bg-white border-bottom p-3 d-flex align-items-center justify-content-between">
                 <div class="d-flex align-items-center gap-2">
-                    <i class="fa-solid fa-file-contract text-cyan"></i>
+                    <i class="fa-solid fa-file-contract text-primary"></i>
                     <h6 class="fw-bold text-dark mb-0 font-heading">Active Executed Contracts</h6>
                 </div>
                 <a href="/audit/contract-changes/" class="badge bg-light text-dark border text-decoration-none rounded-pill px-3 py-1">
@@ -340,7 +333,7 @@
                             <div class="fw-semibold text-dark mb-1 text-truncate" title="{{ c.title }}">{{ c.title|default:"Master Agreement" }}</div>
                             <div class="d-flex align-items-center justify-content-between text-muted small">
                                 <span>Contract Value</span>
-                                <span class="fw-bold text-emerald fs-6">${{ c.contract_value|default:"0.00" }}</span>
+                                <span class="fw-bold text-success fs-6">${{ c.contract_value|floatformat:2|default:"0.00" }}</span>
                             </div>
                         </div>
                     {% empty %}
@@ -365,7 +358,7 @@
                                     <td class="ps-3 text-nowrap"><code class="text-dark bg-light px-2 py-1 rounded border">{{ c.contract_number|default:"CON-2026" }}</code></td>
                                     <td class="fw-semibold text-dark small text-truncate" style="max-width: 170px;" title="{{ c.title }}">{{ c.title|default:"Master Agreement" }}</td>
                                     <td class="text-nowrap"><span class="badge bg-success-subtle text-success border">{{ c.status|default:"ACTIVE" }}</span></td>
-                                    <td class="text-end pe-3 fw-bold text-emerald text-nowrap">${{ c.contract_value|default:"0.00" }}</td>
+                                    <td class="text-end pe-3 fw-bold text-success text-nowrap">${{ c.contract_value|floatformat:2|default:"0.00" }}</td>
                                 </tr>
                             {% empty %}
                                 <tr>
@@ -383,13 +376,13 @@
 <!-- ========================================================================= -->
 <!-- RECENT IMMUTABLE AUDIT STREAM FEED                                        -->
 <!-- ========================================================================= -->
-<div class="card bg-white border rounded-4 shadow-xs mb-4 overflow-hidden">
+<div class="glass-card shadow-sm mb-4 overflow-hidden">
     <div class="card-header bg-white border-bottom p-3 d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-2">
-            <i class="fa-solid fa-fingerprint text-cyan"></i>
+            <i class="fa-solid fa-fingerprint text-primary"></i>
             <h6 class="fw-bold text-dark mb-0 font-heading">Recent Immutable System Audit Stream</h6>
         </div>
-        <a href="/audit/logs/" class="btn btn-outline-dark btn-sm rounded-pill px-3">
+        <a href="/audit/logs/" class="btn btn-outline-primary btn-sm rounded-pill px-3">
             View Full Register <i class="fa-solid fa-arrow-right ms-1"></i>
         </a>
     </div>
@@ -410,7 +403,7 @@
                     <tr>
                         <td class="ps-4">
                             <div class="fw-bold text-dark">{{ log.timestamp|date:"M d, Y" }}</div>
-                            <div class="text-muted small"><i class="fa-regular fa-clock me-1 text-cyan"></i>{{ log.timestamp|time:"H:i:s" }}</div>
+                            <div class="text-muted small"><i class="fa-regular fa-clock me-1 text-primary"></i>{{ log.timestamp|time:"H:i:s" }}</div>
                         </td>
                         <td>
                             <div class="fw-semibold text-dark">{{ log.actor.email|default:"System Engine" }}</div>
@@ -453,13 +446,13 @@
 <!-- ========================================================================= -->
 <div class="row g-4">
     <div class="col-lg-8">
-        <div class="card bg-white border rounded-4 p-4 shadow-xs h-100">
+        <div class="glass-card p-4 shadow-sm h-100">
             <div class="d-flex align-items-center justify-content-between mb-3">
                 <div>
                     <h6 class="fw-bold text-dark mb-0 font-heading">Audit Activity Daily Trend</h6>
                     <div class="text-muted small">Daily captured compliance events over evaluation period</div>
                 </div>
-                <span class="badge bg-light text-dark border px-3 py-1 rounded-pill small">Last 30 Days</span>
+                <span class="badge bg-light text-dark border px-3 py-1 rounded-pill small">Last {{ period_days|default:30 }} Days</span>
             </div>
             <div style="height: 260px; position: relative;">
                 <canvas id="overviewTrendChart"></canvas>
@@ -467,7 +460,7 @@
         </div>
     </div>
     <div class="col-lg-4">
-        <div class="card bg-white border rounded-4 p-4 shadow-xs h-100">
+        <div class="glass-card p-4 shadow-sm h-100">
             <h6 class="fw-bold text-dark mb-1 font-heading">Action Distribution</h6>
             <div class="text-muted small mb-3">Breakdown by operational action type</div>
             <div style="height: 200px; position: relative;">
@@ -479,15 +472,36 @@
 
 {{ audit_data.metrics.daily_trend|json_script:"dailyTrendData" }}
 {{ audit_data.metrics.action_distribution|json_script:"actionDistData" }}
+{{ metrics|json_script:"auditorMetricsData" }}
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initOverviewCharts);
+    } else {
         initOverviewCharts();
-    });
+    }
 
     function initOverviewCharts() {
+        if (typeof Chart === 'undefined') {
+            console.warn('Chart.js library is not loaded.');
+            return;
+        }
+
+        let metricsData = {};
+        const metricsEl = document.getElementById('auditorMetricsData');
+        if (metricsEl) {
+            try {
+                metricsData = JSON.parse(metricsEl.textContent) || {};
+            } catch (e) {
+                console.error('Error parsing auditor metrics data:', e);
+            }
+        }
+
         const trendEl = document.getElementById('overviewTrendChart');
         if (trendEl) {
+            const existingTrend = Chart.getChart(trendEl);
+            if (existingTrend) existingTrend.destroy();
+
             let trendLabels = [];
             let trendCounts = [];
             const trendDataEl = document.getElementById('dailyTrendData');
@@ -495,8 +509,8 @@
                 try {
                     const parsed = JSON.parse(trendDataEl.textContent);
                     if (Array.isArray(parsed) && parsed.length > 0) {
-                        trendLabels = parsed.map(item => item.date);
-                        trendCounts = parsed.map(item => item.count);
+                        trendLabels = parsed.map(function(item) { return item.date; });
+                        trendCounts = parsed.map(function(item) { return item.count; });
                     }
                 } catch (e) {
                     console.error('Error parsing trend data:', e);
@@ -505,7 +519,8 @@
 
             if (!trendLabels.length) {
                 trendLabels = ['Day 1', 'Day 5', 'Day 10', 'Day 15', 'Day 20', 'Day 25', 'Today'];
-                trendCounts = [0, 0, 0, 0, 0, 0, {{ metrics.total_audit_logs|default:0 }}];
+                const fallbackTotal = Number(metricsData.total_audit_logs) || 0;
+                trendCounts = [0, 0, 0, 0, 0, 0, fallbackTotal];
             }
 
             new Chart(trendEl, {
@@ -515,13 +530,13 @@
                     datasets: [{
                         label: 'Audit Events',
                         data: trendCounts,
-                        borderColor: '#00B0B9',
-                        backgroundColor: 'rgba(0, 176, 185, 0.08)',
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.08)',
                         borderWidth: 2.5,
                         fill: true,
                         tension: 0.35,
                         pointRadius: 4,
-                        pointBackgroundColor: '#002B49'
+                        pointBackgroundColor: '#0d6efd'
                     }]
                 },
                 options: {
@@ -538,6 +553,9 @@
 
         const pieEl = document.getElementById('overviewActionPieChart');
         if (pieEl) {
+            const existingPie = Chart.getChart(pieEl);
+            if (existingPie) existingPie.destroy();
+
             let actionLabels = [];
             let actionCounts = [];
             const actionDataEl = document.getElementById('actionDistData');
@@ -555,7 +573,11 @@
 
             if (!actionLabels.length) {
                 actionLabels = ['CREATE', 'UPDATE', 'APPROVE', 'LOGIN', 'EXPORT'];
-                actionCounts = [{{ metrics.total_audit_logs|default:0 }}, 0, {{ metrics.total_approvals|default:0 }}, {{ metrics.total_logins|default:0 }}, {{ metrics.total_exports|default:0 }}];
+                const totalLogs = Number(metricsData.total_audit_logs) || 0;
+                const totalApprovals = Number(metricsData.total_approvals) || 0;
+                const totalLogins = Number(metricsData.total_logins) || 0;
+                const totalExports = Number(metricsData.total_exports) || 0;
+                actionCounts = [totalLogs, 0, totalApprovals, totalLogins, totalExports];
             }
 
             new Chart(pieEl, {
@@ -564,7 +586,7 @@
                     labels: actionLabels,
                     datasets: [{
                         data: actionCounts,
-                        backgroundColor: ['#00B0B9', '#6366F1', '#10B981', '#002B49', '#F59E0B', '#EC4899', '#8B5CF6'],
+                        backgroundColor: ['#0d6efd', '#0dcaf0', '#198754', '#212529', '#ffc107', '#d63384', '#6f42c1'],
                         borderWidth: 2,
                         borderColor: '#FFFFFF'
                     }]

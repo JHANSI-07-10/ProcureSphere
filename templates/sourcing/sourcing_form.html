@@ -1,6 +1,14 @@
-{% extends 'base.html' %}
+{% extends base_layout|default:'base.html' %}
 
-{% block title %}{% if event %}Edit {{ event.event_number }}{% else %}New Sourcing Event{% endif %}{% endblock %}
+{% block title %}{% if event %}Edit {{ event.event_number }}{% else %}New Sourcing Event{% endif %} — ProcureSphere 360{% endblock %}
+
+{% block manager_breadcrumbs %}
+<li class="breadcrumb-item"><a href="/manager/" class="text-decoration-none text-muted">Manager</a></li>
+<li class="breadcrumb-item"><a href="/manager/sourcing/" class="text-decoration-none text-muted">Sourcing</a></li>
+<li class="breadcrumb-item active text-dark fw-semibold" aria-current="page">{% if event %}Edit {{ event.event_number }}{% else %}New Sourcing Event{% endif %}</li>
+{% endblock manager_breadcrumbs %}
+
+{% block mobile_page_title %}{% if event %}Edit Sourcing Event{% else %}New Sourcing Event{% endif %}{% endblock mobile_page_title %}
 
 {% block content %}
 <div class="row justify-content-center">
