@@ -3,6 +3,25 @@ from django import forms
 from .models import Vendor, VendorCategory, VendorRiskRecord
 
 
+class VendorEditForm(forms.Form):
+    """
+    Procurement Executive: edit vendor master information.
+    Allows updating name, email, phone, address, bank and category.
+    Tax ID / registration number changes are intentionally excluded (require legal justification).
+    """
+    legal_name = forms.CharField(max_length=255, label="Legal name")
+    trade_name = forms.CharField(max_length=255, required=False, label="Trade / brand name")
+    email = forms.EmailField(label="Primary email")
+    phone = forms.CharField(max_length=30, required=False, label="Phone")
+    address = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}), label="Address")
+    category = forms.ModelChoiceField(
+        queryset=VendorCategory.objects.order_by("name"), label="Category"
+    )
+    bank_name = forms.CharField(max_length=150, required=False, label="Bank name")
+    bank_account_number = forms.CharField(max_length=100, required=False, label="Bank account no.")
+    bank_routing_code = forms.CharField(max_length=100, required=False, label="Bank routing / IFSC")
+
+
 class VendorRegistrationForm(forms.Form):
     legal_name = forms.CharField(max_length=255)
     trade_name = forms.CharField(max_length=255, required=False)

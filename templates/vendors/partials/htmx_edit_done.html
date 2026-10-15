@@ -1,0 +1,9 @@
+{# Rendered after a successful vendor edit — closes the modal and refreshes the page #}
+<div id="vendor-edit-slot">
+  <script>
+    // Remove modal, refresh detail page to show updated info
+    const m = document.getElementById('vendorEditModal');
+    if (m) m.remove();
+    window.location.reload();
+  </script>
+</div>

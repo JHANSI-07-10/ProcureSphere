@@ -46,3 +46,18 @@
     </form>
 </div>
 {% endif %}
+{% if pending_vendors %}
+<div class="border rounded p-3 mt-3 small bg-light">
+    <div class="fw-semibold mb-1"><i class="fa-solid fa-user-clock text-warning me-1"></i>Newly registered vendors awaiting KYC approval</div>
+    <div class="text-muted mb-2">They can be invited once the vendor submits KYC documents and the registration is approved (status ACTIVE).</div>
+    <ul class="list-unstyled mb-0">
+    {% for v in pending_vendors %}
+        <li class="d-flex justify-content-between flex-wrap gap-2 py-1 border-top">
+            <span>{{ v.legal_name }} <span class="text-muted">· {{ v.category.name }}</span></span>
+            <span><span class="badge bg-secondary">{{ v.get_status_display }}</span>
+            <a class="ms-2" href="{% url 'vendor_detail' v.id %}">Review onboarding</a></span>
+        </li>
+    {% endfor %}
+    </ul>
+</div>
+{% endif %}

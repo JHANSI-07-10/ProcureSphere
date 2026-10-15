@@ -2,9 +2,10 @@ import logging
 import secrets
 import string
 
+import requests
+
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 
@@ -87,7 +88,124 @@ def register_vendor_service(
 
 
 @transaction.atomic
+def update_vendor_service(
+    *,
+    vendor: Vendor,
+    actor: User,
+    legal_name: str,
+    trade_name: str,
+    email: str,
+    phone: str,
+    address: str,
+    category: VendorCategory,
+    bank_name: str,
+    bank_account_number: str,
+    bank_routing_code: str,
+) -> Vendor:
+    """
+    Updates vendor master information. Allowed for Procurement Executives/Managers only.
+    Audit-logged with previous and new state.
+    """
+    if not can_operate_governance(actor):
+        raise PermissionDenied("Only Procurement Executives/Managers can edit vendor information.")
+
+    previous_state = {
+        "legal_name": vendor.legal_name,
+        "trade_name": vendor.trade_name,
+        "email": vendor.email,
+        "phone": vendor.phone,
+        "address": vendor.address,
+        "category": str(vendor.category_id),
+        "bank_name": vendor.bank_name,
+        "bank_account_number": vendor.bank_account_number,
+        "bank_routing_code": vendor.bank_routing_code,
+    }
+
+    vendor.legal_name = legal_name
+    vendor.trade_name = trade_name
+    vendor.email = email
+    vendor.phone = phone
+    vendor.address = address
+    vendor.category = category
+    vendor.bank_name = bank_name
+    vendor.bank_account_number = bank_account_number
+    vendor.bank_routing_code = bank_routing_code
+    vendor.save(update_fields=[
+        "legal_name", "trade_name", "email", "phone", "address",
+        "category", "bank_name", "bank_account_number", "bank_routing_code", "updated_at",
+    ])
+
+    create_audit_log_service(
+        actor=actor,
+        action=AuditLog.ACTION_UPDATE,
+        target_model="Vendor",
+        target_object_id=str(vendor.id),
+        previous_state=previous_state,
+        new_state={
+            "legal_name": vendor.legal_name,
+            "trade_name": vendor.trade_name,
+            "email": vendor.email,
+            "phone": vendor.phone,
+            "address": vendor.address,
+            "category": str(vendor.category_id),
+            "bank_name": vendor.bank_name,
+            "bank_account_number": vendor.bank_account_number,
+            "bank_routing_code": vendor.bank_routing_code,
+        },
+    )
+    return vendor
+
+
+# Statuses that are safe to delete (no workflow impact)
+_DELETABLE_STATUSES = {Vendor.STATUS_DRAFT, Vendor.STATUS_REJECTED}
+
+
+@transaction.atomic
+def delete_vendor_service(*, vendor: Vendor, actor: User) -> None:
+    """
+    Permanently deletes a vendor record. Only allowed for DRAFT or REJECTED vendors
+    that have no open sourcing events, POs or invoices. Writes an audit entry before deletion.
+    """
+    if not can_operate_governance(actor):
+        raise PermissionDenied("Only Procurement Executives/Managers can delete vendor records.")
+
+    if vendor.status not in _DELETABLE_STATUSES:
+        raise ValidationError(
+            f"Only DRAFT or REJECTED vendors can be deleted. "
+            f"'{vendor.vendor_number}' is currently {vendor.get_status_display()}."
+        )
+
+    # Block deletion if there are any linked POs or sourcing invitations
+    from apps.orders.models import PurchaseOrder  # local import to avoid circular
+    if PurchaseOrder.objects.filter(vendor=vendor).exists():
+        raise ValidationError(
+            f"Cannot delete '{vendor.vendor_number}': purchase orders are linked to this vendor."
+        )
+    if vendor.bid_invitations.exists():
+        raise ValidationError(
+            f"Cannot delete '{vendor.vendor_number}': sourcing invitations are linked to this vendor."
+        )
+
+    # Write audit log BEFORE deletion so the record is preserved
+    create_audit_log_service(
+        actor=actor,
+        action=AuditLog.ACTION_DELETE,
+        target_model="Vendor",
+        target_object_id=str(vendor.id),
+        previous_state={
+            "vendor_number": vendor.vendor_number,
+            "legal_name": vendor.legal_name,
+            "status": vendor.status,
+            "email": vendor.email,
+        },
+        new_state={"deleted": True},
+    )
+    vendor.delete()
+
+
+@transaction.atomic
 def submit_vendor_kyc_service(*, vendor: Vendor, user: User) -> Vendor:
+
     """
     Transitions Vendor state from DRAFT or CHANGES_REQUIRED to SUBMITTED.
     """
@@ -521,20 +639,43 @@ def issue_vendor_credentials_service(
         )
 
     try:
-        send_mail(
-            subject=f"ProcureSphere 360 - Your Supplier Portal Access ({vendor.vendor_number})",
-            message=_credentials_email_body(vendor=vendor, email=email, password=password),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            html_message=build_credentials_html(
+        # --- Brevo Transactional HTTP API (HTTPS/443 — works on Render) ---
+        # Django's SMTP backend on port 587 is blocked by Render's network.
+        api_key = getattr(settings, "BREVO_API_KEY", "")
+        if not api_key:
+            raise RuntimeError(
+                "BREVO_API_KEY is not configured. Add it to your environment variables."
+            )
+        payload = {
+            "sender": {
+                "name": getattr(settings, "BREVO_SENDER_NAME", "ProcureSphere 360"),
+                "email": getattr(settings, "BREVO_SENDER_EMAIL", settings.DEFAULT_FROM_EMAIL),
+            },
+            "to": [{"email": email}],
+            "subject": f"ProcureSphere 360 - Your Supplier Portal Access ({vendor.vendor_number})",
+            "htmlContent": build_credentials_html(
                 vendor_name=vendor.legal_name,
                 vendor_number=vendor.vendor_number,
                 email=email,
                 password=password,
             ),
-            fail_silently=False,
+            "textContent": _credentials_email_body(vendor=vendor, email=email, password=password),
+        }
+        response = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            json=payload,
+            headers={
+                "api-key": api_key,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            timeout=30,
         )
-    except Exception as exc:  # SMTP / network failure: keep evidence, let the executive retry
+        if not response.ok:
+            raise RuntimeError(
+                f"Brevo API error {response.status_code}: {response.text[:300]}"
+            )
+    except Exception as exc:  # HTTP / network failure: keep evidence, let the executive retry
         logger.exception("Vendor credential email failed for vendor %s", vendor.vendor_number)
         dispatch.status = VendorCredentialDispatch.STATUS_FAILED
         dispatch.error = str(exc)[:500]
