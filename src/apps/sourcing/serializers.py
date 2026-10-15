@@ -16,6 +16,8 @@ from .models import (
 class SourcingEventSerializer(serializers.ModelSerializer):
     invite_count = serializers.SerializerMethodField()
     submitted_bid_count = serializers.SerializerMethodField()
+    bid_count = serializers.SerializerMethodField()
+    award_readiness = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
     class Meta:
@@ -39,6 +41,8 @@ class SourcingEventSerializer(serializers.ModelSerializer):
             "commercial_weight",
             "invite_count",
             "submitted_bid_count",
+            "bid_count",
+            "award_readiness",
             "created_at",
             "updated_at",
         ]
@@ -56,6 +60,18 @@ class SourcingEventSerializer(serializers.ModelSerializer):
         return obj.bids.filter(
             status__in=[VendorBid.STATUS_SUBMITTED, VendorBid.STATUS_AMENDED]
         ).count()
+
+    def get_bid_count(self, obj) -> int:
+        return obj.bids.count()
+
+    def get_award_readiness(self, obj) -> str:
+        if obj.status == SourcingEvent.STATUS_BID_WINDOW:
+            return "BIDDING_OPEN"
+        if obj.status == SourcingEvent.STATUS_TECHNICAL_REVIEW:
+            return "TECHNICAL_REVIEW"
+        if obj.status == SourcingEvent.STATUS_AWARD_APPROVAL:
+            return "READY_FOR_AWARD"
+        return obj.status
 
 
 class BidInviteSerializer(serializers.ModelSerializer):

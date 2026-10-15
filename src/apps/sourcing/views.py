@@ -280,6 +280,23 @@ def sourcing_detail_view(request, event_id):
     if caps["can_read_bids"] and event.bids_visible_to_evaluators:
         evaluation_rows = build_evaluation_rows(event, request.user)
 
+    bid_portal_rows = []
+    bid_portal_summary = None
+    if caps["can_read_bids"] and event.status != SourcingEvent.STATUS_DRAFT:
+        services.sync_event_window_status(event=event)
+        bid_portal_rows = get_bid_portal_rows(event)
+        responses = (VendorBid.STATUS_SUBMITTED, VendorBid.STATUS_AMENDED)
+        bid_portal_summary = {
+            "invited": len(bid_portal_rows),
+            "responded": sum(1 for r in bid_portal_rows if r["invite"].is_responded),
+            "submitted": sum(
+                1 for r in bid_portal_rows if r["bid"] and r["bid"].status in responses
+            ),
+            "invalid": sum(
+                1 for r in bid_portal_rows if r["validation"] and not r["validation"]["is_valid"]
+            ),
+        }
+
     context = {
         "event": event,
         "caps": caps,
@@ -302,6 +319,9 @@ def sourcing_detail_view(request, event_id):
             "-created_at"
         ),
         "evaluation_rows": evaluation_rows,
+        "bid_portal_rows": bid_portal_rows,
+        "bid_portal_summary": bid_portal_summary,
+        "sealed": not event.bids_visible_to_evaluators,
         "current_decision": event.award_decision,
         "purchase_orders": PurchaseOrder.objects.filter(sourcing_event=event).order_by(
             "-created_at"

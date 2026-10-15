@@ -44,7 +44,12 @@ def api_client():
 def db_roles(db):
     roles = {}
     for code, name in Role.ROLE_CHOICES:
-        role, _ = Role.objects.get_or_create(code=code, defaults={"name": name})
+        role = Role.objects.filter(code=code).first()
+        if not role:
+            try:
+                role = Role.objects.create(code=code, name=name)
+            except Exception:
+                role = Role.objects.filter(code=code).first()
         roles[code] = role
     return roles
 

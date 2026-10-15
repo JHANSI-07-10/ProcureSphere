@@ -43,6 +43,14 @@ def get_sourcing_events_for_user(user):
             status=SourcingEvent.STATUS_DRAFT
         )
     if can_view_events(user):
+        if not user.is_superuser:
+            user_dept = getattr(user, "department", None)
+            user_org = getattr(user_dept, "organization", None) if user_dept else None
+            if user_org:
+                qs = qs.filter(
+                    Q(requisition__department__organization=user_org)
+                    | Q(requisition__isnull=True, created_by__department__organization=user_org)
+                )
         return qs
     return qs.none()
 
@@ -58,7 +66,7 @@ def get_sourcing_event_by_id(event_id):
 
 def search_sourcing_events(queryset, params):
     """Server-side search / filter for the RFQ/RFP register and API."""
-    q = (params.get("q") or "").strip()
+    q = (params.get("q") or params.get("search") or "").strip()
     if q:
         queryset = queryset.filter(
             Q(event_number__icontains=q)

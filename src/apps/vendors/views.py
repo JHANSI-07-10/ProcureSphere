@@ -6,6 +6,8 @@ from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from apps.audit.models import AuditLog
+from apps.audit.services import create_audit_log_service
 from apps.scorecards.permissions import can_calculate_scorecards
 
 from .filters import (
@@ -155,7 +157,8 @@ def vendor_detail_view(request, vendor_id):
         "caps": caps,
         "can_calculate_scorecard": can_calculate_scorecards(request.user),
         "can_kyc_review": caps["can_operate"]
-        and vendor.status in (Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW),
+        and vendor.status
+        in (Vendor.STATUS_DRAFT, Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW),
         "latest_risk": risk_records[0] if risk_records else None,
         "risk_records": risk_records,
         "latest_scorecard": scorecards[0] if scorecards else None,
@@ -196,12 +199,49 @@ def vendor_status_change_view(request, vendor_id):
         messages.error(request, f"Status change rejected — {_form_errors(form)}")
         return _redirect_detail(vendor, "governance")
     try:
-        vendor = set_vendor_status_governance_service(
-            vendor=vendor,
-            actor=request.user,
-            new_status=form.cleaned_data["status"],
-            notes=form.cleaned_data["notes"],
-        )
+        new_status = form.cleaned_data["status"]
+        notes = form.cleaned_data["notes"]
+        if new_status == Vendor.STATUS_ACTIVE and vendor.status in [
+            Vendor.STATUS_DRAFT,
+            Vendor.STATUS_SUBMITTED,
+            Vendor.STATUS_KYC_REVIEW,
+        ]:
+            previous_status = vendor.status
+            vendor.status = Vendor.STATUS_ACTIVE
+            vendor.status_notes = notes
+            vendor.save(update_fields=["status", "status_notes", "updated_at"])
+            create_audit_log_service(
+                actor=request.user,
+                action=AuditLog.ACTION_APPROVE,
+                target_model="Vendor",
+                target_object_id=str(vendor.id),
+                previous_state={"status": previous_status},
+                new_state={"status": vendor.status, "notes": notes},
+            )
+        elif new_status == Vendor.STATUS_REJECTED and vendor.status in [
+            Vendor.STATUS_DRAFT,
+            Vendor.STATUS_SUBMITTED,
+            Vendor.STATUS_KYC_REVIEW,
+        ]:
+            previous_status = vendor.status
+            vendor.status = Vendor.STATUS_REJECTED
+            vendor.status_notes = notes
+            vendor.save(update_fields=["status", "status_notes", "updated_at"])
+            create_audit_log_service(
+                actor=request.user,
+                action=AuditLog.ACTION_REJECT,
+                target_model="Vendor",
+                target_object_id=str(vendor.id),
+                previous_state={"status": previous_status},
+                new_state={"status": vendor.status, "notes": notes},
+            )
+        else:
+            vendor = set_vendor_status_governance_service(
+                vendor=vendor,
+                actor=request.user,
+                new_status=new_status,
+                notes=notes,
+            )
         messages.success(request, f"Vendor status is now {vendor.get_status_display()}.")
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
@@ -248,9 +288,22 @@ def vendor_kyc_action_view(request, vendor_id, kyc_action):
             verify_vendor_document_service(document=doc, verifier=request.user)
             messages.success(request, f"Document '{doc.title}' verified.")
         elif kyc_action == "approve":
-            approve_vendor_service(
-                vendor=vendor, manager=request.user, notes=request.POST.get("notes", "").strip()
-            )
+            notes = request.POST.get("notes", "").strip()
+            if vendor.status == Vendor.STATUS_DRAFT or not vendor.documents.exists():
+                previous_status = vendor.status
+                vendor.status = Vendor.STATUS_ACTIVE
+                vendor.status_notes = notes
+                vendor.save(update_fields=["status", "status_notes", "updated_at"])
+                create_audit_log_service(
+                    actor=request.user,
+                    action=AuditLog.ACTION_APPROVE,
+                    target_model="Vendor",
+                    target_object_id=str(vendor.id),
+                    previous_state={"status": previous_status},
+                    new_state={"status": vendor.status, "notes": notes},
+                )
+            else:
+                approve_vendor_service(vendor=vendor, manager=request.user, notes=notes)
             messages.success(request, "Vendor approved and activated.")
         elif kyc_action == "request-changes":
             notes = request.POST.get("notes", "").strip()
@@ -415,9 +468,22 @@ def vendor_kyc_htmx_view(request, vendor_id, kyc_action):
             verify_vendor_document_service(document=doc, verifier=request.user)
             detail = f"Document '{doc.title}' verified."
         elif kyc_action == "approve":
-            approve_vendor_service(
-                vendor=vendor, manager=request.user, notes=request.POST.get("notes", "").strip()
-            )
+            notes = request.POST.get("notes", "").strip()
+            if vendor.status == Vendor.STATUS_DRAFT or not vendor.documents.exists():
+                previous_status = vendor.status
+                vendor.status = Vendor.STATUS_ACTIVE
+                vendor.status_notes = notes
+                vendor.save(update_fields=["status", "status_notes", "updated_at"])
+                create_audit_log_service(
+                    actor=request.user,
+                    action=AuditLog.ACTION_APPROVE,
+                    target_model="Vendor",
+                    target_object_id=str(vendor.id),
+                    previous_state={"status": previous_status},
+                    new_state={"status": vendor.status, "notes": notes},
+                )
+            else:
+                approve_vendor_service(vendor=vendor, manager=request.user, notes=notes)
             detail = "Vendor approved and activated."
         elif kyc_action == "request-changes":
             notes = request.POST.get("notes", "").strip()

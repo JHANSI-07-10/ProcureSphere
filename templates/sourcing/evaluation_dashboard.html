@@ -1,6 +1,14 @@
-{% extends 'base.html' %}
+{% extends base_layout|default:'base.html' %}
 
-{% block title %}Evaluation &amp; Award{% endblock %}
+{% block title %}Evaluation &amp; Award — ProcureSphere 360{% endblock %}
+
+{% block manager_breadcrumbs %}
+<li class="breadcrumb-item"><a href="/manager/" class="text-decoration-none text-muted">Manager</a></li>
+<li class="breadcrumb-item"><a href="/manager/awards/" class="text-decoration-none text-muted">Awards</a></li>
+<li class="breadcrumb-item active text-dark fw-semibold" aria-current="page">Evaluation &amp; Award</li>
+{% endblock manager_breadcrumbs %}
+
+{% block mobile_page_title %}Evaluation & Award{% endblock mobile_page_title %}
 
 {% block content %}
 <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-4">
@@ -8,7 +16,12 @@
         <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-scale-balanced text-warning me-2"></i>Evaluation &amp; Award</h2>
         <p class="text-muted small mb-0">Weighted technical scoring, commercial comparison, negotiation notes, award approval and decision audit.</p>
     </div>
-    <a href="{% url 'bid_portal_dashboard' %}" class="btn btn-outline-info rounded-pill px-3"><i class="fa-solid fa-envelope-open-text me-1"></i>Vendor Bid Portal</a>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        {% if user.role_code == 'PROC_MGR' %}
+        <a href="/manager/awards/" class="btn btn-outline-secondary rounded-pill px-3"><i class="fa-solid fa-arrow-left me-1"></i>Back to Awards</a>
+        {% endif %}
+        <a href="{% url 'bid_portal_dashboard' %}" class="btn btn-outline-info rounded-pill px-3"><i class="fa-solid fa-envelope-open-text me-1"></i>Vendor Bid Portal</a>
+    </div>
 </div>
 
 {% include 'partials/messages.html' %}

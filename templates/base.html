@@ -11,6 +11,10 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Google Fonts: Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
     <!-- Custom Design System Styles -->
     <link href="/static/css/style.css" rel="stylesheet">
     <!-- HTMX Library -->
@@ -18,7 +22,7 @@
     <!-- Chart.js 4.4 JS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
-<body class="bg-light">
+<body class="bg-light app-body">
     {% block navbar %}
     {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}
     {# Procurement Executive: sidebar-only layout (brand, user and sign-out live in the sidebar) #}
@@ -36,10 +40,33 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto ms-lg-2">
                     <li class="nav-item">
-                        <a class="nav-link px-3 active d-flex align-items-center" href="/">
+                        <a class="nav-link px-3 active d-flex align-items-center" href="{% if user.role_code == 'PROC_MGR' %}/manager/{% elif user.role_code == 'AUDITOR' %}/audit/dashboard/{% else %}/{% endif %}">
                             <i class="fa-solid fa-chart-pie me-2"></i> Dashboard
                         </a>
                     </li>
+                    {% if user.role_code == 'PROC_MGR' %}
+                    <li class="nav-item">
+                        <a class="nav-link px-3 d-flex align-items-center text-white" href="/manager/pipeline/">
+                            <i class="fa-solid fa-filter-circle-dollar me-2 text-cyan"></i> Pipeline
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-3 d-flex align-items-center text-white" href="/manager/pr-aging/">
+                            <i class="fa-solid fa-clock-rotate-left me-2 text-warning"></i> PR Aging
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-3 d-flex align-items-center text-white" href="/manager/sourcing/">
+                            <i class="fa-solid fa-gavel me-2 text-info"></i> Sourcing
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-3 d-flex align-items-center text-white" href="/manager/purchase-orders/">
+                            <i class="fa-solid fa-cart-shopping me-2 text-emerald"></i> Orders
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if user.is_superuser or user.role_code == 'SUPER_ADMIN' %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle px-3 d-flex align-items-center text-white" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fa-solid fa-cubes me-2"></i> ERP Modules
@@ -68,6 +95,7 @@
                             <i class="fa-solid fa-heart-pulse me-2"></i> Health
                         </a>
                     </li>
+                    {% endif %}
                 </ul>
 
                 <div class="d-flex align-items-center">
