@@ -21,6 +21,7 @@ pytestmark = [pytest.mark.django_db, pytest.mark.regression]
 def email_settings(settings):
     settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
     settings.VENDOR_PORTAL_LOGIN_URLS = ["http://localhost:8000/login/"]
+    settings.BREVO_API_KEY = ""  # SMTP path (locmem); REST path is tested separately
 
 
 def _event(w):
@@ -93,6 +94,16 @@ def test_new_vendor_is_listed_as_pending_then_invitable_after_kyc_approval(
     vclient.post(reverse("vendor_profile"), {"action": "submit_kyc"})
     vendor.refresh_from_db()
     assert vendor.status == Vendor.STATUS_SUBMITTED
+
+    # Documents must be verified before activation is allowed.
+    assert client.post(reverse("vendor_kyc_action", args=[vendor.id, "approve"])).status_code == 302
+    vendor.refresh_from_db()
+    assert vendor.status == Vendor.STATUS_SUBMITTED
+    doc = vendor.documents.get()
+    client.post(
+        reverse("vendor_kyc_action", args=[vendor.id, "verify-document"]),
+        {"document_id": str(doc.id)},
+    )
 
     # Executive approves -> vendor becomes selectable and can be invited via the UI.
     assert client.post(reverse("vendor_kyc_action", args=[vendor.id, "approve"])).status_code == 302

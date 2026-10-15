@@ -13,6 +13,7 @@ from apps.budgets.services import (
     check_and_reserve_budget_service,
     release_budget_reservation_service,
 )
+from apps.core.validators import validate_pr_attachment
 from apps.organization.models import CostCenter, Department
 
 from .models import PRAttachment, PRLine, PurchaseRequisition
@@ -41,6 +42,28 @@ def create_purchase_requisition_service(
             f"Requester '{requester.email}' is only authorized to create requisitions for Cost Center '{requester.cost_center.code}'."
         )
 
+    if requested_delivery_date:
+        from datetime import date, datetime
+
+        if isinstance(requested_delivery_date, str):
+            try:
+                deliv_obj = datetime.strptime(
+                    str(requested_delivery_date).split("T")[0], "%Y-%m-%d"
+                ).date()
+            except ValueError:
+                deliv_obj = None
+        elif isinstance(requested_delivery_date, (datetime, date)):
+            deliv_obj = (
+                requested_delivery_date
+                if isinstance(requested_delivery_date, date)
+                else requested_delivery_date.date()
+            )
+        else:
+            deliv_obj = None
+
+        if deliv_obj and deliv_obj < timezone.now().date():
+            raise ValidationError("Requested delivery date cannot be in the past.")
+
     pr_count = PurchaseRequisition.objects.count() + 1
     pr_number = f"PR-{timezone.now().strftime('%Y')}-{pr_count:05d}"
 
@@ -58,12 +81,26 @@ def create_purchase_requisition_service(
 
     total = Decimal("0.00")
     for item in line_items:
+        qty = Decimal(str(item["quantity"]))
+        unit_price = Decimal(str(item["estimated_unit_price"]))
+        if qty <= Decimal("0.00"):
+            raise ValidationError(
+                f"Quantity for line item '{item.get('item_description', '')}' must be greater than zero."
+            )
+        if qty % 1 != 0:
+            raise ValidationError(
+                f"Quantity for line item '{item.get('item_description', '')}' must be a whole number (no decimal points allowed)."
+            )
+        if unit_price < Decimal("0.00"):
+            raise ValidationError(
+                f"Estimated unit price for line item '{item.get('item_description', '')}' cannot be negative."
+            )
         line = PRLine.objects.create(
             requisition=pr,
             item_description=item["item_description"],
-            quantity=Decimal(str(item["quantity"])),
+            quantity=qty,
             unit_of_measure=item.get("unit_of_measure", "EA"),
-            estimated_unit_price=Decimal(str(item["estimated_unit_price"])),
+            estimated_unit_price=unit_price,
             specifications=item.get("specifications", ""),
         )
         total += line.estimated_total
@@ -77,6 +114,7 @@ def create_purchase_requisition_service(
 
     if attachments:
         for uploaded_file in attachments:
+            validate_pr_attachment(uploaded_file)
             PRAttachment.objects.create(
                 requisition=pr,
                 uploaded_by=requester,

@@ -5,23 +5,31 @@
 <div class="modal-body">
     <div class="mb-2 small text-muted">Status: {% include 'partials/vendor_status_badge.html' with status=vendor.status label=vendor.get_status_display %}</div>
     <div class="table-responsive"><table class="table table-sm align-middle small mb-3">
-        <thead><tr><th>Type</th><th>Title</th><th>Expiry</th><th>Verified</th><th class="text-end">Actions</th></tr></thead>
+        <thead><tr><th>Type</th><th>Title</th><th>Expiry</th><th>Review</th><th class="text-end">Actions</th></tr></thead>
         <tbody>
         {% for doc in documents %}
             <tr>
                 <td>{{ doc.get_document_type_display }}</td>
                 <td>{{ doc.title }}</td>
                 <td>{{ doc.expiry_date|date:"Y-m-d"|default:"—" }}</td>
-                <td>{% if doc.is_verified %}<span class="badge bg-success">Verified</span>{% else %}<span class="badge bg-secondary">Pending</span>{% endif %}</td>
+                <td>{% if doc.review_status == 'VERIFIED' %}<span class="badge bg-success">Verified</span>{% elif doc.review_status == 'REJECTED' %}<span class="badge bg-danger">Rejected</span>{% if doc.review_notes %}<div class="text-muted">{{ doc.review_notes }}</div>{% endif %}{% else %}<span class="badge bg-secondary">Pending</span>{% endif %}</td>
                 <td class="text-end text-nowrap">
                     <a class="btn btn-sm btn-outline-secondary" href="{% url 'vendor_document_download' vendor.id doc.id %}">Download</a>
-                    {% if caps.can_operate and not doc.is_verified %}
+                    {% if can_review_docs and doc.review_status == 'PENDING' %}
                     <form method="post" action="{% url 'vendors_kyc_htmx' vendor.id 'verify-document' %}"
                           hx-post="{% url 'vendors_kyc_htmx' vendor.id 'verify-document' %}"
                           hx-target="#modal-content-body" hx-swap="innerHTML" class="d-inline">
                         {% csrf_token %}
                         <input type="hidden" name="document_id" value="{{ doc.id }}">
                         <button class="btn btn-sm btn-outline-success">Verify</button>
+                    </form>
+                    <form method="post" action="{% url 'vendors_kyc_htmx' vendor.id 'reject-document' %}"
+                          hx-post="{% url 'vendors_kyc_htmx' vendor.id 'reject-document' %}"
+                          hx-target="#modal-content-body" hx-swap="innerHTML" class="d-inline-flex gap-1">
+                        {% csrf_token %}
+                        <input type="hidden" name="document_id" value="{{ doc.id }}">
+                        <input name="notes" class="form-control form-control-sm" style="width:9rem" placeholder="Reason" required aria-label="Rejection reason">
+                        <button class="btn btn-sm btn-outline-danger">Reject</button>
                     </form>
                     {% endif %}
                 </td>
@@ -31,11 +39,12 @@
         {% endfor %}
         </tbody>
     </table></div>
-    {% if caps.can_operate %}
     <div class="border rounded p-3 small">
-        <div class="fw-semibold mb-2">Qualification actions (via <code>vendors/services.py</code>)</div>
+        <div class="fw-semibold mb-1">KYC &amp; activation status</div>
+        <div class="mb-2 text-muted">Submission: {{ kyc.submission }} &middot; Legal review: {{ kyc.legal_review }} &middot; Activation: {{ kyc.activation }}<br><strong>Next:</strong> {{ kyc.next_action }}</div>
+        {% if kyc.blockers and vendor.status != 'ACTIVE' %}<ul class="mb-2 ps-3 text-muted">{% for b in kyc.blockers %}<li>{{ b }}</li>{% endfor %}</ul>{% endif %}
         <div class="d-flex flex-wrap gap-2">
-            {% if vendor.status == 'SUBMITTED' %}
+            {% if can_start_kyc_review %}
             <form method="post" action="{% url 'vendors_kyc_htmx' vendor.id 'start-review' %}"
                   hx-post="{% url 'vendors_kyc_htmx' vendor.id 'start-review' %}"
                   hx-target="#modal-content-body" hx-swap="innerHTML">
@@ -43,7 +52,7 @@
                 <button class="btn btn-sm btn-outline-primary">Start KYC review</button>
             </form>
             {% endif %}
-            {% if vendor.status == 'SUBMITTED' or vendor.status == 'KYC_REVIEW' %}
+            {% if can_activate_vendor %}
             <form method="post" action="{% url 'vendors_kyc_htmx' vendor.id 'approve' %}"
                   hx-post="{% url 'vendors_kyc_htmx' vendor.id 'approve' %}"
                   hx-target="#modal-content-body" hx-swap="innerHTML" class="d-flex gap-2">
@@ -51,6 +60,8 @@
                 <input name="notes" class="form-control form-control-sm" placeholder="Approval note" aria-label="Approval note">
                 <button class="btn btn-sm btn-success text-nowrap">Approve &amp; activate</button>
             </form>
+            {% endif %}
+            {% if can_request_changes %}
             <form method="post" action="{% url 'vendors_kyc_htmx' vendor.id 'request-changes' %}"
                   hx-post="{% url 'vendors_kyc_htmx' vendor.id 'request-changes' %}"
                   hx-target="#modal-content-body" hx-swap="innerHTML" class="d-flex gap-2 w-100 mt-1">
@@ -62,5 +73,4 @@
             <a class="btn btn-sm btn-outline-secondary" href="{% url 'vendor_detail' vendor.id %}">Full vendor file</a>
         </div>
     </div>
-    {% endif %}
 </div>

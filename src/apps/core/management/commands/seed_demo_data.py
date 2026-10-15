@@ -39,6 +39,7 @@ from apps.vendors.services import (
     approve_vendor_service,
     register_vendor_service,
     submit_vendor_kyc_service,
+    verify_vendor_document_service,
 )
 
 
@@ -275,16 +276,16 @@ class Command(BaseCommand):
                 address="170 West Tasman Dr, San Jose, CA",
                 created_by_user=proc_exec,
             )
-            VendorDocument.objects.create(
+            kyc_doc = VendorDocument.objects.create(
                 vendor=vendor1,
                 document_type=VendorDocument.DOC_TYPE_CERT,
                 title="Certificate of Incorporation",
                 file=SimpleUploadedFile(
                     "cert.pdf", b"%PDF-1.4 Content", content_type="application/pdf"
                 ),
-                is_verified=True,
             )
             submit_vendor_kyc_service(vendor=vendor1, user=proc_exec)
+            verify_vendor_document_service(document=kyc_doc, verifier=legal_user)
             approve_vendor_service(vendor=vendor1, manager=proc_mgr, notes="Verified & Approved")
 
         vendor_user.vendor = vendor1

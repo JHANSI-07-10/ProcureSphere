@@ -29,7 +29,7 @@ Legend: **C** = Create, **R** = Read, **U** = Update, **D** = Delete, **A** = Ap
 | User & System Config | C R U D | - | - | - | - | - | - | - | R | - |
 | Org, Dept & Cost Centers | C R U D | R | R | R | R | R | R | R | R | - |
 | Approval Policies | C R U D | R | R | R | R | R | - | - | R | - |
-| Vendor Onboarding & KYC | C R U | - | - | C R U A | C R U A | R | - | - | R | C R U (Self) |
+| Vendor Onboarding & KYC | C R U | - | - | C R U A | C R U A | R | - | R V (docs) | R | C R U (Self) |
 | Vendor Risk & Status | C R U | - | - | R U | C R U A | R | - | - | R | R (Self) |
 | Purchase Requisitions | R D | C R U (Dept) | R A (Dept) | R | R A | R | - | - | R | - |
 | Budget & Spend Ledger | C R U | R (Dept) | R (Dept) | R | R | C R U A | - | - | R | - |
@@ -69,7 +69,10 @@ Enforced server-side in `apps/sourcing/permissions.py`, `apps/vendors/permission
 | Generate PO from award | `actions/generate-po` | ✔ | ✔ | – | – | – | – | 403 |
 | Withdraw bid (before close) | `POST /api/v1/sourcing-events/bids/{id}/withdraw/` | – | – | – | – | – | Own bid | 403/404 |
 | Vendor governance pages | `/vendors/`, `/vendors/governance/`, `/vendors/onboarding/`, `/vendors/{id}/` | ✔ | ✔ | R | R | – | – (portal only) | 403 |
-| Register vendor / KYC review & approve / verify docs | `/vendors/create/`, `/vendors/{id}/kyc/*` | ✔ | ✔ | – | – | – | – | 403 |
+| Register vendor | `/vendors/create/`, `/vendors/htmx/register/` | ✔ | ✔ | – | – | – | – | 403 |
+| Start KYC review; **activate vendor** (approve) | `/vendors/{id}/kyc/start-review/`, `/kyc/approve/`, `/vendors/{id}/htmx/kyc/*` | ✔ | ✔ | – | – | **403** | – | 403 |
+| Verify / reject KYC document (reason required); request corrections | `/vendors/{id}/kyc/verify-document/`, `/reject-document/`, `/request-changes/` | ✔ | ✔ | – | – | ✔ | – | 403 |
+| KYC activation gates (server-side, `approve_vendor_service`) | status SUBMITTED/KYC_REVIEW, ≥1 document, mandatory types present (`VENDOR_MANDATORY_KYC_DOC_TYPES`), every current document VERIFIED, none rejected/pending | applies to all roles |
 | Record risk assessment (level + flags) | `/vendors/{id}/risk/`, `POST /api/v1/vendors/{id}/risk/` | ✔ | ✔ | – | – | – | – | 403 |
 | Hold / release hold / reject registration | `/vendors/{id}/status/`, `POST …/set-status/` | ✔ | ✔ | – | – | – | – | 403 |
 | Suspend (blacklist) / reinstate | same | **✘** | ✔ | – | – | – | – | 403 |
