@@ -1,0 +1,28 @@
+ProcureSphere 360 — Enterprise Procurement Platform
+==================================================
+
+Dear {% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.email }}{% endif %},
+
+Your account has been successfully created on ProcureSphere 360 by the System Administrator.
+Your account details and temporary credentials are provided below.
+
+ACCOUNT DETAILS:
+----------------
+Email Address: {{ user.email }}
+Assigned Role: {{ user.role.name|default:"No Role Assigned" }}
+{% if user.department %}Department: {{ user.department.name }}{% endif %}
+{% if user.cost_center %}Cost Center: {{ user.cost_center.code }} — {{ user.cost_center.name }}{% endif %}
+Temporary Password: {{ temporary_password }}
+Account Status: {% if user.is_active %}Active{% else %}Inactive{% endif %}
+
+LOGIN TO YOUR ACCOUNT:
+----------------------
+Login URL: {{ login_url }}
+
+IMPORTANT NOTICE:
+-----------------
+For security reasons, you must change your temporary password when you log in for the first time.
+Please do not share your login credentials with anyone.
+
+Regards,
+ProcureSphere 360 Team

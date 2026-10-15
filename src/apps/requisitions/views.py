@@ -95,6 +95,9 @@ def list_view(request):
 
 @login_required(login_url="/login/")
 def create_view(request):
+<<<<<<< HEAD
+    user = request.user
+=======
     user = request.user
     role_code = getattr(user, "role_code", None) or (
         user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
@@ -838,3 +841,4 @@ def attachment_download_view(request, pk, attachment_id):
     if not as_attachment:
         response["Content-Disposition"] = f'inline; filename="{filename}"'
     return response
+>>>>>>> 49544dc60d4c7c3cc3ad09642a1f83c50be0a88d

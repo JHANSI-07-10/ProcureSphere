@@ -1,21 +1,32 @@
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+<<<<<<< Updated upstream
 from django.contrib.auth.forms import SetPasswordForm
+=======
+from django.contrib.auth.forms import PasswordChangeForm
+>>>>>>> Stashed changes
 from django.shortcuts import redirect, render
+from django.urls import reverse
 
 
 def portal_login_view(request):
     """
     Renders and processes the ProcureSphere 360 ERP Portal login form.
-    Redirects authenticated users straight to the ERP Dashboard (/).
+    Redirects authenticated users straight to the ERP Dashboard (/) or
+    forces password change if must_change_password is True.
     """
     if request.user.is_authenticated:
+<<<<<<< Updated upstream
         role_code = getattr(request.user, "role_code", None) or (
             request.user.role.code if hasattr(request.user, "role") and request.user.role else None
         )
         if role_code == "VENDOR_USER":
             return redirect("/vendor/")
+=======
+        if getattr(request.user, "must_change_password", False):
+            return redirect(reverse("accounts:change_password"))
+>>>>>>> Stashed changes
         return redirect("/")
 
     if request.method == "POST":
@@ -58,6 +69,7 @@ def portal_login_view(request):
             except (ImportError, Exception):
                 pass
 
+<<<<<<< Updated upstream
             next_url = request.GET.get("next")
             if not next_url:
                 role_code = getattr(user, "role_code", None) or (
@@ -67,11 +79,65 @@ def portal_login_view(request):
                     next_url = "/vendor/"
                 else:
                     next_url = "/"
+=======
+            if getattr(user, "must_change_password", False):
+                return redirect(reverse("accounts:change_password"))
+
+            next_url = request.GET.get("next") or "/"
+>>>>>>> Stashed changes
             return redirect(next_url)
         else:
             messages.error(request, "Invalid email or password. Please try again.")
 
     return render(request, "pages/login.html")
+
+
+@login_required
+def change_password_view(request):
+    """
+    Renders and processes the password change form.
+    Mandatory on first login for users created by Super Admin with must_change_password=True.
+    """
+    if request.method == "POST":
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            user.must_change_password = False
+            user.save(update_fields=["must_change_password"])
+            update_session_auth_hash(request, user)  # Keep user session active
+
+            from apps.audit.models import AuditLog
+            from apps.audit.services import create_audit_log_service
+
+            create_audit_log_service(
+                actor=user,
+                action=AuditLog.ACTION_UPDATE,
+                target_model="User",
+                target_object_id=str(user.id),
+                previous_state={"must_change_password": True},
+                new_state={"must_change_password": False, "action": "first_login_password_change"},
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            )
+
+            messages.success(
+                request,
+                "Your password has been changed successfully. Welcome to ProcureSphere 360!",
+            )
+            return redirect("/")
+        else:
+            messages.error(request, "Please correct the password errors below.")
+    else:
+        form = PasswordChangeForm(request.user)
+
+    return render(
+        request,
+        "accounts/change_password.html",
+        {
+            "form": form,
+            "is_forced": getattr(request.user, "must_change_password", False),
+        },
+    )
 
 
 def portal_logout_view(request):

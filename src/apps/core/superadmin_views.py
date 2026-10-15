@@ -1,12 +1,15 @@
 import csv
 
 import openpyxl
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 
 from apps.accounts.models import Role, User
+from apps.accounts.password_utils import generate_secure_password
 from apps.approvals.models import ApprovalPolicy
 from apps.audit.models import AuditLog
 from apps.budgets.models import Budget
@@ -18,40 +21,8 @@ from apps.core.superadmin_forms import (
     PolicyAdminForm,
     UserAdminForm,
 )
+from apps.notifications.email_service import send_user_welcome_email
 from apps.organization.models import CostCenter, Department, Organization
-
-
-@login_required
-def user_list_view(request):
-    users = User.objects.select_related("role", "department").all().order_by("-date_joined")
-    return render(request, "pages/dashboards/superadmin/users.html", {"users": users})
-
-
-@login_required
-def user_create_view(request):
-    if request.method == "POST":
-        form = UserAdminForm(request.POST)
-        if form.is_valid():
-            user = form.save(commit=False)
-            user.username = form.cleaned_data["email"]
-            user.save()
-            return HttpResponse("<script>window.location.reload();</script>")
-    else:
-        form = UserAdminForm()
-    return render(request, "pages/dashboards/superadmin/user_form.html", {"form": form})
-
-
-@login_required
-def user_edit_view(request, user_id):
-    user = get_object_or_404(User, pk=user_id)
-    if request.method == "POST":
-        form = UserAdminForm(request.POST, instance=user)
-        if form.is_valid():
-            form.save()
-            return HttpResponse("<script>window.location.reload();</script>")
-    else:
-        form = UserAdminForm(instance=user)
-    return render(request, "pages/dashboards/superadmin/user_form.html", {"form": form})
 
 
 def _is_super_admin(user):
@@ -59,6 +30,206 @@ def _is_super_admin(user):
         user.is_superuser
         or getattr(user, "role_code", None) == Role.SUPER_ADMIN
         or (hasattr(user, "role") and user.role and user.role.code == Role.SUPER_ADMIN)
+    )
+
+
+@login_required
+def user_list_view(request):
+    users = User.objects.select_related("role", "department", "cost_center").all().order_by("-date_joined")
+    return render(request, "pages/dashboards/superadmin/users.html", {"users": users})
+
+
+@login_required
+def user_create_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
+    if request.method == "POST":
+        form = UserAdminForm(request.POST)
+        if form.is_valid():
+            with transaction.atomic():
+                user = form.save(commit=False)
+                user.username = form.cleaned_data["email"]
+                user.must_change_password = True
+
+                raw_password = form.cleaned_data.get("password")
+                if not raw_password:
+                    raw_password = generate_secure_password()
+                user.set_password(raw_password)
+                user.save()
+
+                from apps.audit.services import create_audit_log_service
+
+                create_audit_log_service(
+                    actor=request.user,
+                    action=AuditLog.ACTION_CREATE,
+                    target_model="User",
+                    target_object_id=str(user.id),
+                    previous_state=None,
+                    new_state={
+                        "email": user.email,
+                        "phone_number": user.phone_number,
+                        "role": user.role.code if user.role else None,
+                        "department": user.department.code if user.department else None,
+                        "cost_center": user.cost_center.code if user.cost_center else None,
+                        "is_active": user.is_active,
+                        "must_change_password": user.must_change_password,
+                    },
+                    ip_address=request.META.get("REMOTE_ADDR"),
+                    user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                )
+
+            # Trigger welcome email strictly after database commit
+            email_status, email_error = send_user_welcome_email(
+                user=user,
+                temporary_password=raw_password,
+                request=request,
+            )
+
+            # User-facing notifications per Section 6 specification
+            if email_status == "SENT":
+                messages.success(request, "User account created successfully.")
+                messages.info(request, f"Welcome email sent successfully to {user.email}.")
+            elif email_status == "QUEUED":
+                messages.success(request, "User created successfully. Welcome email queued for delivery.")
+            else:
+                messages.warning(
+                    request,
+                    "User created successfully, but the welcome email could not be delivered. Please retry.",
+                )
+
+            return HttpResponse("<script>window.location.reload();</script>")
+    else:
+        form = UserAdminForm()
+    return render(request, "pages/dashboards/superadmin/user_form.html", {"form": form, "is_edit": False})
+
+
+@login_required
+def user_edit_view(request, user_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
+    user = get_object_or_404(User, pk=user_id)
+    if request.method == "POST":
+        old_state = {
+            "email": user.email,
+            "phone_number": user.phone_number,
+            "role": user.role.code if user.role else None,
+            "department": user.department.code if user.department else None,
+            "cost_center": user.cost_center.code if user.cost_center else None,
+            "is_active": user.is_active,
+        }
+        form = UserAdminForm(request.POST, instance=user)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.username = form.cleaned_data["email"]
+            new_password = form.cleaned_data.get("password")
+            if new_password:
+                user.set_password(new_password)
+            user.save()
+
+            from apps.audit.services import create_audit_log_service
+
+            create_audit_log_service(
+                actor=request.user,
+                action=AuditLog.ACTION_UPDATE,
+                target_model="User",
+                target_object_id=str(user.id),
+                previous_state=old_state,
+                new_state={
+                    "email": user.email,
+                    "phone_number": user.phone_number,
+                    "role": user.role.code if user.role else None,
+                    "department": user.department.code if user.department else None,
+                    "cost_center": user.cost_center.code if user.cost_center else None,
+                    "is_active": user.is_active,
+                },
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            )
+
+            messages.success(request, f"User '{user.email}' updated successfully.")
+            return HttpResponse("<script>window.location.reload();</script>")
+    else:
+        form = UserAdminForm(instance=user)
+    return render(request, "pages/dashboards/superadmin/user_form.html", {"form": form, "is_edit": True, "user_obj": user})
+
+
+@login_required
+def user_resend_welcome_email_view(request, user_id):
+    """
+    Super Admin action to safely retry or resend the welcome email with a refreshed
+    temporary password.
+    """
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
+    if request.method == "POST":
+        user = get_object_or_404(User, pk=user_id)
+        new_temp_pwd = generate_secure_password()
+        user.set_password(new_temp_pwd)
+        user.must_change_password = True
+        user.save(update_fields=["password", "must_change_password"])
+
+        from apps.audit.services import create_audit_log_service
+
+        create_audit_log_service(
+            actor=request.user,
+            action=AuditLog.ACTION_UPDATE,
+            target_model="User",
+            target_object_id=str(user.id),
+            previous_state={"welcome_email_resend": False},
+            new_state={"welcome_email_resend": True, "email": user.email},
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        )
+
+        email_status, email_error = send_user_welcome_email(
+            user=user,
+            temporary_password=new_temp_pwd,
+            request=request,
+        )
+
+        if email_status == "SENT":
+            messages.success(request, f"Welcome email sent successfully to {user.email}.")
+        elif email_status == "QUEUED":
+            messages.info(request, "Welcome email queued for delivery.")
+        else:
+            messages.warning(
+                request,
+                f"Could not deliver welcome email to {user.email}. Please retry.",
+            )
+
+        return HttpResponse("<script>window.location.reload();</script>")
+    return HttpResponse(status=405)
+
+
+@login_required
+def cost_center_options_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse("<option value=''>-- Unauthorized --</option>", status=403)
+    dept_id = request.GET.get("department", "").strip()
+    cost_centers = CostCenter.objects.none()
+    if dept_id:
+        try:
+            import uuid
+            uuid.UUID(dept_id)
+            cost_centers = CostCenter.objects.filter(department_id=dept_id).order_by("name")
+        except (ValueError, AttributeError):
+            pass
+    return render(
+        request,
+        "pages/dashboards/superadmin/cost_center_options.html",
+        {"cost_centers": cost_centers},
     )
 
 
@@ -90,6 +261,12 @@ def org_list_view(request):
 
 @login_required
 def org_create_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
     if request.method == "POST":
         form = OrganizationAdminForm(request.POST)
         if form.is_valid():
@@ -97,11 +274,17 @@ def org_create_view(request):
             return HttpResponse("<script>window.location.reload();</script>")
     else:
         form = OrganizationAdminForm()
-    return render(request, "pages/dashboards/superadmin/org_form.html", {"form": form})
+    return render(request, "pages/dashboards/superadmin/org_form.html", {"form": form, "is_edit": False})
 
 
 @login_required
 def org_edit_view(request, org_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
     org = get_object_or_404(Organization, pk=org_id)
     if request.method == "POST":
         form = OrganizationAdminForm(request.POST, instance=org)
@@ -110,7 +293,7 @@ def org_edit_view(request, org_id):
             return HttpResponse("<script>window.location.reload();</script>")
     else:
         form = OrganizationAdminForm(instance=org)
-    return render(request, "pages/dashboards/superadmin/org_form.html", {"form": form})
+    return render(request, "pages/dashboards/superadmin/org_form.html", {"form": form, "is_edit": True, "org": org})
 
 
 @login_required
@@ -319,6 +502,12 @@ def audit_list_view(request):
 
 @login_required
 def budget_create_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
     if request.method == "POST":
         form = BudgetAdminForm(request.POST)
         if form.is_valid():
@@ -326,11 +515,17 @@ def budget_create_view(request):
             return HttpResponse("<script>window.location.reload();</script>")
     else:
         form = BudgetAdminForm()
-    return render(request, "pages/dashboards/superadmin/budget_form.html", {"form": form})
+    return render(request, "pages/dashboards/superadmin/budget_form.html", {"form": form, "is_edit": False})
 
 
 @login_required
 def budget_edit_view(request, budget_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
     budget = get_object_or_404(Budget, pk=budget_id)
     if request.method == "POST":
         form = BudgetAdminForm(request.POST, instance=budget)
@@ -339,11 +534,17 @@ def budget_edit_view(request, budget_id):
             return HttpResponse("<script>window.location.reload();</script>")
     else:
         form = BudgetAdminForm(instance=budget)
-    return render(request, "pages/dashboards/superadmin/budget_form.html", {"form": form})
+    return render(request, "pages/dashboards/superadmin/budget_form.html", {"form": form, "is_edit": True, "budget": budget})
 
 
 @login_required
 def policy_create_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
     if request.method == "POST":
         form = PolicyAdminForm(request.POST)
         if form.is_valid():
@@ -351,11 +552,17 @@ def policy_create_view(request):
             return HttpResponse("<script>window.location.reload();</script>")
     else:
         form = PolicyAdminForm()
-    return render(request, "pages/dashboards/superadmin/policy_form.html", {"form": form})
+    return render(request, "pages/dashboards/superadmin/policy_form.html", {"form": form, "is_edit": False})
 
 
 @login_required
 def policy_edit_view(request, policy_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
     policy = get_object_or_404(ApprovalPolicy, pk=policy_id)
     if request.method == "POST":
         form = PolicyAdminForm(request.POST, instance=policy)
@@ -364,7 +571,7 @@ def policy_edit_view(request, policy_id):
             return HttpResponse("<script>window.location.reload();</script>")
     else:
         form = PolicyAdminForm(instance=policy)
-    return render(request, "pages/dashboards/superadmin/policy_form.html", {"form": form})
+    return render(request, "pages/dashboards/superadmin/policy_form.html", {"form": form, "is_edit": True, "policy": policy})
 
 
 @login_required
