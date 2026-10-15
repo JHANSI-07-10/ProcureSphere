@@ -8,6 +8,7 @@ urlpatterns = [
     path("users/", superadmin_views.user_list_view, name="users"),
     path("users/create/", superadmin_views.user_create_view, name="user_create"),
     path("users/<uuid:user_id>/edit/", superadmin_views.user_edit_view, name="user_edit"),
+    path("users/<uuid:user_id>/resend-welcome/", superadmin_views.user_resend_welcome_email_view, name="user_resend_welcome"),
     path("organizations/", superadmin_views.org_list_view, name="organizations"),
     path("organizations/create/", superadmin_views.org_create_view, name="org_create"),
     path("organizations/<uuid:org_id>/edit/", superadmin_views.org_edit_view, name="org_edit"),

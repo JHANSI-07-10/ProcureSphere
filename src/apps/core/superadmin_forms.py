@@ -1,12 +1,27 @@
 from django import forms
+from django.contrib.auth import password_validation
 
 from apps.accounts.models import Role, User
+from apps.accounts.password_utils import generate_secure_password
 from apps.approvals.models import ApprovalPolicy
 from apps.budgets.models import Budget
 from apps.organization.models import CostCenter, Department, Organization
 
 
 class UserAdminForm(forms.ModelForm):
+    password = forms.CharField(
+        label="Password",
+        required=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Enter password or generate",
+                "id": "id_password",
+                "autocomplete": "new-password",
+            }
+        ),
+    )
+
     class Meta:
         model = User
         fields = ["email", "phone_number", "role", "department", "cost_center", "is_active"]
@@ -46,6 +61,11 @@ class UserAdminForm(forms.ModelForm):
 
         if not self.instance.pk or getattr(self.instance, "_state", None) and self.instance._state.adding:
             self.initial.setdefault("is_active", True)
+            self.fields["password"].help_text = (
+                "Must contain at least 12 characters, including uppercase, lowercase, numbers, and special characters."
+            )
+        else:
+            self.fields["password"].help_text = "Leave blank to keep existing password."
 
     def clean_email(self):
         email = self.cleaned_data.get("email", "").strip().lower()
@@ -57,6 +77,30 @@ class UserAdminForm(forms.ModelForm):
         if qs.exists():
             raise forms.ValidationError(f"User with email '{email}' already exists.")
         return email
+
+    def clean_password(self):
+        password = self.cleaned_data.get("password", "").strip()
+        is_creating = not self.instance.pk or (
+            getattr(self.instance, "_state", None) and self.instance._state.adding
+        )
+        if is_creating:
+            if not password:
+                # If password was omitted or empty, automatically generate a secure random password
+                password = generate_secure_password()
+                return password
+
+            # Validate password strength with Django's password validators
+            user_temp = User(
+                email=self.cleaned_data.get("email") or self.data.get("email", ""),
+                username=self.cleaned_data.get("email") or self.data.get("email", ""),
+            )
+            password_validation.validate_password(password, user=user_temp)
+            return password
+        else:
+            # Edit mode: optional
+            if password:
+                password_validation.validate_password(password, user=self.instance)
+            return password
 
     def clean(self):
         cleaned_data = super().clean()
@@ -70,7 +114,8 @@ class UserAdminForm(forms.ModelForm):
             if not department:
                 self.add_error("department", "Department is required for Requester accounts.")
             if not cost_center:
-                self.add_error("cost_center", "Cost Center is mandatory for Requester accounts.")
+                if department and CostCenter.objects.filter(department=department).exists():
+                    self.add_error("cost_center", "Cost Center is mandatory for Requester accounts.")
             elif department and cost_center.department_id != department.id:
                 self.add_error(
                     "cost_center",
@@ -104,8 +149,12 @@ class UserAdminForm(forms.ModelForm):
         user = super().save(commit=False)
         if self.cleaned_data.get("email"):
             user.username = self.cleaned_data["email"]
-        if not user.password:
-            user.set_password("Password123!")
+        password = self.cleaned_data.get("password")
+        if password:
+            user.set_password(password)
+        elif not user.password:
+            temp_pwd = generate_secure_password()
+            user.set_password(temp_pwd)
         if commit:
             user.save()
         return user

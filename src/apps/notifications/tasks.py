@@ -20,3 +20,31 @@ def test_celery_beat_task():
     logger.info(f"Beat Task Triggered at {timezone.now()}")
     print(f"Beat Task Triggered at {timezone.now()}")
     return "Beat Triggered Successfully"
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_user_welcome_email_task(self, user_id: str, temporary_password: str, login_url: str = None):
+    """
+    Celery task to asynchronously send the user welcome email.
+    """
+    from apps.accounts.models import User
+    from apps.notifications.email_service import send_user_welcome_email_direct
+
+    try:
+        user = User.objects.get(id=user_id)
+        status, err = send_user_welcome_email_direct(
+            user=user,
+            temporary_password=temporary_password,
+            login_url=login_url,
+        )
+        if status == "FAILED":
+            logger.warning("Welcome email delivery task failed for user %s: %s", user.email, err)
+            raise self.retry(exc=Exception(err))
+        return status
+    except User.DoesNotExist:
+        logger.error("User with id %s does not exist for welcome email task", user_id)
+        return "FAILED"
+    except Exception as exc:
+        logger.error("Unexpected error in send_user_welcome_email_task: %s", exc)
+        raise self.retry(exc=exc)
+

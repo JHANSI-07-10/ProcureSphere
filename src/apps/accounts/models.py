@@ -103,7 +103,16 @@ class User(AbstractUser):
 
     must_change_password = models.BooleanField(
         default=False,
+<<<<<<< Updated upstream
         help_text="Set for accounts issued with a temporary password; cleared on first change.",
+=======
+        help_text="Designates whether this user must change their password on first login.",
+    )
+    last_welcome_email_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp of the most recent welcome email delivery.",
+>>>>>>> Stashed changes
     )
 
     objects = UserManager()
