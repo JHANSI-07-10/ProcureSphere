@@ -113,7 +113,7 @@
         <p class="mb-2 text-dark">
             This requisition's total amount of <strong>${{ pr.total_amount|floatformat:2 }}</strong> exceeds the
             available budget
-            {% if available_budget != None %}(<strong>${{ available_budget|floatformat:2 }}</strong> remaining){% endif %}
+            {% if role_code != 'REQUESTER' and available_budget != None %}(<strong>${{ available_budget|floatformat:2 }}</strong> remaining){% endif %}
             for Cost Center <strong>{{ pr.cost_center.code }} - {{ pr.cost_center.name }}</strong>.
         </p>
         <div class="small text-muted">
@@ -433,6 +433,26 @@
 
                 {% if available_budget != None %}
                 <div class="mt-3 p-3 rounded-3 border {% if is_budget_exceeded %}border-danger bg-danger-subtle text-danger-emphasis{% else %}border-success-subtle bg-light{% endif %}">
+                    {% if role_code == 'REQUESTER' %}
+                    <div class="small fw-bold text-uppercase {% if is_budget_exceeded %}text-danger{% else %}text-success{% endif %}">
+                        <i class="fa-solid {% if is_budget_exceeded %}fa-triangle-exclamation text-danger{% else %}fa-circle-check text-success{% endif %} me-1"></i>
+                        Cost Center Budget Status
+                    </div>
+                    <div class="fs-5 fw-bold mt-1">
+                        {% if is_budget_exceeded %}
+                        <span class="badge bg-danger rounded-pill px-3 py-2 fs-6">Out of Budget</span>
+                        {% else %}
+                        <span class="badge bg-success rounded-pill px-3 py-2 fs-6">Within Budget</span>
+                        {% endif %}
+                    </div>
+                    <div class="small text-muted mt-2">
+                        {% if is_budget_exceeded %}
+                        Estimated amount exceeds the allocated Cost Center budget and requires Finance Exception approval.
+                        {% else %}
+                        Estimated amount is within the allocated Cost Center budget.
+                        {% endif %}
+                    </div>
+                    {% else %}
                     <div class="small fw-bold text-uppercase {% if is_budget_exceeded %}text-danger{% else %}text-success{% endif %}">
                         <i class="fa-solid {% if is_budget_exceeded %}fa-triangle-exclamation text-danger{% else %}fa-wallet text-success{% endif %} me-1"></i>
                         Available Budget Remaining
@@ -446,6 +466,7 @@
                     </div>
                     {% else %}
                     <div class="small text-muted">Cost Center funds available for new PRs</div>
+                    {% endif %}
                     {% endif %}
                 </div>
                 {% endif %}
