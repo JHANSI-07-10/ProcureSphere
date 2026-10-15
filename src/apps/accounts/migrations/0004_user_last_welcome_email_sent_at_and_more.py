@@ -8,16 +8,11 @@ def add_columns_if_missing(apps, schema_editor):
     with connection.cursor() as cursor:
         if connection.vendor == "postgresql":
             cursor.execute(
-                "ALTER TABLE accounts_user ADD COLUMN IF NOT EXISTS must_change_password boolean DEFAULT false;"
-            )
-            cursor.execute(
                 "ALTER TABLE accounts_user ADD COLUMN IF NOT EXISTS last_welcome_email_sent_at timestamp with time zone NULL;"
             )
         elif connection.vendor == "sqlite":
             cursor.execute("PRAGMA table_info(accounts_user);")
             existing = [row[1] for row in cursor.fetchall()]
-            if "must_change_password" not in existing:
-                cursor.execute("ALTER TABLE accounts_user ADD COLUMN must_change_password bool DEFAULT 0;")
             if "last_welcome_email_sent_at" not in existing:
                 cursor.execute("ALTER TABLE accounts_user ADD COLUMN last_welcome_email_sent_at datetime NULL;")
 
@@ -30,19 +25,12 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('accounts', '0003_user_cost_center'),
+        ('accounts', '0003_user_must_change_password'),
     ]
 
     operations = [
         migrations.SeparateDatabaseAndState(
             state_operations=[
-                migrations.AddField(
-                    model_name='user',
-                    name='must_change_password',
-                    field=models.BooleanField(
-                        default=False,
-                        help_text='Designates whether this user must change their password on first login.',
-                    ),
-                ),
                 migrations.AddField(
                     model_name='user',
                     name='last_welcome_email_sent_at',

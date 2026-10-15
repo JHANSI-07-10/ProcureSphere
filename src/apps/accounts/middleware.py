@@ -1,6 +1,14 @@
 from django.shortcuts import redirect
 
-EXEMPT_PREFIXES = ("/static/", "/logout/", "/password-change/", "/health")
+EXEMPT_PREFIXES = (
+    "/static/",
+    "/logout/",
+    "/password-change/",
+    "/accounts/change-password/",
+    "/health",
+    "/readyz",
+    "/api/",
+)
 
 
 class ForcePasswordChangeMiddleware:
@@ -17,5 +25,9 @@ class ForcePasswordChangeMiddleware:
             and getattr(user, "must_change_password", False)
             and not request.path.startswith(EXEMPT_PREFIXES)
         ):
-            return redirect("password_change")
+            return redirect("/accounts/change-password/")
         return self.get_response(request)
+
+
+# Provide both alias names for compatibility across branches and settings
+PasswordChangeRequiredMiddleware = ForcePasswordChangeMiddleware
