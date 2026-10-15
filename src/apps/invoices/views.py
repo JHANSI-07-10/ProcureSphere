@@ -25,12 +25,30 @@ def list_view(request):
 def tolerance_settings_view(request):
     policy = MatchTolerancePolicy.get_current()
     if request.method == "POST":
+        price_raw = request.POST.get("price_tolerance_pct", "").strip()
+        qty_raw = request.POST.get("qty_tolerance_pct", "").strip()
+
+        # Reject decimals or non-digits (whole integers only)
+        if not price_raw.isdigit() or not qty_raw.isdigit():
+            messages.error(
+                request,
+                "Price and Quantity Variance Tolerances must be whole numbers without decimal values.",
+            )
+            return render(request, "pages/invoices/settings.html", {"policy": policy})
+
         try:
-            # HTML input gives percentage (e.g., 5.5 for 5.5%), convert to decimal 0.055
-            price_pct = Decimal(request.POST.get("price_tolerance_pct", "5.00")) / Decimal("100")
-            qty_pct = Decimal(request.POST.get("qty_tolerance_pct", "5.00")) / Decimal("100")
-            policy.price_tolerance_pct = price_pct
-            policy.qty_tolerance_pct = qty_pct
+            price_int = int(price_raw)
+            qty_int = int(qty_raw)
+
+            if not (0 <= price_int <= 100 and 0 <= qty_int <= 100):
+                messages.error(
+                    request,
+                    "Tolerances must be whole percentages between 0% and 100%.",
+                )
+                return render(request, "pages/invoices/settings.html", {"policy": policy})
+
+            policy.price_tolerance_pct = Decimal(price_int) / Decimal("100")
+            policy.qty_tolerance_pct = Decimal(qty_int) / Decimal("100")
             policy.save()
             messages.success(request, "Tolerance settings updated successfully.")
             return redirect("tolerance_settings")
