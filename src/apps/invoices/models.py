@@ -176,5 +176,13 @@ class MatchTolerancePolicy(TimeStampedModel):
             policy = cls.objects.create(is_active=True)
         return policy
 
+    @property
+    def price_tolerance_pct_int(self):
+        return int(round(self.price_tolerance_pct * 100))
+
+    @property
+    def qty_tolerance_pct_int(self):
+        return int(round(self.qty_tolerance_pct * 100))
+
     def __str__(self):
         return f"Tolerance Policy (Price: {self.price_tolerance_pct*100}%, Qty: {self.qty_tolerance_pct*100}%)"
