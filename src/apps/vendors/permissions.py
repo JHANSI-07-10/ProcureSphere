@@ -21,6 +21,9 @@ GOVERNANCE_READ_ROLES = {
 }
 GOVERNANCE_OPERATE_ROLES = {Role.SUPER_ADMIN, Role.PROC_EXEC, Role.PROC_MGR}
 GOVERNANCE_SUSPEND_ROLES = {Role.SUPER_ADMIN, Role.PROC_MGR}
+# KYC document review (verify / reject / request corrections). Legal reviews the legal and
+# regulatory documents; activation itself stays with GOVERNANCE_OPERATE_ROLES (docs/assumptions.md).
+KYC_REVIEW_ROLES = GOVERNANCE_OPERATE_ROLES | {Role.LEGAL_MGR}
 
 
 def _role(user):
@@ -40,6 +43,11 @@ def can_operate_governance(user) -> bool:
     return _role(user) in GOVERNANCE_OPERATE_ROLES
 
 
+def can_review_kyc(user) -> bool:
+    """Verify/reject KYC documents and request corrections."""
+    return _role(user) in KYC_REVIEW_ROLES
+
+
 def can_suspend_vendor(user) -> bool:
     """Suspend / blacklist / reinstate."""
     return _role(user) in GOVERNANCE_SUSPEND_ROLES
@@ -50,6 +58,7 @@ def governance_capabilities(user) -> dict:
         "can_view": can_view_governance(user),
         "can_operate": can_operate_governance(user),
         "can_suspend": can_suspend_vendor(user),
+        "can_review_kyc": can_review_kyc(user),
     }
 
 

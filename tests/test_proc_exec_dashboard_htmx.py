@@ -138,6 +138,18 @@ class TestPillar1VendorQualification:
         w = procurement_world
         vendor = _submitted_vendor_with_doc(w)
         _login(client, w["exec"])
+        # Activation is gated on verified documents.
+        blocked = client.post(
+            f"/vendors/{vendor.id}/htmx/kyc/approve/", {"notes": "x"}, HTTP_HX_REQUEST="true"
+        )
+        assert blocked.status_code == 400
+        vendor.refresh_from_db()
+        assert vendor.status == Vendor.STATUS_SUBMITTED
+        client.post(
+            f"/vendors/{vendor.id}/htmx/kyc/verify-document/",
+            {"document_id": str(vendor.documents.first().id)},
+            HTTP_HX_REQUEST="true",
+        )
         resp = client.post(
             f"/vendors/{vendor.id}/htmx/kyc/approve/",
             {"notes": "Docs verified"},

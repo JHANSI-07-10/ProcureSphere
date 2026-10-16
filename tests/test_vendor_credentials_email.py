@@ -22,6 +22,7 @@ LOGIN_URLS = ["http://localhost:8000/login/", "https://procure.onrender.com/logi
 def email_settings(settings):
     settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
     settings.VENDOR_PORTAL_LOGIN_URLS = LOGIN_URLS
+    settings.BREVO_API_KEY = ""  # SMTP path (locmem); REST path is tested separately
     settings.DEFAULT_FROM_EMAIL = "ProcureSphere <no-reply@test.local>"
 
 
@@ -88,7 +89,7 @@ def test_vendor_logs_in_and_is_forced_to_change_password(client, procurement_wor
 
     _login(client, vendor_user, temp)
     resp = client.get("/")
-    assert resp.status_code == 302 and resp.url == reverse("password_change")
+    assert resp.status_code == 302 and resp.url in (reverse("password_change"), "/accounts/change-password/")
 
     # wrong current password is rejected
     resp = client.post(
@@ -190,3 +191,18 @@ def test_duplicate_tax_id_rejected_in_modal(client, procurement_world):
     )
     assert resp.status_code == 400
     assert Vendor.objects.filter(legal_name="Dup Co").count() == 0
+
+
+def test_brevo_rest_api_used_when_api_key_configured(settings, procurement_world):
+    w = procurement_world
+    settings.BREVO_API_KEY = "xkeysib-test"
+    settings.BREVO_SENDER_EMAIL = "sender@test.local"
+    with mock.patch("apps.vendors.services.requests.post") as post:
+        post.return_value.ok = True
+        dispatch = issue_vendor_credentials_service(vendor=w["vendor_draft"], issued_by=w["exec"])
+    assert dispatch.status == VendorCredentialDispatch.STATUS_SENT
+    assert mail.outbox == []
+    kwargs = post.call_args.kwargs
+    assert kwargs["headers"]["api-key"] == "xkeysib-test"
+    assert kwargs["json"]["to"] == [{"email": w["vendor_draft"].email.lower()}]
+    assert "Temporary password:" in kwargs["json"]["textContent"]

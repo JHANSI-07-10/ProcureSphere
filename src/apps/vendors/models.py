@@ -104,6 +104,20 @@ class VendorDocument(TimeStampedModel):
         blank=True,
         related_name="verified_vendor_docs",
     )
+    # KYC review outcome. is_verified is kept in sync (True only for REVIEW_VERIFIED).
+    REVIEW_PENDING = "PENDING"
+    REVIEW_VERIFIED = "VERIFIED"
+    REVIEW_REJECTED = "REJECTED"
+    REVIEW_CHOICES = [
+        (REVIEW_PENDING, "Pending"),
+        (REVIEW_VERIFIED, "Verified"),
+        (REVIEW_REJECTED, "Rejected"),
+    ]
+    review_status = models.CharField(
+        max_length=10, choices=REVIEW_CHOICES, default=REVIEW_PENDING, db_index=True
+    )
+    review_notes = models.TextField(blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.get_document_type_display()} - {self.vendor.legal_name}"
