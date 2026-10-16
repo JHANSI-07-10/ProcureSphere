@@ -218,8 +218,11 @@ class Command(BaseCommand):
         dept_it, _ = Department.objects.get_or_create(
             organization=org, code="IT-OPS", defaults={"name": "IT Infrastructure Operations"}
         )
-        _, _ = Department.objects.get_or_create(
+        dept_ops, _ = Department.objects.get_or_create(
             organization=org, code="OPS", defaults={"name": "Global Operations"}
+        )
+        dept_eng, _ = Department.objects.get_or_create(
+            organization=org, code="ENG", defaults={"name": "Hardware Engineering & R&D"}
         )
 
         approver.department = dept_it
@@ -236,6 +239,16 @@ class Command(BaseCommand):
             department=dept_it,
             code="CC-IT-101",
             defaults={"name": "Compute & Cloud Center", "manager": approver},
+        )
+        cost_center_ops, _ = CostCenter.objects.get_or_create(
+            department=dept_ops,
+            code="CC-OPS-201",
+            defaults={"name": "Supply Chain & Facilities", "manager": approver},
+        )
+        cost_center_eng, _ = CostCenter.objects.get_or_create(
+            department=dept_eng,
+            code="CC-ENG-301",
+            defaults={"name": "Hardware Systems R&D", "manager": approver},
         )
 
         today = timezone.now().date()
@@ -256,7 +269,19 @@ class Command(BaseCommand):
             fiscal_period=fiscal_period,
             allocated_amount=Decimal("250000.00"),
         )
+        budget_ops = allocate_budget_service(
+            cost_center=cost_center_ops,
+            fiscal_period=fiscal_period,
+            allocated_amount=Decimal("150000.00"),
+        )
+        budget_eng = allocate_budget_service(
+            cost_center=cost_center_eng,
+            fiscal_period=fiscal_period,
+            allocated_amount=Decimal("350000.00"),
+        )
         self.stdout.write(f"Budget allocated for {cost_center.code}: ${budget.allocated_amount}")
+        self.stdout.write(f"Budget allocated for {cost_center_ops.code}: ${budget_ops.allocated_amount}")
+        self.stdout.write(f"Budget allocated for {cost_center_eng.code}: ${budget_eng.allocated_amount}")
 
         # 5. Vendor Master & Onboarding
         cat_hw, _ = VendorCategory.objects.get_or_create(
