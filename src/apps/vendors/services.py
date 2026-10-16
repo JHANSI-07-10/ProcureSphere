@@ -3,9 +3,9 @@ import secrets
 import string
 
 import requests
-
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 
@@ -130,10 +130,20 @@ def update_vendor_service(
     vendor.bank_name = bank_name
     vendor.bank_account_number = bank_account_number
     vendor.bank_routing_code = bank_routing_code
-    vendor.save(update_fields=[
-        "legal_name", "trade_name", "email", "phone", "address",
-        "category", "bank_name", "bank_account_number", "bank_routing_code", "updated_at",
-    ])
+    vendor.save(
+        update_fields=[
+            "legal_name",
+            "trade_name",
+            "email",
+            "phone",
+            "address",
+            "category",
+            "bank_name",
+            "bank_account_number",
+            "bank_routing_code",
+            "updated_at",
+        ]
+    )
 
     create_audit_log_service(
         actor=actor,
@@ -177,6 +187,7 @@ def delete_vendor_service(*, vendor: Vendor, actor: User) -> None:
 
     # Block deletion if there are any linked POs or sourcing invitations
     from apps.orders.models import PurchaseOrder  # local import to avoid circular
+
     if PurchaseOrder.objects.filter(vendor=vendor).exists():
         raise ValidationError(
             f"Cannot delete '{vendor.vendor_number}': purchase orders are linked to this vendor."
@@ -185,6 +196,13 @@ def delete_vendor_service(*, vendor: Vendor, actor: User) -> None:
         raise ValidationError(
             f"Cannot delete '{vendor.vendor_number}': sourcing invitations are linked to this vendor."
         )
+
+    # Portal logins: users.vendor is SET_NULL, which would leave a live account with no vendor.
+    # Deactivate (not delete) them; other records and the audit trail may reference these users.
+    vendor_users = list(vendor.vendor_users.all())
+    # Credential dispatch rows are PROTECT-ed evidence of emails sent to this (never-activated)
+    # vendor; they are removed with it, with their count preserved in the audit entry below.
+    dispatch_count = vendor.credential_dispatches.count()
 
     # Write audit log BEFORE deletion so the record is preserved
     create_audit_log_service(
@@ -198,14 +216,22 @@ def delete_vendor_service(*, vendor: Vendor, actor: User) -> None:
             "status": vendor.status,
             "email": vendor.email,
         },
-        new_state={"deleted": True},
+        new_state={
+            "deleted": True,
+            "credential_dispatches_removed": dispatch_count,
+            "portal_users_deactivated": [u.email for u in vendor_users],
+        },
     )
+    for portal_user in vendor_users:
+        portal_user.is_active = False
+        portal_user.must_change_password = True
+        portal_user.save(update_fields=["is_active", "must_change_password"])
+    vendor.credential_dispatches.all().delete()
     vendor.delete()
 
 
 @transaction.atomic
 def submit_vendor_kyc_service(*, vendor: Vendor, user: User) -> Vendor:
-
     """
     Transitions Vendor state from DRAFT or CHANGES_REQUIRED to SUBMITTED.
     """
@@ -259,23 +285,111 @@ def start_kyc_review_service(*, vendor: Vendor, reviewer: User) -> Vendor:
     return vendor
 
 
+KYC_DOC_REVIEWABLE_STATUSES = (Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW)
+
+
+def _lock_reviewable_document(document: VendorDocument, reviewer: User) -> VendorDocument:
+    """Row-locks the document and checks reviewer authority and vendor state."""
+    from .permissions import can_review_kyc
+
+    if not can_review_kyc(reviewer):
+        raise PermissionDenied("Your role is not authorised to review KYC documents.")
+    document = VendorDocument.objects.select_for_update().select_related("vendor").get(
+        pk=document.pk
+    )
+    if document.vendor.status not in KYC_DOC_REVIEWABLE_STATUSES:
+        raise ValidationError(
+            "KYC documents can only be reviewed after the vendor has submitted them "
+            f"(vendor status is {document.vendor.get_status_display()})."
+        )
+    if document.review_status != VendorDocument.REVIEW_PENDING:
+        raise ValidationError(
+            f"Document has already been reviewed ({document.get_review_status_display()})."
+        )
+    return document
+
+
 @transaction.atomic
-def verify_vendor_document_service(*, document: VendorDocument, verifier: User) -> VendorDocument:
-    """
-    Marks a KYC document as verified.
-    """
-    if document.is_verified:
-        raise ValidationError("Document is already verified.")
+def verify_vendor_document_service(
+    *, document: VendorDocument, verifier: User, notes: str = ""
+) -> VendorDocument:
+    """Marks a pending KYC document as verified (Legal / Procurement KYC reviewers)."""
+    document = _lock_reviewable_document(document, verifier)
     document.is_verified = True
     document.verified_by = verifier
-    document.save(update_fields=["is_verified", "verified_by", "updated_at"])
+    document.review_status = VendorDocument.REVIEW_VERIFIED
+    document.review_notes = (notes or "").strip()
+    document.reviewed_at = timezone.now()
+    document.save(
+        update_fields=[
+            "is_verified",
+            "verified_by",
+            "review_status",
+            "review_notes",
+            "reviewed_at",
+            "updated_at",
+        ]
+    )
     create_audit_log_service(
         actor=verifier,
         action=AuditLog.ACTION_VERIFY,
         target_model="VendorDocument",
         target_object_id=document.id,
-        previous_state={"is_verified": False},
-        new_state={"is_verified": True, "vendor": document.vendor.legal_name},
+        previous_state={"review_status": VendorDocument.REVIEW_PENDING, "is_verified": False},
+        new_state={
+            "review_status": document.review_status,
+            "is_verified": True,
+            "vendor": document.vendor.legal_name,
+            "document_type": document.document_type,
+            "notes": document.review_notes,
+        },
+    )
+    return document
+
+
+@transaction.atomic
+def reject_vendor_document_service(
+    *, document: VendorDocument, reviewer: User, reason: str
+) -> VendorDocument:
+    """Rejects a pending KYC document with a mandatory reason; the vendor may upload a replacement."""
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValidationError("A reason is required to reject a document.")
+    document = _lock_reviewable_document(document, reviewer)
+    document.is_verified = False
+    document.verified_by = None
+    document.review_status = VendorDocument.REVIEW_REJECTED
+    document.review_notes = reason
+    document.reviewed_at = timezone.now()
+    document.save(
+        update_fields=[
+            "is_verified",
+            "verified_by",
+            "review_status",
+            "review_notes",
+            "reviewed_at",
+            "updated_at",
+        ]
+    )
+    create_audit_log_service(
+        actor=reviewer,
+        action=AuditLog.ACTION_REJECT,
+        target_model="VendorDocument",
+        target_object_id=document.id,
+        previous_state={"review_status": VendorDocument.REVIEW_PENDING},
+        new_state={
+            "review_status": document.review_status,
+            "vendor": document.vendor.legal_name,
+            "document_type": document.document_type,
+            "reason": reason,
+        },
+    )
+    notify_vendor_users(
+        vendor=document.vendor,
+        notification_type=Notification.TYPE_KYC_REQUEST,
+        title=f"KYC document rejected: {document.title}",
+        message=reason[:500],
+        target_url="/vendor/profile/",
     )
     return document
 
@@ -283,27 +397,46 @@ def verify_vendor_document_service(*, document: VendorDocument, verifier: User) 
 @transaction.atomic
 def approve_vendor_service(*, vendor: Vendor, manager: User, notes: str = "") -> Vendor:
     """
-    Approves Vendor and transitions state from KYC_REVIEW to APPROVED and ACTIVE.
+    Activates a vendor (SUBMITTED / KYC_REVIEW -> ACTIVE). Only Procurement/Admin roles may
+    activate, and only when every KYC gate passes (get_vendor_kyc_summary): documents present,
+    mandatory types present, all current documents verified, none rejected or pending.
+    The vendor row is locked so a replayed or concurrent approval cannot double-transition.
     """
-    if vendor.status not in [Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW]:
-        raise ValidationError(f"Cannot approve vendor in status '{vendor.status}'.")
+    from .permissions import can_operate_governance
+    from .selectors import get_vendor_kyc_summary
 
-    # Ensure documents are uploaded
-    if not vendor.documents.exists():
-        raise ValidationError("Cannot approve vendor with no uploaded KYC documents.")
+    if not can_operate_governance(manager):
+        raise PermissionDenied("Your role is not authorised to activate vendors.")
+    vendor = Vendor.objects.select_for_update().get(pk=vendor.pk)
+    summary = get_vendor_kyc_summary(vendor)
+    if vendor.status == Vendor.STATUS_ACTIVE:
+        raise ValidationError("Vendor is already active.")
+    if not summary["can_activate"]:
+        raise ValidationError("Cannot activate vendor: " + " ".join(summary["blockers"]))
 
     previous_status = vendor.status
     vendor.status = Vendor.STATUS_ACTIVE
     vendor.status_notes = notes
     vendor.save(update_fields=["status", "status_notes", "updated_at"])
 
-    AuditLog.objects.create(
+    create_audit_log_service(
         actor=manager,
         action=AuditLog.ACTION_APPROVE,
         target_model="Vendor",
-        target_object_id=str(vendor.id),
+        target_object_id=vendor.id,
         previous_state={"status": previous_status},
-        new_state={"status": vendor.status, "notes": notes},
+        new_state={
+            "status": vendor.status,
+            "notes": notes,
+            "documents_verified": summary["documents_verified"],
+        },
+    )
+    notify_vendor_users(
+        vendor=vendor,
+        notification_type=Notification.TYPE_KYC_REQUEST,
+        title="Your vendor account is now active",
+        message=(notes or "KYC approved.")[:500],
+        target_url="/vendor/",
     )
     return vendor
 
@@ -358,9 +491,14 @@ def set_vendor_status_governance_service(
     capability = VENDOR_GOVERNANCE_TRANSITIONS.get((vendor.status, new_status))
     if capability is None:
         raise ValidationError(f"Invalid vendor status transition {vendor.status} -> {new_status}.")
-    allowed = (
-        can_suspend_vendor(actor) if capability == "suspend" else can_operate_governance(actor)
-    )
+    if new_status == Vendor.STATUS_CHANGES_REQUIRED:
+        from .permissions import can_review_kyc
+
+        allowed = can_review_kyc(actor)
+    else:
+        allowed = (
+            can_suspend_vendor(actor) if capability == "suspend" else can_operate_governance(actor)
+        )
     if not allowed:
         raise PermissionDenied(
             "Your role is not authorised to perform this vendor governance action."
@@ -608,7 +746,11 @@ def issue_vendor_credentials_service(
             f"Credentials cannot be issued to a {vendor.get_status_display()} vendor."
         )
 
-    email = User.objects.normalize_email(vendor.email)
+    email = User.objects.normalize_email((vendor.email or '').strip())
+    if not email:
+        raise ValidationError(
+            f"Vendor {vendor.vendor_number} has no email address. Add one (Edit info) before issuing credentials."
+        )
     password = _generate_temporary_password()
 
     with transaction.atomic():
@@ -639,41 +781,49 @@ def issue_vendor_credentials_service(
         )
 
     try:
-        # --- Brevo Transactional HTTP API (HTTPS/443 — works on Render) ---
-        # Django's SMTP backend on port 587 is blocked by Render's network.
+        # Brevo REST API (HTTPS/443) when a real API key (xkeysib-...) is configured - needed on
+        # hosts such as Render that block SMTP port 587. Otherwise use Django's mail backend
+        # (Brevo SMTP relay with the xsmtpsib-... key).
         api_key = getattr(settings, "BREVO_API_KEY", "")
-        if not api_key:
-            raise RuntimeError(
-                "BREVO_API_KEY is not configured. Add it to your environment variables."
-            )
-        payload = {
-            "sender": {
-                "name": getattr(settings, "BREVO_SENDER_NAME", "ProcureSphere 360"),
-                "email": getattr(settings, "BREVO_SENDER_EMAIL", settings.DEFAULT_FROM_EMAIL),
-            },
-            "to": [{"email": email}],
-            "subject": f"ProcureSphere 360 - Your Supplier Portal Access ({vendor.vendor_number})",
-            "htmlContent": build_credentials_html(
-                vendor_name=vendor.legal_name,
-                vendor_number=vendor.vendor_number,
-                email=email,
-                password=password,
-            ),
-            "textContent": _credentials_email_body(vendor=vendor, email=email, password=password),
-        }
-        response = requests.post(
-            "https://api.brevo.com/v3/smtp/email",
-            json=payload,
-            headers={
-                "api-key": api_key,
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            },
-            timeout=30,
+        subject = f"ProcureSphere 360 - Your Supplier Portal Access ({vendor.vendor_number})"
+        text_body = _credentials_email_body(vendor=vendor, email=email, password=password)
+        html_body = build_credentials_html(
+            vendor_name=vendor.legal_name,
+            vendor_number=vendor.vendor_number,
+            email=email,
+            password=password,
         )
-        if not response.ok:
-            raise RuntimeError(
-                f"Brevo API error {response.status_code}: {response.text[:300]}"
+        if api_key.startswith("xkeysib-"):
+            payload = {
+                "sender": {
+                    "name": getattr(settings, "BREVO_SENDER_NAME", "ProcureSphere 360"),
+                    "email": getattr(settings, "BREVO_SENDER_EMAIL", settings.DEFAULT_FROM_EMAIL),
+                },
+                "to": [{"email": email}],
+                "subject": subject,
+                "htmlContent": html_body,
+                "textContent": text_body,
+            }
+            response = requests.post(
+                "https://api.brevo.com/v3/smtp/email",
+                json=payload,
+                headers={
+                    "api-key": api_key,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                timeout=30,
+            )
+            if not response.ok:
+                raise RuntimeError(f"Brevo API error {response.status_code}: {response.text[:300]}")
+        else:
+            send_mail(
+                subject=subject,
+                message=text_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                html_message=html_body,
+                fail_silently=False,
             )
     except Exception as exc:  # HTTP / network failure: keep evidence, let the executive retry
         logger.exception("Vendor credential email failed for vendor %s", vendor.vendor_number)
@@ -767,7 +917,9 @@ def update_vendor_contact_service(
     Enforces strict vendor-level isolation (contact must belong to vendor).
     """
     if contact.vendor_id != vendor.id:
-        raise PermissionDenied("You do not have permission to modify a contact belonging to another vendor.")
+        raise PermissionDenied(
+            "You do not have permission to modify a contact belonging to another vendor."
+        )
 
     previous_state = {
         "first_name": contact.first_name,
@@ -826,7 +978,9 @@ def delete_vendor_contact_service(
     Enforces strict vendor-level isolation.
     """
     if contact.vendor_id != vendor.id:
-        raise PermissionDenied("You do not have permission to delete a contact belonging to another vendor.")
+        raise PermissionDenied(
+            "You do not have permission to delete a contact belonging to another vendor."
+        )
 
     contact_info = {
         "vendor": vendor.legal_name,

@@ -397,3 +397,114 @@ def get_vendor_onboarding_progress(vendor):
         "can_submit": can_submit,
     }
 
+
+PRE_ACTIVATION_STATUSES = (Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW)
+
+
+def get_current_kyc_documents(vendor):
+    """
+    The latest document per document_type. Older documents of the same type stay on file
+    (history is never deleted) but a replacement supersedes a rejected/stale one for gating.
+    """
+    latest = {}
+    for doc in vendor.documents.order_by("created_at"):
+        latest[doc.document_type] = doc
+    return list(latest.values())
+
+
+def get_vendor_kyc_summary(vendor) -> dict:
+    """
+    Single source of truth for the KYC / activation state shown in the UI and enforced by
+    approve_vendor_service. Derived from the database on every call (nothing is hardcoded).
+    """
+    from django.conf import settings
+
+    docs = get_current_kyc_documents(vendor)
+    verified = [d for d in docs if d.review_status == VendorDocument.REVIEW_VERIFIED]
+    rejected = [d for d in docs if d.review_status == VendorDocument.REVIEW_REJECTED]
+    pending = [d for d in docs if d.review_status == VendorDocument.REVIEW_PENDING]
+    mandatory = list(getattr(settings, "VENDOR_MANDATORY_KYC_DOC_TYPES", []) or [])
+    present_verified_types = {d.document_type for d in verified}
+    missing_mandatory = [t for t in mandatory if t not in {d.document_type for d in docs}]
+    unverified_mandatory = [
+        t for t in mandatory if t in {d.document_type for d in docs} - present_verified_types
+    ]
+    labels = dict(VendorDocument.DOC_TYPE_CHOICES)
+
+    status = vendor.status
+    submitted = status not in (Vendor.STATUS_DRAFT, Vendor.STATUS_CHANGES_REQUIRED)
+    if status == Vendor.STATUS_DRAFT:
+        submission = "Pending"
+    elif status == Vendor.STATUS_CHANGES_REQUIRED:
+        submission = "Corrections requested"
+    else:
+        submission = "Submitted"
+
+    if status == Vendor.STATUS_CHANGES_REQUIRED:
+        legal = "Changes requested"
+    elif rejected:
+        legal = "Rejected"
+    elif docs and len(verified) == len(docs):
+        legal = "Approved"
+    elif verified:
+        legal = "In progress"
+    else:
+        legal = "Pending"
+
+    blockers = []
+    if status not in PRE_ACTIVATION_STATUSES:
+        if status == Vendor.STATUS_ACTIVE:
+            blockers.append("Vendor is already active.")
+        elif status == Vendor.STATUS_DRAFT:
+            blockers.append("Vendor has not submitted KYC documents for review.")
+        elif status == Vendor.STATUS_CHANGES_REQUIRED:
+            blockers.append("Corrections were requested; the vendor must resubmit.")
+        else:
+            blockers.append(f"Vendor cannot be activated from status {vendor.get_status_display()}.")
+    if not docs:
+        blockers.append("No KYC documents have been uploaded.")
+    if missing_mandatory:
+        blockers.append(
+            "Mandatory documents missing: " + ", ".join(labels.get(t, t) for t in missing_mandatory)
+        )
+    if rejected:
+        blockers.append(f"{len(rejected)} document(s) rejected - vendor must upload a replacement.")
+    if pending:
+        blockers.append(f"{len(pending)} document(s) awaiting verification.")
+    if unverified_mandatory and not (rejected or pending):
+        blockers.append("Mandatory documents are not verified.")
+
+    can_activate = not blockers
+    if status == Vendor.STATUS_ACTIVE:
+        activation, next_action = "Active", "No action required."
+    elif status in (Vendor.STATUS_ON_HOLD, Vendor.STATUS_SUSPENDED, Vendor.STATUS_REJECTED):
+        activation, next_action = "Not active", f"Vendor is {vendor.get_status_display()}."
+    elif not submitted:
+        activation = "Not active"
+        next_action = (
+            "Awaiting corrected documents from the vendor."
+            if status == Vendor.STATUS_CHANGES_REQUIRED
+            else "Awaiting vendor documents and KYC submission."
+        )
+    elif rejected:
+        activation, next_action = "Not active", "Awaiting replacement of rejected document(s)."
+    elif pending or not docs:
+        activation, next_action = "Not active", "Awaiting Legal review of submitted documents."
+    elif can_activate:
+        activation, next_action = "Pending", "Ready for activation by Procurement."
+    else:
+        activation, next_action = "Not active", "Awaiting required verification."
+
+    return {
+        "submission": submission,
+        "legal_review": legal,
+        "other_checks": "Not required",
+        "activation": activation,
+        "next_action": next_action,
+        "blockers": blockers,
+        "can_activate": can_activate,
+        "documents_total": len(docs),
+        "documents_verified": len(verified),
+        "documents_pending": len(pending),
+        "documents_rejected": len(rejected),
+    }

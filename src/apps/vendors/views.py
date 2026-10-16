@@ -2,12 +2,11 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
+from django.db.models import ProtectedError, RestrictedError
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from apps.audit.models import AuditLog
-from apps.audit.services import create_audit_log_service
 from apps.scorecards.permissions import can_calculate_scorecards
 
 from .filters import (
@@ -20,6 +19,7 @@ from .forms import GovernanceStatusForm, RiskAssessmentForm, VendorEditForm, Ven
 from .models import Vendor, VendorDocument, VendorRiskRecord
 from .permissions import (
     can_operate_governance,
+    can_review_kyc,
     can_view_governance,
     governance_capabilities,
 )
@@ -27,6 +27,7 @@ from .selectors import (
     get_governance_metrics,
     get_governance_vendor_queryset,
     get_vendor_change_history,
+    get_vendor_kyc_summary,
     get_vendor_open_transactions,
     get_vendor_purchase_orders,
     get_vendor_sourcing_history,
@@ -38,6 +39,7 @@ from .services import (
     issue_vendor_credentials_service,
     record_vendor_risk_assessment_service,
     register_vendor_service,
+    reject_vendor_document_service,
     set_vendor_status_governance_service,
     start_kyc_review_service,
     update_vendor_service,
@@ -63,6 +65,62 @@ def _require_governance_view(user):
 def _require_governance_operate(user):
     if not can_operate_governance(user):
         raise PermissionDenied("Your role cannot perform vendor governance actions.")
+
+
+def _require_kyc_review(user):
+    if not can_review_kyc(user):
+        raise PermissionDenied("Your role cannot review KYC documents.")
+
+
+def _run_kyc_action(request, vendor, kyc_action):
+    """
+    Executes one KYC action via the transactional services and returns a success message.
+    Authorisation is enforced here per action (the services re-check it):
+    start-review / approve -> governance operators; verify/reject-document, request-changes ->
+    KYC reviewers (adds Legal). Raises ValidationError / PermissionDenied / Http404.
+    """
+    notes = request.POST.get("notes", "").strip()
+    if kyc_action == "start-review":
+        _require_governance_operate(request.user)
+        start_kyc_review_service(vendor=vendor, reviewer=request.user)
+        return "KYC review started."
+    if kyc_action in ("verify-document", "reject-document"):
+        _require_kyc_review(request.user)
+        doc = get_object_or_404(VendorDocument, pk=request.POST.get("document_id"), vendor=vendor)
+        if kyc_action == "verify-document":
+            verify_vendor_document_service(document=doc, verifier=request.user, notes=notes)
+            return f"Document '{doc.title}' verified."
+        reject_vendor_document_service(document=doc, reviewer=request.user, reason=notes)
+        return f"Document '{doc.title}' rejected; the vendor has been notified."
+    if kyc_action == "approve":
+        _require_governance_operate(request.user)
+        approve_vendor_service(vendor=vendor, manager=request.user, notes=notes)
+        return "Vendor approved and activated."
+    if kyc_action == "request-changes":
+        _require_kyc_review(request.user)
+        if not notes:
+            raise ValidationError("Please provide instructions on what changes are required.")
+        set_vendor_status_governance_service(
+            vendor=vendor,
+            actor=request.user,
+            new_status=Vendor.STATUS_CHANGES_REQUIRED,
+            notes=notes,
+        )
+        return f"Corrections requested from {vendor.legal_name}. Vendor notified."
+    raise Http404("Unknown KYC action.")
+
+
+def _kyc_context(vendor, caps):
+    """Read-only KYC status plus the actions THIS user may take right now (UI mirrors backend RBAC)."""
+    kyc = get_vendor_kyc_summary(vendor)
+    in_review = vendor.status in (Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW)
+    return {
+        "kyc": kyc,
+        "can_review_docs": caps["can_review_kyc"] and in_review,
+        "can_start_kyc_review": caps["can_operate"] and vendor.status == Vendor.STATUS_SUBMITTED,
+        "can_activate_vendor": caps["can_operate"] and in_review and kyc["can_activate"],
+        "can_request_changes": caps["can_review_kyc"] and in_review,
+    }
 
 
 def _performance_band(score):
@@ -158,9 +216,7 @@ def vendor_detail_view(request, vendor_id):
         "vendor": vendor,
         "caps": caps,
         "can_calculate_scorecard": can_calculate_scorecards(request.user),
-        "can_kyc_review": caps["can_operate"]
-        and vendor.status
-        in (Vendor.STATUS_DRAFT, Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW),
+        **_kyc_context(vendor, caps),
         "latest_risk": risk_records[0] if risk_records else None,
         "risk_records": risk_records,
         "latest_scorecard": scorecards[0] if scorecards else None,
@@ -207,36 +263,10 @@ def vendor_status_change_view(request, vendor_id):
             Vendor.STATUS_DRAFT,
             Vendor.STATUS_SUBMITTED,
             Vendor.STATUS_KYC_REVIEW,
+            Vendor.STATUS_CHANGES_REQUIRED,
         ]:
-            previous_status = vendor.status
-            vendor.status = Vendor.STATUS_ACTIVE
-            vendor.status_notes = notes
-            vendor.save(update_fields=["status", "status_notes", "updated_at"])
-            create_audit_log_service(
-                actor=request.user,
-                action=AuditLog.ACTION_APPROVE,
-                target_model="Vendor",
-                target_object_id=str(vendor.id),
-                previous_state={"status": previous_status},
-                new_state={"status": vendor.status, "notes": notes},
-            )
-        elif new_status == Vendor.STATUS_REJECTED and vendor.status in [
-            Vendor.STATUS_DRAFT,
-            Vendor.STATUS_SUBMITTED,
-            Vendor.STATUS_KYC_REVIEW,
-        ]:
-            previous_status = vendor.status
-            vendor.status = Vendor.STATUS_REJECTED
-            vendor.status_notes = notes
-            vendor.save(update_fields=["status", "status_notes", "updated_at"])
-            create_audit_log_service(
-                actor=request.user,
-                action=AuditLog.ACTION_REJECT,
-                target_model="Vendor",
-                target_object_id=str(vendor.id),
-                previous_state={"status": previous_status},
-                new_state={"status": vendor.status, "notes": notes},
-            )
+            # Activation is only possible through the KYC-gated service.
+            vendor = approve_vendor_service(vendor=vendor, manager=request.user, notes=notes)
         else:
             vendor = set_vendor_status_governance_service(
                 vendor=vendor,
@@ -276,55 +306,15 @@ def vendor_risk_assess_view(request, vendor_id):
 @login_required(login_url="/login/")
 @require_POST
 def vendor_kyc_action_view(request, vendor_id, kyc_action):
-    """KYC review actions: start review, verify document, approve."""
-    _require_governance_operate(request.user)
+    """KYC review actions: start review, verify/reject document, request changes, activate."""
     vendor = get_object_or_404(Vendor, pk=vendor_id)
     try:
-        if kyc_action == "start-review":
-            start_kyc_review_service(vendor=vendor, reviewer=request.user)
-            messages.success(request, "KYC review started.")
-        elif kyc_action == "verify-document":
-            doc = get_object_or_404(
-                VendorDocument, pk=request.POST.get("document_id"), vendor=vendor
-            )
-            verify_vendor_document_service(document=doc, verifier=request.user)
-            messages.success(request, f"Document '{doc.title}' verified.")
-        elif kyc_action == "approve":
-            notes = request.POST.get("notes", "").strip()
-            if vendor.status == Vendor.STATUS_DRAFT or not vendor.documents.exists():
-                previous_status = vendor.status
-                vendor.status = Vendor.STATUS_ACTIVE
-                vendor.status_notes = notes
-                vendor.save(update_fields=["status", "status_notes", "updated_at"])
-                create_audit_log_service(
-                    actor=request.user,
-                    action=AuditLog.ACTION_APPROVE,
-                    target_model="Vendor",
-                    target_object_id=str(vendor.id),
-                    previous_state={"status": previous_status},
-                    new_state={"status": vendor.status, "notes": notes},
-                )
-            else:
-                approve_vendor_service(vendor=vendor, manager=request.user, notes=notes)
-            messages.success(request, "Vendor approved and activated.")
-        elif kyc_action == "request-changes":
-            notes = request.POST.get("notes", "").strip()
-            if not notes:
-                raise ValidationError("Please provide instructions on what changes are required.")
-            set_vendor_status_governance_service(
-                vendor=vendor,
-                actor=request.user,
-                new_status=Vendor.STATUS_CHANGES_REQUIRED,
-                notes=notes,
-            )
-            messages.warning(
-                request, f"Corrections requested from {vendor.legal_name}. Vendor notified."
-            )
-        else:
-            raise Http404("Unknown KYC action.")
+        messages.success(request, _run_kyc_action(request, vendor, kyc_action))
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
-    return _redirect_detail(vendor, "documents" if kyc_action == "verify-document" else "")
+    return _redirect_detail(
+        vendor, "documents" if kyc_action in ("verify-document", "reject-document") else ""
+    )
 
 
 @login_required(login_url="/login/")
@@ -390,6 +380,7 @@ def vendor_documents_modal_view(request, vendor_id):
             "vendor": vendor,
             "documents": documents,
             "caps": governance_capabilities(request.user),
+            **_kyc_context(vendor, governance_capabilities(request.user)),
         },
     )
 
@@ -456,50 +447,10 @@ def vendor_risk_modal_view(request, vendor_id):
 @login_required(login_url="/login/")
 @require_POST
 def vendor_kyc_htmx_view(request, vendor_id, kyc_action):
-    """HTMX KYC transitions: start-review / verify-document / approve (APPROVED via service)."""
-    _require_governance_operate(request.user)
+    """HTMX KYC transitions; same shared handler and RBAC as vendor_kyc_action_view."""
     vendor = get_object_or_404(Vendor, pk=vendor_id)
     try:
-        if kyc_action == "start-review":
-            start_kyc_review_service(vendor=vendor, reviewer=request.user)
-            detail = "KYC review started."
-        elif kyc_action == "verify-document":
-            doc = get_object_or_404(
-                VendorDocument, pk=request.POST.get("document_id"), vendor=vendor
-            )
-            verify_vendor_document_service(document=doc, verifier=request.user)
-            detail = f"Document '{doc.title}' verified."
-        elif kyc_action == "approve":
-            notes = request.POST.get("notes", "").strip()
-            if vendor.status == Vendor.STATUS_DRAFT or not vendor.documents.exists():
-                previous_status = vendor.status
-                vendor.status = Vendor.STATUS_ACTIVE
-                vendor.status_notes = notes
-                vendor.save(update_fields=["status", "status_notes", "updated_at"])
-                create_audit_log_service(
-                    actor=request.user,
-                    action=AuditLog.ACTION_APPROVE,
-                    target_model="Vendor",
-                    target_object_id=str(vendor.id),
-                    previous_state={"status": previous_status},
-                    new_state={"status": vendor.status, "notes": notes},
-                )
-            else:
-                approve_vendor_service(vendor=vendor, manager=request.user, notes=notes)
-            detail = "Vendor approved and activated."
-        elif kyc_action == "request-changes":
-            notes = request.POST.get("notes", "").strip()
-            if not notes:
-                raise ValidationError("Please provide instructions on what changes are required.")
-            set_vendor_status_governance_service(
-                vendor=vendor,
-                actor=request.user,
-                new_status=Vendor.STATUS_CHANGES_REQUIRED,
-                notes=notes,
-            )
-            detail = f"Corrections requested from {vendor.legal_name}. Vendor notified."
-        else:
-            raise Http404("Unknown KYC action.")
+        detail = _run_kyc_action(request, vendor, kyc_action)
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
         if _is_htmx(request):
@@ -652,4 +603,11 @@ def vendor_delete_view(request, vendor_id):
     except (ValidationError, PermissionDenied) as exc:
         err_msg = " ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
         messages.error(request, err_msg)
+        return redirect("vendor_detail", vendor_id=vendor_id)
+    except (ProtectedError, RestrictedError):
+        messages.error(
+            request,
+            f"Vendor {vendor_label} cannot be deleted because other records still reference it. "
+            "Remove or archive the linked records first, or put the vendor on hold instead.",
+        )
         return redirect("vendor_detail", vendor_id=vendor_id)
