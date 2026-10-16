@@ -3,11 +3,74 @@
 {% block title %}Budget Exceptions — ProcureSphere 360{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
+<div class="row mb-3">
     <div class="col-12 d-flex justify-content-between align-items-center">
         <div>
             <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-scale-unbalanced text-danger me-2"></i> Budget Exceptions</h2>
             <p class="text-muted mb-0">Purchase Requisitions that exceed available department budgets and require explicit Finance approval.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Department & Cost Center Filter Toolbar -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <form method="GET" action="." class="row g-2 align-items-center">
+                <div class="col-12 col-md-auto d-flex align-items-center">
+                    <span class="badge bg-danger text-white rounded-pill px-3 py-2 me-2">
+                        <i class="fa-solid fa-filter me-1"></i> Filter
+                    </span>
+                    <span class="fw-bold text-secondary small text-uppercase">Exceptions Scope:</span>
+                </div>
+                <div class="col-12 col-sm-6 col-md-4">
+                    <label for="deptSelect" class="visually-hidden">Department</label>
+                    <select name="dept" id="deptSelect" class="form-select form-select-sm rounded-pill shadow-none" onchange="this.form.submit()">
+                        <option value="">🏢 All Departments (Enterprise)</option>
+                        {% for d in departments %}
+                        <option value="{{ d.id }}" {% if selected_dept_id == d.id|stringformat:"s" %}selected{% endif %}>
+                            {{ d.name }} ({{ d.code }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-4">
+                    <label for="ccSelect" class="visually-hidden">Cost Center</label>
+                    <select name="cost_center" id="ccSelect" class="form-select form-select-sm rounded-pill shadow-none" onchange="this.form.submit()">
+                        <option value="">💳 All Cost Centers</option>
+                        {% for cc in cost_centers %}
+                        <option value="{{ cc.id }}" {% if selected_cc_id == cc.id|stringformat:"s" %}selected{% endif %}>
+                            {{ cc.code }} - {{ cc.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-auto d-flex gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">
+                        <i class="fa-solid fa-magnifying-glass me-1"></i> Filter
+                    </button>
+                    {% if selected_dept_id or selected_cc_id %}
+                    <a href="." class="btn btn-sm btn-outline-danger rounded-pill px-3" title="Clear all filters">
+                        <i class="fa-solid fa-arrow-rotate-left me-1"></i> Show All
+                    </a>
+                    {% endif %}
+                </div>
+                {% if selected_dept_id or selected_cc_id %}
+                <div class="col-12 pt-2 border-top mt-2 d-flex flex-wrap align-items-center gap-2 small">
+                    <span class="text-muted"><i class="fa-solid fa-sliders me-1 text-primary"></i> Applied Scope:</span>
+                    {% if selected_dept_obj %}
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-1">
+                        <i class="fa-regular fa-building me-1"></i> Dept: {{ selected_dept_obj.name }}
+                    </span>
+                    {% endif %}
+                    {% if selected_cc_obj %}
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-3 py-1">
+                        <i class="fa-solid fa-wallet me-1"></i> Cost Center: {{ selected_cc_obj.code }} ({{ selected_cc_obj.name }})
+                    </span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </form>
         </div>
     </div>
 </div>
@@ -23,64 +86,69 @@
 </div>
 {% endif %}
 
-<div class="card shadow-sm border-0">
+<div class="card shadow-sm border-0 rounded-4 overflow-hidden">
     <div class="card-body p-0">
-        <table class="table table-hover table-striped align-middle mb-0">
-            <thead class="table-dark">
-                <tr>
-                    <th scope="col" class="ps-4">PR Number</th>
-                    <th scope="col">Requester</th>
-                    <th scope="col">Department</th>
-                    <th scope="col">Cost Center</th>
-                    <th scope="col" class="text-end">Requested Amount</th>
-                    <th scope="col" class="text-end pe-4">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for exception in exceptions %}
-                <tr>
-                    <td class="ps-4 fw-bold">
-                        <a href="{% url 'requisition_detail' exception.id %}" class="text-decoration-none">
-                            {{ exception.pr_number }}
-                        </a>
-                    </td>
-                    <td>{{ exception.requester.email }}</td>
-                    <td>{{ exception.department.name }}</td>
-                    <td><span class="badge bg-secondary">{{ exception.cost_center.code }}</span></td>
-                    <td class="text-end fw-bold text-danger">${{ exception.total_amount|floatformat:2 }}</td>
-                    <td class="text-end pe-4">
-                        <div class="d-inline-flex gap-2">
-                            <form action="{% url 'approvals_inbox' %}" method="POST">
-                                {% csrf_token %}
-                                <input type="hidden" name="pr_id" value="{{ exception.id }}">
-                                <input type="hidden" name="action" value="APPROVED">
-                                <input type="hidden" name="comments" value="Budget Exception explicitly approved by Finance.">
-                                <button type="submit" class="btn btn-sm btn-success rounded-pill px-3" onclick="return confirm('Are you sure you want to approve this budget overrun?');">
-                                    <i class="fa-solid fa-check me-1"></i> Force Approve
-                                </button>
-                            </form>
-                            <form action="{% url 'approvals_inbox' %}" method="POST">
-                                {% csrf_token %}
-                                <input type="hidden" name="pr_id" value="{{ exception.id }}">
-                                <input type="hidden" name="action" value="REJECTED">
-                                <input type="hidden" name="comments" value="Budget Exception rejected by Finance.">
-                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="return confirm('Are you sure you want to reject this requisition due to budget overrun?');">
-                                    <i class="fa-solid fa-xmark me-1"></i> Reject
-                                </button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6" class="text-center py-5 text-muted">
-                        <h5>No Open Budget Exceptions</h5>
-                        <p class="mb-0">All submitted purchase requisitions are within their allocated budgets.</p>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 text-nowrap">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col" class="ps-4">PR Number</th>
+                        <th scope="col">Requester</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Cost Center</th>
+                        <th scope="col" class="text-end">Requested Amount</th>
+                        <th scope="col" class="text-end pe-4">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exception in exceptions %}
+                    <tr>
+                        <td class="ps-4 fw-bold">
+                            <a href="{% url 'requisition_detail' exception.id %}" class="text-decoration-none">
+                                {{ exception.pr_number }}
+                            </a>
+                        </td>
+                        <td>{{ exception.requester.email }}</td>
+                        <td>
+                            <span class="badge bg-light text-dark border">{{ exception.department.name }}</span>
+                        </td>
+                        <td><span class="badge bg-secondary">{{ exception.cost_center.code }}</span></td>
+                        <td class="text-end fw-bold text-danger">${{ exception.total_amount|floatformat:2 }}</td>
+                        <td class="text-end pe-4">
+                            <div class="d-inline-flex gap-2">
+                                <form action="{% url 'approvals_inbox' %}" method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="pr_id" value="{{ exception.id }}">
+                                    <input type="hidden" name="action" value="APPROVED">
+                                    <input type="hidden" name="comments" value="Budget Exception explicitly approved by Finance.">
+                                    <button type="submit" class="btn btn-sm btn-success rounded-pill px-3" onclick="return confirm('Are you sure you want to approve this budget overrun?');">
+                                        <i class="fa-solid fa-check me-1"></i> Force Approve
+                                    </button>
+                                </form>
+                                <form action="{% url 'approvals_inbox' %}" method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="pr_id" value="{{ exception.id }}">
+                                    <input type="hidden" name="action" value="REJECTED">
+                                    <input type="hidden" name="comments" value="Budget Exception rejected by Finance.">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="return confirm('Are you sure you want to reject this requisition due to budget overrun?');">
+                                        <i class="fa-solid fa-xmark me-1"></i> Reject
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <div class="mb-2"><i class="fa-solid fa-circle-check fs-1 text-success opacity-50"></i></div>
+                            <h5>No Open Budget Exceptions</h5>
+                            <p class="mb-0 small">No budget overruns match the selected scope.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}

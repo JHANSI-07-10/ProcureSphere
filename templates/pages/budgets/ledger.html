@@ -3,49 +3,152 @@
 {% block title %}Spend Ledger — ProcureSphere 360{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
+<div class="row mb-3">
     <div class="col-12 d-flex justify-content-between align-items-center">
         <div>
             <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-book-journal-whills text-secondary me-2"></i> Spend Ledger</h2>
-            <p class="text-muted mb-0">Detailed transaction history affecting budget balances.</p>
+            <p class="text-muted mb-0">Detailed transaction audit history affecting enterprise budget balances across all departments.</p>
         </div>
     </div>
 </div>
 
-<div class="card shadow-sm border-0">
+<!-- Filter Toolbar -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <form method="GET" action="." class="row g-2 align-items-center">
+                <div class="col-12 col-md-auto d-flex align-items-center">
+                    <span class="badge bg-dark text-white rounded-pill px-3 py-2 me-2">
+                        <i class="fa-solid fa-filter me-1"></i> Filter
+                    </span>
+                    <span class="fw-bold text-secondary small text-uppercase">Ledger Scope:</span>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                    <label for="deptSelect" class="visually-hidden">Department</label>
+                    <select name="dept" id="deptSelect" class="form-select form-select-sm rounded-pill shadow-none" onchange="this.form.submit()">
+                        <option value="">🏢 All Departments (Enterprise)</option>
+                        {% for d in departments %}
+                        <option value="{{ d.id }}" {% if selected_dept_id == d.id|stringformat:"s" %}selected{% endif %}>
+                            {{ d.name }} ({{ d.code }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                    <label for="ccSelect" class="visually-hidden">Cost Center</label>
+                    <select name="cost_center" id="ccSelect" class="form-select form-select-sm rounded-pill shadow-none" onchange="this.form.submit()">
+                        <option value="">💳 All Cost Centers</option>
+                        {% for cc in cost_centers %}
+                        <option value="{{ cc.id }}" {% if selected_cc_id == cc.id|stringformat:"s" %}selected{% endif %}>
+                            {{ cc.code }} - {{ cc.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-2">
+                    <label for="typeSelect" class="visually-hidden">Entry Type</label>
+                    <select name="entry_type" id="typeSelect" class="form-select form-select-sm rounded-pill shadow-none" onchange="this.form.submit()">
+                        <option value="">🏷️ All Entry Types</option>
+                        {% for code, label in entry_types %}
+                        <option value="{{ code }}" {% if selected_entry_type == code %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-auto d-flex gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">
+                        <i class="fa-solid fa-magnifying-glass me-1"></i> Filter
+                    </button>
+                    {% if selected_dept_id or selected_cc_id or selected_entry_type %}
+                    <a href="." class="btn btn-sm btn-outline-danger rounded-pill px-3" title="Clear all filters">
+                        <i class="fa-solid fa-arrow-rotate-left me-1"></i> Show All
+                    </a>
+                    {% endif %}
+                </div>
+                {% if selected_dept_id or selected_cc_id or selected_entry_type %}
+                <div class="col-12 pt-2 border-top mt-2 d-flex flex-wrap align-items-center gap-2 small">
+                    <span class="text-muted"><i class="fa-solid fa-sliders me-1 text-primary"></i> Applied Scope:</span>
+                    {% if selected_dept_obj %}
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-1">
+                        <i class="fa-regular fa-building me-1"></i> Dept: {{ selected_dept_obj.name }}
+                    </span>
+                    {% endif %}
+                    {% if selected_cc_obj %}
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-3 py-1">
+                        <i class="fa-solid fa-wallet me-1"></i> Cost Center: {{ selected_cc_obj.code }} ({{ selected_cc_obj.name }})
+                    </span>
+                    {% endif %}
+                    {% if selected_entry_type %}
+                    <span class="badge bg-dark bg-opacity-10 text-dark border rounded-pill px-3 py-1">
+                        <i class="fa-solid fa-tag me-1"></i> Type: {{ selected_entry_type }}
+                    </span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 rounded-4 overflow-hidden">
     <div class="card-body p-0">
-        <table class="table table-hover table-striped align-middle mb-0">
-            <thead class="table-dark">
-                <tr>
-                    <th scope="col" class="ps-4">Date</th>
-                    <th scope="col">Cost Center</th>
-                    <th scope="col">Entry Type</th>
-                    <th scope="col">Amount</th>
-                    <th scope="col">Reference</th>
-                    <th scope="col">Description</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for entry in ledger %}
-                <tr>
-                    <td class="ps-4 text-muted">{{ entry.created_at|date:"M d, Y" }}</td>
-                    <td class="fw-bold">{{ entry.budget.cost_center.code }}</td>
-                    <td>
-                        <span class="badge bg-secondary">{{ entry.get_entry_type_display }}</span>
-                    </td>
-                    <td class="fw-bold">${{ entry.amount|floatformat:2 }}</td>
-                    <td><code>{{ entry.reference_number }}</code></td>
-                    <td class="text-muted small">{{ entry.description }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6" class="text-center py-5 text-muted">
-                        <h5>No Spend Ledger Entries</h5>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 text-nowrap">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col" class="ps-4">Date</th>
+                        <th scope="col">Cost Center</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Entry Type</th>
+                        <th scope="col">Amount</th>
+                        <th scope="col">Reference</th>
+                        <th scope="col" class="pe-4">Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in ledger %}
+                    <tr>
+                        <td class="ps-4 text-muted small">{{ entry.created_at|date:"M d, Y H:i" }}</td>
+                        <td class="fw-bold">
+                            <span class="text-primary">{{ entry.budget.cost_center.code }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border">{{ entry.budget.cost_center.department.name }}</span>
+                        </td>
+                        <td>
+                            {% if entry.entry_type == 'RESERVATION' %}
+                                <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning border-opacity-25 rounded-pill px-2 py-1">
+                                    <i class="fa-solid fa-hourglass-half me-1"></i> Reservation
+                                </span>
+                            {% elif entry.entry_type == 'COMMITMENT' %}
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2 py-1">
+                                    <i class="fa-solid fa-lock me-1"></i> Commitment
+                                </span>
+                            {% elif entry.entry_type == 'ACTUAL' %}
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2 py-1">
+                                    <i class="fa-solid fa-money-bill-transfer me-1"></i> Actual Spend
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ entry.get_entry_type_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold text-dark">${{ entry.amount|floatformat:2 }}</td>
+                        <td><code>{{ entry.reference_number }}</code></td>
+                        <td class="text-muted small pe-4">{{ entry.description }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <div class="mb-2"><i class="fa-solid fa-book-open fs-1 text-muted opacity-50"></i></div>
+                            <h5>No Spend Ledger Entries</h5>
+                            <p class="small mb-0">No spend ledger entries found matching the filter criteria.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}
