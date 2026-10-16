@@ -25,7 +25,68 @@
     </div>
 </div>
 
-<!-- Key Metrics Row (Responsive 1-col on xs, 2-col on sm/md, 4-col on xl) -->
+<!-- Department & Cost Center Filter Toolbar -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <form method="GET" action="." class="row g-2 align-items-center">
+                <div class="col-12 col-md-auto d-flex align-items-center">
+                    <span class="badge bg-dark text-white rounded-pill px-3 py-2 me-2">
+                        <i class="fa-solid fa-filter me-1"></i> Scope
+                    </span>
+                    <span class="fw-bold text-secondary small text-uppercase">Central View:</span>
+                </div>
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                    <label for="deptSelect" class="visually-hidden">Department</label>
+                    <select name="dept" id="deptSelect" class="form-select form-select-sm rounded-pill shadow-none" onchange="this.form.submit()">
+                        <option value="">🏢 All Departments (Enterprise)</option>
+                        {% for d in departments %}
+                        <option value="{{ d.id }}" {% if selected_dept_id == d.id|stringformat:"s" %}selected{% endif %}>
+                            {{ d.name }} ({{ d.code }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                    <label for="ccSelect" class="visually-hidden">Cost Center</label>
+                    <select name="cost_center" id="ccSelect" class="form-select form-select-sm rounded-pill shadow-none" onchange="this.form.submit()">
+                        <option value="">💳 All Cost Centers</option>
+                        {% for cc in cost_centers %}
+                        <option value="{{ cc.id }}" {% if selected_cc_id == cc.id|stringformat:"s" %}selected{% endif %}>
+                            {{ cc.code }} - {{ cc.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-auto d-flex gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">
+                        <i class="fa-solid fa-magnifying-glass me-1"></i> Apply
+                    </button>
+                    {% if selected_dept_id or selected_cc_id %}
+                    <a href="." class="btn btn-sm btn-outline-danger rounded-pill px-3" title="Clear all filters and show enterprise data">
+                        <i class="fa-solid fa-arrow-rotate-left me-1"></i> Show All
+                    </a>
+                    {% endif %}
+                </div>
+                {% if selected_dept_id or selected_cc_id %}
+                <div class="col-12 pt-2 border-top mt-2 d-flex flex-wrap align-items-center gap-2 small">
+                    <span class="text-muted"><i class="fa-solid fa-sliders me-1 text-primary"></i> Currently Viewing:</span>
+                    {% if selected_dept_obj %}
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-1">
+                        <i class="fa-regular fa-building me-1"></i> Dept: {{ selected_dept_obj.name }}
+                    </span>
+                    {% endif %}
+                    {% if selected_cc_obj %}
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-3 py-1">
+                        <i class="fa-solid fa-wallet me-1"></i> Cost Center: {{ selected_cc_obj.code }} ({{ selected_cc_obj.name }})
+                    </span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
 <div class="row g-3 g-md-4 mb-4">
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="card h-100 border-0 shadow-sm rounded-4 hover-elevate border-start border-warning border-4">

@@ -111,38 +111,102 @@ def home_view(request):  # noqa: C901
     elif role_code == Role.FINANCE_AP:
         from apps.budgets.models import SpendLedger
         from apps.invoices.models import MatchException, SupplierInvoice
+        from apps.organization.models import CostCenter, Department
 
-        open_match_exceptions = MatchException.objects.filter(
-            status=MatchException.STATUS_OPEN
-        ).order_by("-created_at")
-        open_budget_exceptions = PurchaseRequisition.objects.filter(
-            status=PurchaseRequisition.STATUS_BUDGET_REVIEW
-        ).order_by("-updated_at")
-        ready_for_payment = SupplierInvoice.objects.filter(
+        selected_dept_id = request.GET.get("dept") or ""
+        selected_cc_id = request.GET.get("cost_center") or ""
+
+        departments = Department.objects.all().order_by("name")
+        cost_centers = CostCenter.objects.select_related("department").all().order_by("code")
+
+        all_cost_centers = list(cost_centers)
+        if selected_dept_id:
+            filtered_cost_centers = [cc for cc in all_cost_centers if str(cc.department_id) == str(selected_dept_id)]
+        else:
+            filtered_cost_centers = all_cost_centers
+
+        open_match_exceptions = (
+            MatchException.objects.filter(status=MatchException.STATUS_OPEN)
+            .select_related(
+                "invoice__vendor",
+                "invoice__po__requisition__department",
+                "invoice__po__requisition__cost_center",
+            )
+            .order_by("-created_at")
+        )
+        open_budget_exceptions = (
+            PurchaseRequisition.objects.filter(status=PurchaseRequisition.STATUS_BUDGET_REVIEW)
+            .select_related("department", "cost_center", "requester")
+            .order_by("-updated_at")
+        )
+        ready_for_payment_qs = SupplierInvoice.objects.filter(
             status=SupplierInvoice.STATUS_READY_FOR_PAYMENT
-        ).count()
+        )
+        committed_spend_qs = SpendLedger.objects.filter(entry_type=SpendLedger.ENTRY_COMMITMENT)
+        actual_spend_qs = SpendLedger.objects.filter(entry_type=SpendLedger.ENTRY_ACTUAL)
+
+        if selected_dept_id:
+            open_budget_exceptions = open_budget_exceptions.filter(department_id=selected_dept_id)
+            open_match_exceptions = open_match_exceptions.filter(
+                invoice__po__requisition__department_id=selected_dept_id
+            )
+            ready_for_payment_qs = ready_for_payment_qs.filter(
+                po__requisition__department_id=selected_dept_id
+            )
+            committed_spend_qs = committed_spend_qs.filter(
+                budget__cost_center__department_id=selected_dept_id
+            )
+            actual_spend_qs = actual_spend_qs.filter(
+                budget__cost_center__department_id=selected_dept_id
+            )
+
+        if selected_cc_id:
+            open_budget_exceptions = open_budget_exceptions.filter(cost_center_id=selected_cc_id)
+            open_match_exceptions = open_match_exceptions.filter(
+                invoice__po__requisition__cost_center_id=selected_cc_id
+            )
+            ready_for_payment_qs = ready_for_payment_qs.filter(
+                po__requisition__cost_center_id=selected_cc_id
+            )
+            committed_spend_qs = committed_spend_qs.filter(
+                budget__cost_center_id=selected_cc_id
+            )
+            actual_spend_qs = actual_spend_qs.filter(
+                budget__cost_center_id=selected_cc_id
+            )
+
         committed_spend = (
-            SpendLedger.objects.filter(entry_type=SpendLedger.ENTRY_COMMITMENT).aggregate(
-                total=Sum("amount")
-            )["total"]
-            or 0
+            committed_spend_qs.aggregate(total=Sum("amount"))["total"] or 0
         )
         actual_spend = (
-            SpendLedger.objects.filter(entry_type=SpendLedger.ENTRY_ACTUAL).aggregate(
-                total=Sum("amount")
-            )["total"]
-            or 0
+            actual_spend_qs.aggregate(total=Sum("amount"))["total"] or 0
         )
+
+        selected_dept_obj = None
+        if selected_dept_id:
+            selected_dept_obj = next((d for d in departments if str(d.id) == str(selected_dept_id)), None)
+
+        selected_cc_obj = None
+        if selected_cc_id:
+            selected_cc_obj = next((c for c in all_cost_centers if str(c.id) == str(selected_cc_id)), None)
+
         context = {
             "metrics": {
                 "pending_match_exceptions": open_match_exceptions.count(),
                 "pending_budget_exceptions": open_budget_exceptions.count(),
-                "ready_for_payment": ready_for_payment,
+                "ready_for_payment": ready_for_payment_qs.count(),
                 "committed_spend": float(committed_spend),
                 "actual_spend": float(actual_spend),
             },
             "open_match_exceptions": open_match_exceptions[:10],
             "open_budget_exceptions": open_budget_exceptions[:10],
+            "departments": departments,
+            "cost_centers": filtered_cost_centers,
+            "all_cost_centers": all_cost_centers,
+            "selected_dept_id": selected_dept_id,
+            "selected_cc_id": selected_cc_id,
+            "selected_dept_obj": selected_dept_obj,
+            "selected_cc_obj": selected_cc_obj,
         }
         return render(request, "pages/dashboards/finance_dashboard.html", context)
 
