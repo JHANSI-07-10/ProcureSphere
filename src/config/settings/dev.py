@@ -13,7 +13,14 @@ EMAIL_BACKEND = env(  # noqa: F405
     default="django.core.mail.backends.console.EmailBackend",
 )
 
+<<<<<<< Updated upstream
 # Restricted CORS configuration
+=======
+# Email backend (configured via environment, defaults to console backend)
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+
+# Restricted CORS configuration (no wildcard *)
+>>>>>>> Stashed changes
 CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
