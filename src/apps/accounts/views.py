@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 
 from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
 
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.shortcuts import redirect, render
 
 from django.urls import reverse
@@ -123,7 +124,11 @@ def portal_login_view(request):
             if getattr(user, "must_change_password", False):
                 return redirect(reverse("accounts:change_password"))
 
-            next_url = request.GET.get("next")
+            next_url = request.GET.get("next") or request.POST.get("next")
+            if next_url and not url_has_allowed_host_and_scheme(
+                next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+            ):
+                next_url = None  # never redirect off-site (open-redirect protection)
             if not next_url:
                 role_code = getattr(user, "role_code", None) or (
                     user.role.code if hasattr(user, "role") and user.role else None

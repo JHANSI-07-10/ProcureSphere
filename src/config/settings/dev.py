@@ -8,7 +8,7 @@ DEBUG = True
 # Defaults to console backend for local development.
 # Set EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 # in environment variables to send real emails through Brevo.
-EMAIL_BACKEND = env(
+EMAIL_BACKEND = env(  # noqa: F405
     "EMAIL_BACKEND",
     default="django.core.mail.backends.console.EmailBackend",
 )

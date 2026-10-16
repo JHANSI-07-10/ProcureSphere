@@ -746,7 +746,11 @@ def issue_vendor_credentials_service(
             f"Credentials cannot be issued to a {vendor.get_status_display()} vendor."
         )
 
-    email = User.objects.normalize_email(vendor.email)
+    email = User.objects.normalize_email((vendor.email or '').strip())
+    if not email:
+        raise ValidationError(
+            f"Vendor {vendor.vendor_number} has no email address. Add one (Edit info) before issuing credentials."
+        )
     password = _generate_temporary_password()
 
     with transaction.atomic():

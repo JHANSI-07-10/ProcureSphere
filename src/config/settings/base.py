@@ -236,6 +236,7 @@ AXES_COOLOFF_TIME = 0.05  # 3 minutes cooloff window
 AXES_LOCKOUT_TEMPLATE = "pages/lockout.html"
 AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
 AXES_RESET_ON_SUCCESS = True
+AXES_USERNAME_CALLABLE = "apps.accounts.axes_utils.get_axes_username"
 LOGIN_REDIRECT_URL = "/"
 LOGIN_URL = "/login/"
 
