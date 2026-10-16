@@ -139,9 +139,13 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
 
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+<<<<<<< Updated upstream
 
     "apps.accounts.middleware.PasswordChangeRequiredMiddleware",
 
+=======
+    "apps.accounts.middleware.PasswordChangeRequiredMiddleware",
+>>>>>>> Stashed changes
     "apps.core.middleware.AuditContextMiddleware",
 
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -440,6 +444,7 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
+<<<<<<< Updated upstream
 EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=15)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ProcureSphere 360 <no-reply@localhost>")
 
@@ -458,3 +463,8 @@ BREVO_API_KEY = env("BREVO_API_KEY", default="")
 BREVO_SENDER_EMAIL = env("BREVO_SENDER_EMAIL", default="no-reply@procuresphere.com")
 BREVO_SENDER_NAME = env("BREVO_SENDER_NAME", default="ProcureSphere 360")
 
+=======
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ProcureSphere 360 <johnalexander2706@gmail.com>")
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
+APP_LOGIN_URL = env("APP_LOGIN_URL", default="http://localhost:8000/login/")
+>>>>>>> Stashed changes
