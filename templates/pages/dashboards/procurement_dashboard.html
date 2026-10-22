@@ -1,18 +1,27 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 
 {% block title %}Procurement Executive Dashboard{% endblock %}
 
 {% block content %}
-<div class="glass-card-dark p-4 mb-4">
+{# ───────────────────────── HERO HEADER ───────────────────────────── #}
+<div class="glass-card-dark p-3 p-md-4 mb-4">
     <div class="row align-items-center g-3">
-        <div class="col-lg-8">
+        <div class="col-12 col-lg-8">
             <span class="badge bg-info text-dark rounded-pill fw-bold px-3 py-1 mb-2">PROCUREMENT EXECUTIVE</span>
-            <h1 class="fw-bold text-white mb-1 h3">Sourcing &amp; Vendor Governance</h1>
-            <p class="text-white-50 mb-0 small">{{ user.email }} · vendor, sourcing, negotiation, award and PO execution</p>
+            <h1 class="fw-bold text-white mb-1 h4">Sourcing &amp; Vendor Governance</h1>
+            <p class="text-white-50 mb-0 small text-truncate">{{ user.email }} &middot; vendor, sourcing, negotiation, award and PO execution</p>
         </div>
-        <div class="col-lg-4 text-lg-end d-flex flex-wrap gap-2 justify-content-lg-end">
-            <a href="{% url 'sourcing_create' %}" class="btn btn-warning text-dark rounded-pill fw-bold px-4"><i class="fa-solid fa-plus me-1"></i>New RFQ / RFP</a>
-            <button class="btn btn-outline-light rounded-pill px-4" hx-get="{% url 'vendors_register_modal' %}" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container"><i class="fa-solid fa-user-plus me-1"></i>Register Vendor</button>
+        <div class="col-12 col-lg-4 d-flex flex-wrap gap-2 justify-content-lg-end">
+            <a href="{% url 'sourcing_create' %}" class="btn btn-warning text-dark rounded-pill fw-bold px-3 px-md-4 flex-grow-1 flex-md-grow-0">
+                <i class="fa-solid fa-plus me-1"></i>New RFQ / RFP
+            </a>
+            <button class="btn btn-outline-light rounded-pill px-3 px-md-4 flex-grow-1 flex-md-grow-0"
+                    hx-get="{% url 'vendors_register_modal' %}"
+                    hx-target="#modal-content-body"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modal-container">
+                <i class="fa-solid fa-user-plus me-1"></i>Register Vendor
+            </button>
         </div>
     </div>
 </div>
@@ -20,7 +29,7 @@
 {% if ready_prs_count > 0 %}
 <div class="alert alert-info border-info border-2 shadow-sm rounded-4 d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between p-3 mb-4 gap-3">
     <div class="d-flex align-items-center">
-        <div class="bg-primary text-white rounded-circle p-2 me-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+        <div class="bg-primary text-white rounded-circle p-2 me-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width:44px;height:44px;">
             <i class="fa-solid fa-file-circle-check fa-lg"></i>
         </div>
         <div>
@@ -28,205 +37,347 @@
             <span class="small text-secondary d-block">Department-approved requisitions awaiting RFQ/RFP event creation and vendor invites.</span>
         </div>
     </div>
-    <button class="btn btn-primary btn-sm rounded-pill px-4 py-2 fw-bold shadow-sm flex-shrink-0 text-nowrap"
+    <button class="btn btn-primary btn-sm rounded-pill px-4 py-2 fw-bold shadow-sm flex-shrink-0 text-nowrap w-100 w-sm-auto"
             onclick="document.querySelector('[data-bs-target=\'#pillar-sourcing\']').click();">
         <i class="fa-solid fa-arrow-right me-1"></i> View Sourcing Intake
     </button>
 </div>
 {% endif %}
 
-<!-- Procurement Executive Workspace: 4-pillar HTMX operations (all actions persist to PostgreSQL via services.py) -->
-<div class="glass-card p-4 shadow-sm mb-4">
+<div class="glass-card p-3 p-md-4 shadow-sm mb-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h2 class="h6 fw-bold mb-0"><i class="fa-solid fa-layer-group text-primary me-2"></i>Executive workspace <span class="text-muted fw-normal">— live, no mock data</span></h2>
+        <h2 class="h6 fw-bold mb-0"><i class="fa-solid fa-layer-group text-primary me-2"></i>Executive workspace <span class="text-muted fw-normal">&#8212; live, no mock data</span></h2>
         <div class="d-flex flex-wrap gap-2">
             <button class="btn btn-sm btn-warning text-dark rounded-pill fw-bold px-3"
                     hx-get="{% url 'sourcing_event_create_htmx' %}" hx-target="#modal-content-body"
                     data-bs-toggle="modal" data-bs-target="#modal-container">
                 <i class="fa-solid fa-plus me-1"></i>New RFQ / RFP
             </button>
-            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" hx-get="{% url 'vendors_register_modal' %}" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container"><i class="fa-solid fa-user-plus me-1"></i>Register Vendor</button>
+            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                    hx-get="{% url 'vendors_register_modal' %}" hx-target="#modal-content-body"
+                    data-bs-toggle="modal" data-bs-target="#modal-container">
+                <i class="fa-solid fa-user-plus me-1"></i>Register Vendor
+            </button>
         </div>
     </div>
-    <ul class="nav nav-pills small gap-1 flex-wrap mb-3" role="tablist" aria-label="Executive workspace pillars">
-        <li class="nav-item" role="presentation"><button class="nav-link active py-1 px-3" data-bs-toggle="pill" data-bs-target="#pillar-vendors" type="button" role="tab"><i class="fa-solid fa-id-card me-1"></i>1 · Vendor Qualification</button></li>
-        <li class="nav-item" role="presentation"><button class="nav-link py-1 px-3" data-bs-toggle="pill" data-bs-target="#pillar-sourcing" type="button" role="tab"><i class="fa-solid fa-gavel me-1"></i>2 · Sourcing &amp; RFQ{% if ready_prs_count > 0 %} <span class="badge bg-warning text-dark rounded-pill ms-1">{{ ready_prs_count }}</span>{% endif %}</button></li>
-        <li class="nav-item" role="presentation"><button class="nav-link py-1 px-3" data-bs-toggle="pill" data-bs-target="#pillar-eval" type="button" role="tab"><i class="fa-solid fa-scale-balanced me-1"></i>3 · Evaluation &amp; Award</button></li>
-        <li class="nav-item" role="presentation"><button class="nav-link py-1 px-3" data-bs-toggle="pill" data-bs-target="#pillar-po" type="button" role="tab"><i class="fa-solid fa-cart-shopping me-1"></i>4 · PO Execution</button></li>
-    </ul>
+
+    <div class="overflow-auto pb-1 mb-3" style="-webkit-overflow-scrolling:touch;">
+        <ul class="nav nav-pills small gap-1 flex-nowrap" role="tablist" style="min-width:max-content;">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active py-1 px-3 text-nowrap" data-bs-toggle="pill" data-bs-target="#pillar-vendors" type="button" role="tab">
+                    <i class="fa-solid fa-id-card me-1"></i><span class="d-none d-sm-inline">1 &middot; </span>Vendor Qualification
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link py-1 px-3 text-nowrap" data-bs-toggle="pill" data-bs-target="#pillar-sourcing" type="button" role="tab">
+                    <i class="fa-solid fa-gavel me-1"></i><span class="d-none d-sm-inline">2 &middot; </span>Sourcing &amp; RFQ
+                    {% if ready_prs_count > 0 %}<span class="badge bg-warning text-dark rounded-pill ms-1">{{ ready_prs_count }}</span>{% endif %}
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link py-1 px-3 text-nowrap" data-bs-toggle="pill" data-bs-target="#pillar-eval" type="button" role="tab">
+                    <i class="fa-solid fa-scale-balanced me-1"></i><span class="d-none d-sm-inline">3 &middot; </span>Evaluation &amp; Award
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link py-1 px-3 text-nowrap" data-bs-toggle="pill" data-bs-target="#pillar-po" type="button" role="tab">
+                    <i class="fa-solid fa-cart-shopping me-1"></i><span class="d-none d-sm-inline">4 &middot; </span>PO Execution
+                </button>
+            </li>
+        </ul>
+    </div>
+
     <div class="tab-content">
         <div class="tab-pane fade show active" id="pillar-vendors" role="tabpanel">
-            <p class="small text-muted mb-2">Vendors in <code>SUBMITTED</code> / <code>KYC_REVIEW</code>. Review KYC documents, record <code>VendorRiskRecord</code>, approve to <code>ACTIVE</code> — all via <code>apps/vendors/services.py</code>.</p>
+            <p class="small text-muted mb-2">Vendors in <code>SUBMITTED</code> / <code>KYC_REVIEW</code>. Review KYC documents, approve to <code>ACTIVE</code>.</p>
             <div hx-get="{% url 'vendors_qualification_tab' %}" hx-trigger="load, vendor-updated from:body" hx-swap="innerHTML">
-                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading qualification queue…</div>
+                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading qualification queue&hellip;</div>
             </div>
-            <div class="mt-2 small"><a href="{% url 'vendor_onboarding' %}">Open full onboarding &amp; KYC queue →</a></div>
+            <div class="mt-2 small"><a href="{% url 'vendor_onboarding' %}">Open full onboarding &amp; KYC queue &rarr;</a></div>
         </div>
+
         <div class="tab-pane fade" id="pillar-sourcing" role="tabpanel">
-            <p class="small text-muted mb-2">Approved PR intake → create <code>SourcingEvent</code> (weights + deadline) → invite ACTIVE vendors → answer <code>Clarification</code>s. Full register: <a href="{% url 'sourcing_list' %}">RFQ / RFP</a>.</p>
+            <p class="small text-muted mb-2">Approved PR intake &rarr; create <code>SourcingEvent</code> &rarr; invite ACTIVE vendors. Full register: <a href="{% url 'sourcing_list' %}">RFQ / RFP</a>.</p>
             <h3 class="h6 fw-bold">Approved requisitions ready for sourcing</h3>
             <div hx-get="{% url 'sourcing_ready_prs_tab' %}" hx-trigger="load, sourcing-updated from:body" hx-swap="innerHTML" class="mb-3">
-                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading ready PRs…</div>
+                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading ready PRs&hellip;</div>
             </div>
             <h3 class="h6 fw-bold">Active events</h3>
             <div hx-get="{% url 'sourcing_events_tab' %}" hx-trigger="load, sourcing-updated from:body" hx-swap="innerHTML">
-                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading events…</div>
+                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading events&hellip;</div>
             </div>
         </div>
+
         <div class="tab-pane fade" id="pillar-eval" role="tabpanel">
-            <p class="small text-muted mb-2">Closed events: unsealed comparison, <code>BidEvaluation</code> scores (weighted total auto-calculated), append-only <code>NegotiationNote</code>s, <code>AwardDecision</code> → manager approval. Full workspace: <a href="{% url 'evaluation_dashboard' %}">Evaluation &amp; Award</a>.</p>
+            <p class="small text-muted mb-2">Closed events: <code>BidEvaluation</code> scores, <code>AwardDecision</code>. Full workspace: <a href="{% url 'evaluation_dashboard' %}">Evaluation &amp; Award</a>.</p>
             {% for e in action_queue %}
                 {% if e.status == 'TECHNICAL_REVIEW' or e.status == 'COMMERCIAL_REVIEW' or e.status == 'AWARD_APPROVAL' %}
-                <div class="border rounded p-2 mb-2 small d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="border rounded p-2 mb-2 small d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
                     <div><a href="{% url 'evaluation_event' e.id %}" class="fw-semibold">{{ e.event_number }}</a> <span class="text-muted">{{ e.title|truncatechars:50 }}</span> {% include 'sourcing/partials/status_badge.html' with status=e.status label=e.get_status_display %}</div>
-                    <button class="btn btn-sm btn-outline-primary rounded-pill" hx-get="{% url 'evaluation_compare_htmx' e.id %}" hx-target="#eval-compare-result" hx-swap="innerHTML">Load comparison</button>
+                    <button class="btn btn-sm btn-outline-primary rounded-pill w-100 w-sm-auto" hx-get="{% url 'evaluation_compare_htmx' e.id %}" hx-target="#eval-compare-result" hx-swap="innerHTML">Load comparison</button>
                 </div>
                 {% endif %}
             {% endfor %}
-            <div id="eval-compare-result" hx-trigger="evaluation-updated from:body" aria-live="polite">
-                <p class="small text-muted mb-0">Select “Load comparison” on an event above to score, negotiate and recommend award inline.</p>
+            <div id="eval-compare-result" aria-live="polite">
+                <p class="small text-muted mb-0">Select "Load comparison" on an event above to score, negotiate and recommend award inline.</p>
             </div>
         </div>
+
         <div class="tab-pane fade" id="pillar-po" role="tabpanel">
-            <p class="small text-muted mb-2">Approved awards pending PO → <code>generate_purchase_order_service()</code> (budget reserved → committed via <code>SpendLedger</code>) → vendor acknowledgement → amendments via <code>amend_purchase_order_service()</code> with immutable snapshots.</p>
+            <p class="small text-muted mb-2">Approved awards &rarr; <code>generate_purchase_order_service()</code> &rarr; vendor acknowledgement &rarr; amendments with immutable snapshots.</p>
             <div hx-get="{% url 'orders_awards_pending_tab' %}" hx-trigger="load, po-generated from:body" hx-swap="innerHTML">
-                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading awards pending PO…</div>
+                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading awards pending PO&hellip;</div>
             </div>
-            <div class="mt-2 small"><a href="{% url 'orders_list' %}">Open Purchase Orders register →</a></div>
+            <div class="mt-2 small"><a href="{% url 'orders_list' %}">Open Purchase Orders register &rarr;</a></div>
         </div>
     </div>
 </div>
 
-<!-- Live notification & escalation widgets (DB-backed via apps/notifications, HTMX polled) -->
 <div class="row g-3 mb-4">
-    <div class="col-xl-6">
-        <div class="glass-card p-4 shadow-sm h-100">
+    <div class="col-12 col-xl-6">
+        <div class="glass-card p-3 p-md-4 shadow-sm h-100">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <h3 class="h6 fw-bold mb-0"><i class="fa-solid fa-list-check text-warning me-2"></i>Pending Actions
-                    <span class="badge bg-warning text-dark rounded-pill ms-1" id="pending-actions-count">…</span>
-                </h3>
-                <a href="{% url 'notification_list' %}" class="small link-secondary text-decoration-none">Inbox →</a>
+                <h3 class="h6 fw-bold mb-0"><i class="fa-solid fa-list-check text-warning me-2"></i>Pending Actions <span class="badge bg-warning text-dark rounded-pill ms-1" id="pending-actions-count">&hellip;</span></h3>
+                <a href="{% url 'notification_list' %}" class="small link-secondary text-decoration-none">Inbox &rarr;</a>
             </div>
-            <div id="pending-actions-widget"
-                 class="notif-feed-scroll"
+            <div id="pending-actions-widget" class="notif-feed-scroll"
                  hx-get="{% url 'proc_exec_pending_actions' %}"
-                 hx-trigger="load, every 60s, notification-read from:body"
-                 hx-swap="innerHTML"
-                 aria-live="polite">
-                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading pending actions…</div>
+                 hx-trigger="load, every 60s, notification-read from:body" hx-swap="innerHTML" aria-live="polite">
+                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading pending actions&hellip;</div>
             </div>
         </div>
     </div>
-    <div class="col-xl-6">
-        <div class="glass-card p-4 shadow-sm h-100">
+    <div class="col-12 col-xl-6">
+        <div class="glass-card p-3 p-md-4 shadow-sm h-100">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <h3 class="h6 fw-bold mb-0"><i class="fa-solid fa-bell text-success me-2"></i>Recent Activity / System Notifications
-                    <span class="badge bg-success rounded-pill ms-1" id="notif-unread-badge">…</span>
-                </h3>
-                <a href="{% url 'notification_list' %}" class="small link-secondary text-decoration-none">View all →</a>
+                <h3 class="h6 fw-bold mb-0"><i class="fa-solid fa-bell text-success me-2"></i>Recent Activity <span class="badge bg-success rounded-pill ms-1" id="notif-unread-badge">&hellip;</span></h3>
+                <a href="{% url 'notification_list' %}" class="small link-secondary text-decoration-none">View all &rarr;</a>
             </div>
-            <div id="proc-exec-notif-feed"
-                 class="notif-feed-scroll"
+            <div id="proc-exec-notif-feed" class="notif-feed-scroll"
                  hx-get="{% url 'proc_exec_notifications_feed' %}"
-                 hx-trigger="load, every 60s, notification-read from:body"
-                 hx-swap="innerHTML"
-                 aria-live="polite">
-                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading notifications…</div>
+                 hx-trigger="load, every 60s, notification-read from:body" hx-swap="innerHTML" aria-live="polite">
+                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading notifications&hellip;</div>
             </div>
         </div>
     </div>
 </div>
 
 <h2 class="h6 fw-bold text-uppercase text-muted mb-2">RFQ / RFP sourcing</h2>
-<div class="row g-3 mb-4">
+<div class="row g-2 g-md-3 mb-4">
     {% with m=sourcing %}
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=OPEN"><div class="stat-card h-100 border-start border-primary border-4"><div class="text-muted small fw-semibold">ACTIVE EVENTS</div><div class="metric-value text-dark">{{ m.active }}</div></div></a></div>
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=DRAFT"><div class="stat-card h-100 border-start border-secondary border-4"><div class="text-muted small fw-semibold">DRAFTS</div><div class="metric-value text-secondary">{{ m.draft }}</div></div></a></div>
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=PUBLISHED"><div class="stat-card h-100 border-start border-info border-4"><div class="text-muted small fw-semibold">PUBLISHED</div><div class="metric-value text-info">{{ m.published }}</div></div></a></div>
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=BID_WINDOW"><div class="stat-card h-100 border-start border-dark border-4"><div class="text-muted small fw-semibold">IN BID WINDOW</div><div class="metric-value text-dark">{{ m.bid_window }}</div></div></a></div>
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=CLOSING_SOON"><div class="stat-card h-100 border-start border-danger border-4"><div class="text-muted small fw-semibold">CLOSING ≤ 3 DAYS</div><div class="metric-value text-danger">{{ m.closing_soon }}</div></div></a></div>
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=EVALUATION"><div class="stat-card h-100 border-start border-warning border-4"><div class="text-muted small fw-semibold">AWAITING EVALUATION</div><div class="metric-value text-warning">{{ m.awaiting_evaluation }}</div></div></a></div>
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=AWARD_APPROVAL"><div class="stat-card h-100 border-start border-primary border-4"><div class="text-muted small fw-semibold">AWAITING AWARD</div><div class="metric-value text-primary">{{ m.awaiting_award }}</div></div></a></div>
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=AWARDED"><div class="stat-card h-100 border-start border-success border-4"><div class="text-muted small fw-semibold">AWARDED</div><div class="metric-value text-success">{{ m.awarded }}</div></div></a></div>
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=CANCELLED"><div class="stat-card h-100 border-start border-secondary border-4"><div class="text-muted small fw-semibold">CANCELLED</div><div class="metric-value text-muted">{{ m.cancelled }}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=OPEN"><div class="stat-card h-100 border-start border-primary border-4"><div class="text-muted small fw-semibold">ACTIVE EVENTS</div><div class="metric-value text-dark">{{ m.active }}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=DRAFT"><div class="stat-card h-100 border-start border-secondary border-4"><div class="text-muted small fw-semibold">DRAFTS</div><div class="metric-value text-secondary">{{ m.draft }}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=PUBLISHED"><div class="stat-card h-100 border-start border-info border-4"><div class="text-muted small fw-semibold">PUBLISHED</div><div class="metric-value text-info">{{ m.published }}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=BID_WINDOW"><div class="stat-card h-100 border-start border-dark border-4"><div class="text-muted small fw-semibold">IN BID WINDOW</div><div class="metric-value text-dark">{{ m.bid_window }}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=CLOSING_SOON"><div class="stat-card h-100 border-start border-danger border-4"><div class="text-muted small fw-semibold">CLOSING &le;3d</div><div class="metric-value text-danger">{{ m.closing_soon }}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=EVALUATION"><div class="stat-card h-100 border-start border-warning border-4"><div class="text-muted small fw-semibold">AWAITING EVAL</div><div class="metric-value text-warning">{{ m.awaiting_evaluation }}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=AWARD_APPROVAL"><div class="stat-card h-100 border-start border-primary border-4"><div class="text-muted small fw-semibold">AWAITING AWARD</div><div class="metric-value text-primary">{{ m.awaiting_award }}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=AWARDED"><div class="stat-card h-100 border-start border-success border-4"><div class="text-muted small fw-semibold">AWARDED</div><div class="metric-value text-success">{{ m.awarded }}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'sourcing_list' %}?status=CANCELLED"><div class="stat-card h-100 border-start border-secondary border-4"><div class="text-muted small fw-semibold">CANCELLED</div><div class="metric-value text-muted">{{ m.cancelled }}</div></div></a></div>
     {% endwith %}
 </div>
 
 <h2 class="h6 fw-bold text-uppercase text-muted mb-2">Vendor governance &amp; execution</h2>
-<div class="row g-3 mb-4">
+<div class="row g-2 g-md-3 mb-4">
     {% with g=governance %}
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'vendor_governance' %}"><div class="stat-card h-100 border-start border-primary border-4"><div class="text-muted small fw-semibold">TOTAL VENDORS</div><div class="metric-value text-dark">{{ g.total }}</div></div></a></div>
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'vendor_governance' %}?status=ACTIVE"><div class="stat-card h-100 border-start border-success border-4"><div class="text-muted small fw-semibold">ACTIVE VENDORS</div><div class="metric-value text-success">{{ g.active }}</div></div></a></div>
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'vendor_onboarding' %}"><div class="stat-card h-100 border-start border-info border-4"><div class="text-muted small fw-semibold">PENDING KYC REVIEW</div><div class="metric-value text-info">{{ g.pending_review }}</div></div></a></div>
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'vendor_governance' %}?restriction=ANY"><div class="stat-card h-100 border-start border-warning border-4"><div class="text-muted small fw-semibold">ON HOLD / SUSPENDED</div><div class="metric-value text-warning">{{ g.on_hold }} / {{ g.suspended }}</div></div></a></div>
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'vendor_governance' %}?risk_level=HIGH"><div class="stat-card h-100 border-start border-danger border-4"><div class="text-muted small fw-semibold">HIGH RISK</div><div class="metric-value text-danger">{{ g.high_risk }}</div></div></a></div>
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'orders_list' %}"><div class="stat-card h-100 border-start border-primary border-4"><div class="text-muted small fw-semibold">OPEN POs</div><div class="metric-value text-dark">{{ open_pos }}</div></div></a></div>
-    <div class="col-6 col-md-3 col-xl"><a class="text-decoration-none" href="{% url 'scorecard_list' %}"><div class="stat-card h-100 border-start border-success border-4"><div class="text-muted small fw-semibold">AVG SUPPLIER SCORE</div><div class="metric-value text-success">{% if avg_scorecard is None %}<span class="fs-6 text-muted">No data</span>{% else %}{{ avg_scorecard }}{% endif %}</div></div></a></div>
-    <div class="col-6 col-md-3 col-xl"><div class="stat-card h-100 border-start border-dark border-4"><div class="text-muted small fw-semibold">OPEN CLARIFICATIONS</div><div class="metric-value text-dark">{{ pending_clarifications }}</div></div></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'vendor_governance' %}"><div class="stat-card h-100 border-start border-primary border-4"><div class="text-muted small fw-semibold">TOTAL VENDORS</div><div class="metric-value text-dark">{{ g.total }}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'vendor_governance' %}?status=ACTIVE"><div class="stat-card h-100 border-start border-success border-4"><div class="text-muted small fw-semibold">ACTIVE VENDORS</div><div class="metric-value text-success">{{ g.active }}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'vendor_onboarding' %}"><div class="stat-card h-100 border-start border-info border-4"><div class="text-muted small fw-semibold">PENDING KYC</div><div class="metric-value text-info">{{ g.pending_review }}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'vendor_governance' %}?restriction=ANY"><div class="stat-card h-100 border-start border-warning border-4"><div class="text-muted small fw-semibold">ON HOLD / SUSP.</div><div class="metric-value text-warning">{{ g.on_hold }} / {{ g.suspended }}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'vendor_governance' %}?risk_level=HIGH"><div class="stat-card h-100 border-start border-danger border-4"><div class="text-muted small fw-semibold">HIGH RISK</div><div class="metric-value text-danger">{{ g.high_risk }}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'orders_list' %}"><div class="stat-card h-100 border-start border-primary border-4"><div class="text-muted small fw-semibold">OPEN POs</div><div class="metric-value text-dark">{{ open_pos }}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><a class="text-decoration-none" href="{% url 'scorecard_list' %}"><div class="stat-card h-100 border-start border-success border-4"><div class="text-muted small fw-semibold">AVG SCORE</div><div class="metric-value text-success">{% if avg_scorecard is None %}<span class="fs-6 text-muted">&#8212;</span>{% else %}{{ avg_scorecard }}{% endif %}</div></div></a></div>
+    <div class="col-6 col-sm-4 col-lg-3 col-xl"><div class="stat-card h-100 border-start border-dark border-4"><div class="text-muted small fw-semibold">OPEN CLARIF.</div><div class="metric-value text-dark">{{ pending_clarifications }}</div></div></div>
     {% endwith %}
 </div>
 
-<div class="row g-4">
-    <div class="col-xl-6">
-        <div class="glass-card p-4 shadow-sm h-100">
+<div class="row g-3 g-md-4">
+    <div class="col-12 col-xl-6">
+        <div class="glass-card p-3 p-md-4 shadow-sm h-100">
             <h3 class="h6 fw-bold mb-3"><i class="fa-solid fa-list-check text-warning me-2"></i>My sourcing action queue</h3>
-            <div class="table-responsive"><table class="table table-sm align-middle small mb-0">
-                <thead><tr><th>Event</th><th>Status</th><th>Next step</th></tr></thead>
-                <tbody>
-                {% for e in action_queue %}
-                    <tr>
-                        <td><a href="{% url 'sourcing_detail' e.id %}">{{ e.event_number }}</a> <span class="text-muted">{{ e.title|truncatechars:40 }}</span></td>
-                        <td>{% include 'sourcing/partials/status_badge.html' with status=e.status label=e.get_status_display %}</td>
-                        <td class="text-muted">{% if e.status == 'DRAFT' %}Invite vendors &amp; publish{% elif e.status == 'TECHNICAL_REVIEW' %}Score technical envelopes{% elif e.status == 'COMMERCIAL_REVIEW' %}Score, negotiate, recommend award{% else %}Manager approval pending{% endif %}</td>
-                    </tr>
-                {% empty %}<tr><td colspan="3" class="text-muted text-center py-3">Nothing awaiting action.</td></tr>{% endfor %}
-                </tbody>
-            </table></div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle small mb-0">
+                    <thead><tr><th>Event</th><th class="d-none d-sm-table-cell">Status</th><th class="d-none d-md-table-cell">Next step</th></tr></thead>
+                    <tbody>
+                    {% for e in action_queue %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'sourcing_detail' e.id %}">{{ e.event_number }}</a>
+                                <span class="text-muted d-none d-md-inline"> {{ e.title|truncatechars:30 }}</span>
+                                <span class="d-block d-sm-none mt-1">{% include 'sourcing/partials/status_badge.html' with status=e.status label=e.get_status_display %}</span>
+                            </td>
+                            <td class="d-none d-sm-table-cell">{% include 'sourcing/partials/status_badge.html' with status=e.status label=e.get_status_display %}</td>
+                            <td class="text-muted d-none d-md-table-cell">{% if e.status == 'DRAFT' %}Invite vendors &amp; publish{% elif e.status == 'TECHNICAL_REVIEW' %}Score technical envelopes{% elif e.status == 'COMMERCIAL_REVIEW' %}Score, negotiate, recommend award{% else %}Manager approval pending{% endif %}</td>
+                        </tr>
+                    {% empty %}<tr><td colspan="3" class="text-muted text-center py-3">Nothing awaiting action.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-    <div class="col-xl-6">
-        <div class="glass-card p-4 shadow-sm h-100">
+    <div class="col-12 col-xl-6">
+        <div class="glass-card p-3 p-md-4 shadow-sm h-100">
             <h3 class="h6 fw-bold mb-3"><i class="fa-solid fa-hourglass-half text-danger me-2"></i>Bid windows closing within 3 days</h3>
-            <div class="table-responsive"><table class="table table-sm align-middle small mb-0">
-                <thead><tr><th>Event</th><th>Deadline</th><th>Invited</th></tr></thead>
-                <tbody>
-                {% for e in closing_soon %}
-                    <tr><td><a href="{% url 'sourcing_detail' e.id %}">{{ e.event_number }}</a> <span class="text-muted">{{ e.title|truncatechars:40 }}</span></td><td class="text-nowrap">{{ e.bid_end_date|date:"Y-m-d H:i" }} <span class="text-muted">({{ e.bid_end_date|timeuntil }})</span></td><td>{{ e.invite_count }}</td></tr>
-                {% empty %}<tr><td colspan="3" class="text-muted text-center py-3">No bid windows closing soon.</td></tr>{% endfor %}
-                </tbody>
-            </table></div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle small mb-0">
+                    <thead><tr><th>Event</th><th>Deadline</th><th class="d-none d-sm-table-cell">Invited</th></tr></thead>
+                    <tbody>
+                    {% for e in closing_soon %}
+                        <tr>
+                            <td><a href="{% url 'sourcing_detail' e.id %}">{{ e.event_number }}</a> <span class="text-muted d-none d-md-inline">{{ e.title|truncatechars:25 }}</span></td>
+                            <td class="text-nowrap">{{ e.bid_end_date|date:"d M, H:i" }} <span class="text-muted d-none d-sm-inline">({{ e.bid_end_date|timeuntil }})</span></td>
+                            <td class="d-none d-sm-table-cell">{{ e.invite_count }}</td>
+                        </tr>
+                    {% empty %}<tr><td colspan="3" class="text-muted text-center py-3">No bid windows closing soon.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-    <div class="col-xl-6">
-        <div class="glass-card p-4 shadow-sm h-100">
+    <div class="col-12 col-xl-6">
+        <div class="glass-card p-3 p-md-4 shadow-sm h-100">
             <h3 class="h6 fw-bold mb-3"><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i>Vendors requiring attention</h3>
-            <div class="table-responsive"><table class="table table-sm align-middle small mb-0">
-                <thead><tr><th>Vendor</th><th>Status</th><th>Risk</th><th>Score</th></tr></thead>
-                <tbody>
-                {% for v in attention_vendors %}
-                    <tr>
-                        <td><a href="{% url 'vendor_detail' v.id %}">{{ v.legal_name }}</a></td>
-                        <td>{% include 'partials/vendor_status_badge.html' with status=v.status label=v.get_status_display %}</td>
-                        <td>{{ v.latest_risk_level|default:"—" }}</td>
-                        <td>{% if v.latest_composite_score is None %}—{% else %}{{ v.latest_composite_score|floatformat:1 }}{% endif %}</td>
-                    </tr>
-                {% empty %}<tr><td colspan="4" class="text-muted text-center py-3">No vendors flagged.</td></tr>{% endfor %}
-                </tbody>
-            </table></div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle small mb-0">
+                    <thead><tr><th>Vendor</th><th>Status</th><th class="d-none d-sm-table-cell">Risk</th><th class="d-none d-sm-table-cell">Score</th></tr></thead>
+                    <tbody>
+                    {% for v in attention_vendors %}
+                        <tr>
+                            <td><a href="{% url 'vendor_detail' v.id %}">{{ v.legal_name }}</a></td>
+                            <td>{% include 'partials/vendor_status_badge.html' with status=v.status label=v.get_status_display %}</td>
+                            <td class="d-none d-sm-table-cell">{{ v.latest_risk_level|default:"&#8212;" }}</td>
+                            <td class="d-none d-sm-table-cell">{% if v.latest_composite_score is None %}&#8212;{% else %}{{ v.latest_composite_score|floatformat:1 }}{% endif %}</td>
+                        </tr>
+                    {% empty %}<tr><td colspan="4" class="text-muted text-center py-3">No vendors flagged.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-    <div class="col-xl-6">
-        <div class="glass-card p-4 shadow-sm h-100">
+    <div class="col-12 col-xl-6">
+        <div class="glass-card p-3 p-md-4 shadow-sm h-100">
             <h3 class="h6 fw-bold mb-3"><i class="fa-solid fa-cart-plus text-primary me-2"></i>Awarded events without a Purchase Order</h3>
-            <div class="table-responsive"><table class="table table-sm align-middle small mb-0">
-                <thead><tr><th>Event</th><th>Awarded</th><th></th></tr></thead>
-                <tbody>
-                {% for e in awarded_without_po %}
-                    <tr><td><a href="{% url 'sourcing_detail' e.id %}">{{ e.event_number }}</a> <span class="text-muted">{{ e.title|truncatechars:40 }}</span></td><td>{{ e.updated_at|date:"Y-m-d" }}</td><td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'sourcing_detail' e.id %}#award">Generate PO</a></td></tr>
-                {% empty %}<tr><td colspan="3" class="text-muted text-center py-3">All awarded events have Purchase Orders.</td></tr>{% endfor %}
-                </tbody>
-            </table></div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle small mb-0">
+                    <thead><tr><th>Event</th><th class="d-none d-sm-table-cell">Awarded</th><th></th></tr></thead>
+                    <tbody>
+                    {% for e in awarded_without_po %}
+                        <tr>
+                            <td><a href="{% url 'sourcing_detail' e.id %}">{{ e.event_number }}</a> <span class="text-muted d-none d-md-inline">{{ e.title|truncatechars:30 }}</span></td>
+                            <td class="d-none d-sm-table-cell">{{ e.updated_at|date:"d M Y" }}</td>
+                            <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'sourcing_detail' e.id %}#award">Generate PO</a></td>
+                        </tr>
+                    {% empty %}<tr><td colspan="3" class="text-muted text-center py-3">All awarded events have Purchase Orders.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
+
+<script>
+function peSetField(input, valid, msg) {
+    input.classList.toggle('is-invalid', !valid);
+    input.classList.toggle('is-valid', valid);
+    var fb = input.parentElement.querySelector('.invalid-feedback');
+    if (!fb) { fb = document.createElement('div'); fb.className = 'invalid-feedback'; input.after(fb); }
+    fb.textContent = msg || '';
+}
+function peClearField(input) { input.classList.remove('is-invalid','is-valid'); }
+
+document.addEventListener('htmx:afterSettle', function () {
+    var vf = document.querySelector('form[hx-post*="vendors_register_modal"]');
+    if (!vf) return;
+    var vendorRules = {
+        legal_name:                { required: true,  minLen: 2,  label: 'Legal name' },
+        trade_name:                { required: false, label: 'Trade name' },
+        tax_identification_number: { required: true,  minLen: 3,  label: 'Tax ID', pattern: /^[A-Z0-9\-\/]{3,30}$/i },
+        email:                     { required: true,  label: 'Email', type: 'email' },
+        phone:                     { required: false, label: 'Phone', pattern: /^[+\d\s\-()\.\#]{7,20}$/ },
+        address:                   { required: true,  minLen: 5,  label: 'Address' }
+    };
+    function validateVendor(input) {
+        var name = input.name, rule = vendorRules[name];
+        if (!rule) return true;
+        var v = input.value.trim();
+        if (rule.required && !v) { peSetField(input, false, rule.label + ' is required.'); return false; }
+        if (!rule.required && !v) { peClearField(input); return true; }
+        if (rule.minLen && v.length < rule.minLen) { peSetField(input, false, rule.label + ' must be at least ' + rule.minLen + ' characters.'); return false; }
+        if (rule.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { peSetField(input, false, 'Enter a valid email address.'); return false; }
+        if (rule.pattern && !rule.pattern.test(v)) { peSetField(input, false, rule.label + ' format is invalid.'); return false; }
+        peSetField(input, true, ''); return true;
+    }
+    var catSel = vf.querySelector('select[name="category"]');
+    function validateCat() {
+        if (!catSel) return true;
+        if (!catSel.value) { peSetField(catSel, false, 'Please select a vendor category.'); return false; }
+        peSetField(catSel, true, ''); return true;
+    }
+    if (catSel) catSel.addEventListener('change', validateCat);
+    vf.querySelectorAll('input, textarea').forEach(function (el) {
+        el.addEventListener('blur',  function () { validateVendor(el); });
+        el.addEventListener('input', function () { if (el.classList.contains('is-invalid')) validateVendor(el); });
+    });
+    vf.addEventListener('submit', function (e) {
+        var ok = true;
+        vf.querySelectorAll('input, textarea').forEach(function (el) { if (!validateVendor(el)) ok = false; });
+        if (!validateCat()) ok = false;
+        if (!ok) { e.preventDefault(); e.stopPropagation(); var f = vf.querySelector('.is-invalid'); if (f) f.scrollIntoView({ behavior:'smooth', block:'center' }); }
+    }, true);
+});
+
+document.addEventListener('htmx:afterSettle', function () {
+    var rf = document.querySelector('form[hx-post*="sourcing_event_create_htmx"]');
+    if (!rf) return;
+    function gv(n) { var el = rf.querySelector('[name="'+n+'"]'); return el ? el.value.trim() : ''; }
+    function gi(n) { return rf.querySelector('[name="'+n+'"]'); }
+    function validateRfq(input) {
+        if (!input) return true;
+        var name = input.name, v = input.value.trim();
+        if (name === 'title') {
+            if (!v) { peSetField(input, false, 'Title is required.'); return false; }
+            if (v.length < 5) { peSetField(input, false, 'Title must be at least 5 characters.'); return false; }
+            peSetField(input, true, ''); return true;
+        }
+        if (name === 'description') {
+            if (!v) { peSetField(input, false, 'Scope / requirements is required.'); return false; }
+            if (v.length < 10) { peSetField(input, false, 'Please provide at least 10 characters.'); return false; }
+            peSetField(input, true, ''); return true;
+        }
+        if (name === 'bid_start_date') {
+            if (!v) { peSetField(input, false, 'Bid start date is required.'); return false; }
+            peSetField(input, true, '');
+            var endEl = gi('bid_end_date'); if (endEl && endEl.value) validateRfq(endEl);
+            return true;
+        }
+        if (name === 'bid_end_date') {
+            if (!v) { peSetField(input, false, 'Bid deadline is required.'); return false; }
+            var sv = gv('bid_start_date');
+            if (sv && new Date(v) <= new Date(sv)) { peSetField(input, false, 'Deadline must be after the bid start date.'); return false; }
+            peSetField(input, true, ''); return true;
+        }
+        if (name === 'technical_weight' || name === 'commercial_weight') {
+            var num = parseFloat(v);
+            if (isNaN(num) || num < 0 || num > 100) { peSetField(input, false, 'Enter a value between 0 and 100.'); return false; }
+            var tw = parseFloat(gv('technical_weight')) || 0, cw = parseFloat(gv('commercial_weight')) || 0;
+            var twE = gi('technical_weight'), cwE = gi('commercial_weight');
+            if (tw + cw !== 100) {
+                var msg = 'Weights must total 100 (currently ' + (tw+cw) + ').';
+                peSetField(twE, false, msg); peSetField(cwE, false, msg); return false;
+            }
+            peSetField(twE, true, ''); peSetField(cwE, true, ''); return true;
+        }
+        return true;
+    }
+    rf.querySelectorAll('input, select, textarea').forEach(function (el) {
+        el.addEventListener('blur',  function () { validateRfq(el); });
+        el.addEventListener('input', function () { if (el.classList.contains('is-invalid')) validateRfq(el); });
+    });
+    rf.addEventListener('submit', function (e) {
+        var required = ['title','bid_start_date','bid_end_date','technical_weight','commercial_weight','description'], ok = true;
+        required.forEach(function (n) { if (!validateRfq(gi(n))) ok = false; });
+        if (!ok) { e.preventDefault(); e.stopPropagation(); var f = rf.querySelector('.is-invalid'); if (f) f.scrollIntoView({ behavior:'smooth', block:'center' }); }
+    }, true);
+});
+</script>
 {% endblock %}
