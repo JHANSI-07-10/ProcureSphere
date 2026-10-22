@@ -18,6 +18,10 @@ from apps.accounts.models import Role
 from apps.audit.models import AuditLog
 from apps.contracts.models import Contract
 from apps.invoices.models import SupplierInvoice
+from apps.invoices.services import (
+    create_supplier_invoice_service,
+    run_3_way_match_service,
+)
 from apps.notifications.models import Notification
 from apps.orders.models import PurchaseOrder
 from apps.orders.services import acknowledge_purchase_order_service
@@ -1327,6 +1331,132 @@ def vendor_invoices_view(request):
         "invoices": invoices,
     }
     return render(request, "pages/vendor/invoices.html", context)
+
+
+@vendor_required
+def vendor_invoice_submit_view(request, po_id=None):
+    """
+    Vendor Self-Service Invoice Submission:
+    - Allows vendor to submit an invoice directly against an eligible PO.
+    - Validates vendor ownership of PO.
+    - Detects duplicate invoice numbers within vendor context.
+    - Captures invoice line items (quantities, prices) matching or derived from PO lines.
+    - Enforces backend validation via create_supplier_invoice_service.
+    - Automatically executes 3-way matching and notifies Finance/AP.
+    """
+    vendor = request.vendor
+    eligible_pos = PurchaseOrder.objects.filter(
+        vendor=vendor,
+        status__in=[
+            PurchaseOrder.STATUS_ISSUED,
+            PurchaseOrder.STATUS_ACKNOWLEDGED,
+            PurchaseOrder.STATUS_PARTIAL_RECEIPT,
+            PurchaseOrder.STATUS_COMPLETED,
+        ],
+    ).order_by("-created_at")
+
+    selected_po = None
+    if po_id:
+        selected_po = get_object_or_404(eligible_pos, id=po_id)
+    elif request.GET.get("po_id"):
+        selected_po = eligible_pos.filter(id=request.GET.get("po_id")).first()
+
+    if request.method == "POST":
+        target_po_id = request.POST.get("po_id")
+        po = get_object_or_404(eligible_pos, id=target_po_id)
+        invoice_number = request.POST.get("invoice_number", "").strip()
+        invoice_date_str = request.POST.get("invoice_date", "").strip()
+        due_date_str = request.POST.get("due_date", "").strip()
+        notes = request.POST.get("notes", "").strip()
+
+        if not invoice_number:
+            messages.error(request, "Invoice number is required.")
+            return redirect(request.path)
+
+        if not invoice_date_str or not due_date_str:
+            messages.error(request, "Invoice date and due date are required.")
+            return redirect(request.path)
+
+        if SupplierInvoice.objects.filter(vendor=vendor, invoice_number=invoice_number).exists():
+            messages.error(
+                request,
+                f"Duplicate invoice detected: Invoice '{invoice_number}' already exists for your company.",
+            )
+            return redirect(request.path)
+
+        line_items = []
+        for line in po.lines.all():
+            qty_key = f"qty_{line.id}"
+            price_key = f"price_{line.id}"
+            if qty_key in request.POST:
+                try:
+                    qty = Decimal(request.POST.get(qty_key, "0"))
+                    price = Decimal(request.POST.get(price_key, str(line.unit_price)))
+                    if qty > Decimal("0.00"):
+                        line_items.append(
+                            {
+                                "po_line": line,
+                                "item_description": line.item_description,
+                                "quantity": qty,
+                                "unit_price": price,
+                            }
+                        )
+                except Exception:
+                    continue
+
+        if not line_items:
+            for line in po.lines.all():
+                line_items.append(
+                    {
+                        "po_line": line,
+                        "item_description": line.item_description,
+                        "quantity": line.remaining_quantity or line.quantity,
+                        "unit_price": line.unit_price,
+                    }
+                )
+
+        try:
+            from datetime import date
+
+            invoice_date = date.fromisoformat(invoice_date_str)
+            due_date = date.fromisoformat(due_date_str)
+
+            invoice = create_supplier_invoice_service(
+                vendor=vendor,
+                po=po,
+                invoice_number=invoice_number,
+                invoice_date=invoice_date,
+                due_date=due_date,
+                line_items=line_items,
+                notes=notes,
+                created_by_user=request.user,
+            )
+
+            # Auto-run 3-way match
+            run_3_way_match_service(invoice=invoice, user=request.user)
+
+            messages.success(
+                request,
+                f"Invoice '{invoice.invoice_number}' for PO {po.po_number} submitted successfully. "
+                f"3-Way Match Status: {invoice.get_status_display()}.",
+            )
+            return redirect("vendor_invoices")
+
+        except ValidationError as e:
+            msg = " ".join(e.messages) if hasattr(e, "messages") else str(e)
+            messages.error(request, f"Submission Failed: {msg}")
+        except Exception as e:
+            messages.error(request, f"Submission Error: {str(e)}")
+
+    context = {
+        "vendor": vendor,
+        "eligible_pos": eligible_pos,
+        "selected_po": selected_po,
+        "active_nav": "invoices",
+        "today": timezone.now().date().isoformat(),
+        "default_due_date": (timezone.now().date() + timedelta(days=30)).isoformat(),
+    }
+    return render(request, "pages/vendor/invoice_submit.html", context)
 
 
 @vendor_required

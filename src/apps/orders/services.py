@@ -24,10 +24,11 @@ def generate_purchase_order_service(
     sourcing_event=None,
     terms_and_conditions: str = "Standard HPE Enterprise Procurement Terms & Conditions",
     tax_rate: Decimal = Decimal("0.10"),
+    initial_status: str = PurchaseOrder.STATUS_ISSUED,
 ) -> PurchaseOrder:
     """
-    Generates a new Purchase Order in ISSUED status from requisition/award.
-    Moves BudgetReservation to SpendLedger COMMITMENT.
+    Generates a new Purchase Order from requisition/award.
+    Moves BudgetReservation to SpendLedger COMMITMENT when in ISSUED status.
     """
     if vendor.status == Vendor.STATUS_SUSPENDED:
         raise ValidationError(
@@ -44,7 +45,7 @@ def generate_purchase_order_service(
         requisition=requisition,
         sourcing_event=sourcing_event,
         cost_center=cost_center,
-        status=PurchaseOrder.STATUS_ISSUED,
+        status=initial_status,
         terms_and_conditions=terms_and_conditions,
         subtotal=Decimal("0.00"),
         tax_amount=Decimal("0.00"),
@@ -70,19 +71,20 @@ def generate_purchase_order_service(
     po.total_amount = total
     po.save(update_fields=["subtotal", "tax_amount", "total_amount", "updated_at"])
 
-    # Move BudgetReservation to SpendLedger COMMITMENT
-    budget = Budget.objects.filter(cost_center=cost_center).order_by("-created_at").first()
-    if budget:
-        budget.committed_amount += total
-        budget.save(update_fields=["committed_amount", "updated_at"])
+    # Move BudgetReservation to SpendLedger COMMITMENT only if PO is in ISSUED status
+    if initial_status == PurchaseOrder.STATUS_ISSUED:
+        budget = Budget.objects.filter(cost_center=cost_center).order_by("-created_at").first()
+        if budget:
+            budget.committed_amount += total
+            budget.save(update_fields=["committed_amount", "updated_at"])
 
-        SpendLedger.objects.create(
-            budget=budget,
-            entry_type=SpendLedger.ENTRY_COMMITMENT,
-            amount=total,
-            reference_number=po.po_number,
-            description=f"PO Commitment for {vendor.legal_name}",
-        )
+            SpendLedger.objects.create(
+                budget=budget,
+                entry_type=SpendLedger.ENTRY_COMMITMENT,
+                amount=total,
+                reference_number=po.po_number,
+                description=f"PO Commitment for {vendor.legal_name}",
+            )
 
     AuditLog.objects.create(
         actor=created_by_user,
@@ -307,3 +309,107 @@ def cancel_purchase_order_governance_service(
     )
 
     return po
+
+
+@transaction.atomic
+def submit_purchase_order_for_approval_service(
+    *, po: PurchaseOrder, actor: User
+) -> PurchaseOrder:
+    """
+    Submits a draft PO for managerial review and approval.
+    Transitions DRAFT -> APPROVAL.
+    """
+    if po.status != PurchaseOrder.STATUS_DRAFT:
+        raise ValidationError(
+            f"Cannot submit PO in status '{po.status}' for approval. Must be DRAFT."
+        )
+
+    previous_status = po.status
+    po.status = PurchaseOrder.STATUS_APPROVAL
+    po.save(update_fields=["status", "updated_at"])
+
+    AuditLog.objects.create(
+        actor=actor,
+        action=AuditLog.ACTION_SUBMIT,
+        target_model="PurchaseOrder",
+        target_object_id=str(po.id),
+        previous_state={"status": previous_status},
+        new_state={"status": po.status},
+    )
+    return po
+
+
+@transaction.atomic
+def approve_purchase_order_service(
+    *, po: PurchaseOrder, approver: User, comments: str = ""
+) -> PurchaseOrder:
+    """
+    Approves a PO and transitions to ISSUED state.
+    Commits funds against the designated Cost Center budget.
+    """
+    if po.status not in [PurchaseOrder.STATUS_DRAFT, PurchaseOrder.STATUS_APPROVAL]:
+        raise ValidationError(
+            f"Cannot approve PO in status '{po.status}'. Must be DRAFT or APPROVAL."
+        )
+
+    if po.vendor.status == Vendor.STATUS_SUSPENDED:
+        raise ValidationError(
+            f"Vendor '{po.vendor.legal_name}' is suspended and cannot be issued POs."
+        )
+
+    previous_status = po.status
+    po.status = PurchaseOrder.STATUS_ISSUED
+    po.save(update_fields=["status", "updated_at"])
+
+    # Commit funds in SpendLedger if not already committed
+    budget = Budget.objects.filter(cost_center=po.cost_center).order_by("-created_at").first()
+    if budget:
+        budget.committed_amount += po.total_amount
+        budget.save(update_fields=["committed_amount", "updated_at"])
+
+        SpendLedger.objects.create(
+            budget=budget,
+            entry_type=SpendLedger.ENTRY_COMMITMENT,
+            amount=po.total_amount,
+            reference_number=po.po_number,
+            description=f"PO Commitment on Approval for {po.vendor.legal_name} ({comments or 'Approved'})",
+        )
+
+    AuditLog.objects.create(
+        actor=approver,
+        action=AuditLog.ACTION_APPROVE,
+        target_model="PurchaseOrder",
+        target_object_id=str(po.id),
+        previous_state={"status": previous_status},
+        new_state={"status": po.status, "comments": comments},
+    )
+    return po
+
+
+@transaction.atomic
+def reject_purchase_order_service(
+    *, po: PurchaseOrder, approver: User, reason: str
+) -> PurchaseOrder:
+    """
+    Rejects a PO in approval, returning it to DRAFT state.
+    """
+    if not reason:
+        raise ValidationError("Rejection reason is required.")
+
+    if po.status != PurchaseOrder.STATUS_APPROVAL:
+        raise ValidationError(f"Cannot reject PO in status '{po.status}'. Must be APPROVAL.")
+
+    previous_status = po.status
+    po.status = PurchaseOrder.STATUS_DRAFT
+    po.save(update_fields=["status", "updated_at"])
+
+    AuditLog.objects.create(
+        actor=approver,
+        action=AuditLog.ACTION_REJECT,
+        target_model="PurchaseOrder",
+        target_object_id=str(po.id),
+        previous_state={"status": previous_status},
+        new_state={"status": po.status, "rejection_reason": reason},
+    )
+    return po
+

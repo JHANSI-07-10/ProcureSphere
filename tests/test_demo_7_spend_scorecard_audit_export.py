@@ -29,12 +29,18 @@ def test_demo_7_spend_scorecard_and_audited_report_export():
     """
     admin_role, _ = Role.objects.get_or_create(code=Role.SUPER_ADMIN, defaults={"name": "Admin"})
     proc_mgr_role, _ = Role.objects.get_or_create(code=Role.PROC_MGR, defaults={"name": "Manager"})
+    stores_role, _ = Role.objects.get_or_create(
+        code=Role.STORES_RECEIVER, defaults={"name": "Stores Receiver"}
+    )
 
     admin_user = User.objects.create_user(
         email="admin.d7@hpe.com", password="password123", role=admin_role
     )
     proc_mgr = User.objects.create_user(
         email="manager.d7@hpe.com", password="password123", role=proc_mgr_role
+    )
+    stores_user = User.objects.create_user(
+        email="stores.d7@hpe.com", password="password123", role=stores_role
     )
 
     org = Organization.objects.create(name="HPE Global Enterprise", code="HPE-GLOB")
@@ -91,7 +97,7 @@ def test_demo_7_spend_scorecard_and_audited_report_export():
 
     create_goods_receipt_service(
         po=po,
-        received_by=proc_mgr,
+        received_by=stores_user,
         receipt_items=[
             {"po_line": po.lines.first(), "quantity_received": 5, "quantity_accepted": 4}
         ],
