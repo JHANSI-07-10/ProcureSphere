@@ -1,4 +1,4 @@
-﻿"""
+"""
 Brevo (formerly Sendinblue) email helper for ProcureSphere 360.
 
 HTML body for the vendor credential email. Delivery goes through Django's mail layer
@@ -14,17 +14,12 @@ Settings required in .env:
     DEFAULT_FROM_EMAIL=Name <email>
 """
 
-from django.conf import settings
 
 
 def build_credentials_html(
     *, vendor_name: str, vendor_number: str, email: str, password: str
 ) -> str:
     """Returns a styled HTML email body for vendor credential dispatch."""
-    login_links_html = "".join(
-        f'<li><a href="{url}" style="color:#2563eb;">{url}</a></li>'
-        for url in settings.VENDOR_PORTAL_LOGIN_URLS
-    )
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -93,10 +88,6 @@ def build_credentials_html(
                   </td>
                 </tr>
               </table>
-              <p style="margin:0 0 8px;color:#374151;font-size:14px;font-weight:600;">Sign in at:</p>
-              <ul style="margin:0 0 24px;padding-left:20px;color:#2563eb;font-size:14px;">
-                {login_links_html}
-              </ul>
               <table width="100%" cellpadding="0" cellspacing="0"
                      style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:4px;margin-bottom:24px;">
                 <tr>

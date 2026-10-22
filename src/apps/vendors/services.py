@@ -1,4 +1,5 @@
 import logging
+import re
 import secrets
 import string
 
@@ -7,6 +8,7 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.mail import send_mail
 from django.db import transaction
+from django.db.models import Max
 from django.utils import timezone
 
 from apps.accounts.models import Role, User
@@ -52,8 +54,24 @@ def register_vendor_service(
     if Vendor.objects.filter(tax_identification_number=tax_identification_number).exists():
         raise ValidationError(f"Vendor with tax ID '{tax_identification_number}' already exists.")
 
-    vendor_count = Vendor.objects.count() + 1
-    vendor_number = f"VND-{timezone.now().strftime('%Y')}-{vendor_count:05d}"
+    # Collision-safe vendor number generation.
+    # Uses MAX on the numeric suffix of existing vendor_numbers for the current
+    # year, so deletions and concurrent inserts cannot produce duplicates.
+    # The entire function is already wrapped in @transaction.atomic, so the
+    # MAX query and the INSERT are serialised by the surrounding DB transaction.
+    year = timezone.now().strftime("%Y")
+    prefix = f"VND-{year}-"
+    last = (
+        Vendor.objects.filter(vendor_number__startswith=prefix)
+        .select_for_update()  # row-level lock prevents concurrent duplicates
+        .aggregate(last_num=Max("vendor_number"))["last_num"]
+    )
+    if last:
+        match = re.search(r"(\d+)$", last)
+        next_seq = (int(match.group(1)) + 1) if match else 1
+    else:
+        next_seq = 1
+    vendor_number = f"{prefix}{next_seq:05d}"
 
     vendor = Vendor.objects.create(
         legal_name=legal_name,
