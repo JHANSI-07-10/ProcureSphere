@@ -21,7 +21,7 @@
             <h6 class="fw-bold text-uppercase text-muted small mb-3">Legal identity</h6>
             <div class="row g-3 mb-3">
                 {% for field in form %}
-                    {% if field.name in 'legal_name trade_name tax_identification_number registration_number category' %}
+                    {% if field.name in 'legal_name trade_name tax_identification_number pan_number gstin registration_number category' %}
                     <div class="col-md-6">
                         <label class="form-label small fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
                         {% if field.name == 'category' %}

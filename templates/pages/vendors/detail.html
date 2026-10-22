@@ -83,6 +83,8 @@ This cannot be undone. Only DRAFT and REJECTED vendors with no linked transactio
             <dl class="row small mb-0">
                 <dt class="col-sm-4 text-muted">Category</dt><dd class="col-sm-8">{{ vendor.category.name }} <code>{{ vendor.category.code }}</code></dd>
                 <dt class="col-sm-4 text-muted">Tax ID</dt><dd class="col-sm-8">{{ vendor.tax_identification_number }}</dd>
+                <dt class="col-sm-4 text-muted">PAN</dt><dd class="col-sm-8">{% if vendor.pan_number %}<code class="text-dark fw-bold">{{ vendor.pan_number }}</code>{% else %}<span class="text-muted">—</span>{% endif %}</dd>
+                <dt class="col-sm-4 text-muted">GSTIN</dt><dd class="col-sm-8">{% if vendor.gstin %}<code class="text-dark fw-bold">{{ vendor.gstin }}</code>{% else %}<span class="text-muted">—</span>{% endif %}</dd>
                 <dt class="col-sm-4 text-muted">Registration no.</dt><dd class="col-sm-8">{{ vendor.registration_number|default:"—" }}</dd>
                 <dt class="col-sm-4 text-muted">Email / phone</dt><dd class="col-sm-8">{{ vendor.email }}{% if vendor.phone %} · {{ vendor.phone }}{% endif %}</dd>
                 <dt class="col-sm-4 text-muted">Address</dt><dd class="col-sm-8">{{ vendor.address|linebreaksbr }}</dd>

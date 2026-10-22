@@ -582,3 +582,176 @@ def test_tc_kyc_015_existing_active_vendor_workflows_unaffected(client, world):
     assert active.status == Vendor.STATUS_ACTIVE
     # the HTMX documents modal renders for governance readers
     assert client.get(reverse("vendors_documents_modal", args=[active.id])).status_code == 200
+
+
+# ------------------------------------------------------------ dedicated document types (Step 5) -------------
+
+
+def test_dedicated_kyc_document_type_choices():
+    """Verify all 8 required document types exist in VendorDocument.DOC_TYPE_CHOICES."""
+    expected_types = {
+        "PAN": "Permanent Account Number (PAN) Card",
+        "GST_CERT": "GST Registration Certificate",
+        "INC_CERT": "Certificate of Incorporation",
+        "BANK_LETTER": "Bank Verification Document",
+        "ADDRESS_PROOF": "Business Address Proof",
+        "SIGNATORY_PROOF": "Authorized Signatory Proof",
+        "TAX_CLEARANCE": "Tax Clearance Certificate",
+        "OTHER": "Other KYC Document",
+    }
+    choices_dict = dict(VendorDocument.DOC_TYPE_CHOICES)
+    for code, label in expected_types.items():
+        assert code in choices_dict, f"Missing document type code: {code}"
+        assert choices_dict[code] == label, f"Mismatch for {code}: got {choices_dict[code]}"
+
+    # Verify model constants
+    assert VendorDocument.DOC_TYPE_PAN == "PAN"
+    assert VendorDocument.DOC_TYPE_GST == "GST_CERT"
+    assert VendorDocument.DOC_TYPE_INC == "INC_CERT"
+    assert VendorDocument.DOC_TYPE_CERT == "INC_CERT"  # Backwards compatibility alias
+    assert VendorDocument.DOC_TYPE_BANK == "BANK_LETTER"
+    assert VendorDocument.DOC_TYPE_ADDRESS == "ADDRESS_PROOF"
+    assert VendorDocument.DOC_TYPE_SIGNATORY == "SIGNATORY_PROOF"
+    assert VendorDocument.DOC_TYPE_TAX == "TAX_CLEARANCE"
+    assert VendorDocument.DOC_TYPE_OTHER == "OTHER"
+
+
+def test_upload_each_supported_document_type(world):
+    """Verify vendor can upload a document for each of the 8 supported document types."""
+    vendor = world["vendor_draft"]
+    user = world["user_a"]
+
+    for code, label in VendorDocument.DOC_TYPE_CHOICES:
+        doc = upload_vendor_document_service(
+            vendor=vendor,
+            user=user,
+            file=_pdf(f"{code.lower()}.pdf"),
+            document_type=code,
+            title=f"Sample {label}",
+        )
+        assert doc.id is not None
+        assert doc.document_type == code
+        assert doc.title == f"Sample {label}"
+        assert doc.get_document_type_display() == label
+        assert doc.review_status == VendorDocument.REVIEW_PENDING
+        assert doc.is_verified is False
+
+    # Verify all 8 documents are persisted in database
+    assert vendor.documents.count() == 8
+
+
+def test_invalid_document_type_rejected(world):
+    """Verify that unsupported document type codes raise ValidationError."""
+    vendor = world["vendor_draft"]
+    user = world["user_a"]
+
+    with pytest.raises(ValidationError, match="Invalid document type"):
+        upload_vendor_document_service(
+            vendor=vendor,
+            user=user,
+            file=_pdf("invalid.pdf"),
+            document_type="NON_EXISTENT_TYPE",
+            title="Invalid Document",
+        )
+
+
+def test_reviewer_visibility_for_dedicated_document_types(client, world):
+    """Verify Procurement KYC review modal renders human-readable labels for all uploaded document types."""
+    vendor = world["vendor_draft"]
+    user = world["user_a"]
+
+    for code, label in VendorDocument.DOC_TYPE_CHOICES:
+        upload_vendor_document_service(
+            vendor=vendor,
+            user=user,
+            file=_pdf(f"{code.lower()}.pdf"),
+            document_type=code,
+            title=f"Doc for {code}",
+        )
+
+    # Login as reviewer
+    client.force_login(world["exec"])
+    resp = client.get(reverse("vendors_documents_modal", args=[vendor.id]))
+    assert resp.status_code == 200
+    content = resp.content.decode()
+
+    # Verify all 8 labels appear in the review modal
+    for code, label in VendorDocument.DOC_TYPE_CHOICES:
+        assert label in content, f"Reviewer modal missing label for {code} ({label})"
+
+
+def test_both_vendor_dashboard_upload_interfaces_display_all_document_types(client, world):
+    """Verify both /vendor/profile/ and /vendor/documents/ display all 8 document types in the upload select."""
+    client.force_login(world["user_a"])
+
+    # 1. Profile / KYC Tab
+    resp_profile = client.get(reverse("vendor_profile"))
+    assert resp_profile.status_code == 200
+    content_profile = resp_profile.content.decode()
+    for code, label in VendorDocument.DOC_TYPE_CHOICES:
+        assert f'<option value="{code}">{label}</option>' in content_profile
+
+    # 2. Documents Vault Page
+    resp_docs = client.get(reverse("vendor_documents"))
+    assert resp_docs.status_code == 200
+    content_docs = resp_docs.content.decode()
+    for code, label in VendorDocument.DOC_TYPE_CHOICES:
+        assert f'<option value="{code}">{label}</option>' in content_docs
+
+
+def test_kyc_approval_gating_preserves_rules_without_silent_mandatory_enforcement(world, settings):
+    """
+    Verify that adding new document types does not silently make them all mandatory.
+    When VENDOR_MANDATORY_KYC_DOC_TYPES is empty (default), verifying uploaded documents allows approval.
+    When a specific mandatory type is configured, only that type is required.
+    """
+    vendor = world["vendor_draft"]
+    user = world["user_a"]
+    _set_status(vendor, Vendor.STATUS_SUBMITTED)
+
+    # Upload only PAN and GST_CERT
+    pan_doc = upload_vendor_document_service(
+        vendor=vendor,
+        user=user,
+        file=_pdf("pan.pdf"),
+        document_type=VendorDocument.DOC_TYPE_PAN,
+        title="PAN Card",
+    )
+    gst_doc = upload_vendor_document_service(
+        vendor=vendor,
+        user=user,
+        file=_pdf("gst.pdf"),
+        document_type=VendorDocument.DOC_TYPE_GST,
+        title="GST Certificate",
+    )
+
+    # Verify only PAN: GST is still pending, so approval is blocked
+    verify_vendor_document_service(document=pan_doc, verifier=world["legal"])
+    with pytest.raises(ValidationError, match="awaiting verification"):
+        approve_vendor_service(vendor=vendor, manager=world["mgr"], notes="Approve")
+
+    # Now verify GST_CERT: all uploaded documents are now verified
+    verify_vendor_document_service(document=gst_doc, verifier=world["legal"])
+
+    # With default settings (no mandatory types configured), vendor can be approved
+    # without requiring the remaining 6 document types!
+    settings.VENDOR_MANDATORY_KYC_DOC_TYPES = []
+    approved_vendor = approve_vendor_service(vendor=vendor, manager=world["mgr"], notes="Approved")
+    assert approved_vendor.status == Vendor.STATUS_ACTIVE
+
+    # Now test with explicit mandatory types:
+    vendor2 = world["vendor_hold"]
+    _set_status(vendor2, Vendor.STATUS_SUBMITTED)
+    settings.VENDOR_MANDATORY_KYC_DOC_TYPES = ["BANK_LETTER"]
+    doc2 = upload_vendor_document_service(
+        vendor=vendor2,
+        user=user,
+        file=_pdf("pan2.pdf"),
+        document_type=VendorDocument.DOC_TYPE_PAN,
+        title="PAN Card 2",
+    )
+    verify_vendor_document_service(document=doc2, verifier=world["legal"])
+    # Approval blocked because mandatory BANK_LETTER is missing
+    with pytest.raises(ValidationError, match="Mandatory documents missing: Bank Verification Document"):
+        approve_vendor_service(vendor=vendor2, manager=world["mgr"], notes="Approve")
+
