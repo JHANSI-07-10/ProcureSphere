@@ -345,3 +345,52 @@ def po_create_view(request):
             "requisitions": requisitions,
         },
     )
+
+
+@login_required(login_url="/login/")
+@require_POST
+def po_approve_action_view(request, pk):
+    """Procurement Manager or Super Admin approval of a PO in APPROVAL or DRAFT status."""
+    user = request.user
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
+    )
+    if role_code not in [Role.SUPER_ADMIN, Role.PROC_MGR] and not user.is_superuser:
+        raise PermissionDenied(
+            "Only Procurement Managers or Super Admin can approve purchase orders."
+        )
+
+    po = get_object_or_404(PurchaseOrder, pk=pk)
+    comments = request.POST.get("comments", "Approved").strip()
+    try:
+        from .services import approve_purchase_order_service
+
+        approve_purchase_order_service(po=po, approver=user, comments=comments)
+        messages.success(
+            request, f"Purchase Order {po.po_number} approved and issued to {po.vendor.legal_name}."
+        )
+    except ValidationError as exc:
+        messages.error(
+            request, " ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
+        )
+    return redirect("order_detail", pk=po.id)
+
+
+@login_required(login_url="/login/")
+@require_POST
+def po_submit_approval_action_view(request, pk):
+    """Procurement Executive action to submit draft PO for approval."""
+    user = request.user
+    _require_po_execute(user)
+    po = get_object_or_404(PurchaseOrder, pk=pk)
+    try:
+        from .services import submit_purchase_order_for_approval_service
+
+        submit_purchase_order_for_approval_service(po=po, actor=user)
+        messages.success(request, f"Purchase Order {po.po_number} submitted for manager review.")
+    except ValidationError as exc:
+        messages.error(
+            request, " ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
+        )
+    return redirect("order_detail", pk=po.id)
+
