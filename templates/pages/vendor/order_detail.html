@@ -45,6 +45,11 @@
                     <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
                         <i class="fa-solid fa-print me-1"></i> Print / Save PDF
                     </button>
+                    {% if po.status == 'ISSUED' or po.status == 'ACKNOWLEDGED' or po.status == 'PARTIAL_RECEIPT' %}
+                    <a href="{% url 'vendor_po_submit_invoice' po.id %}" class="btn btn-outline-primary btn-sm shadow-sm">
+                        <i class="fa-solid fa-file-invoice-dollar me-1"></i> Submit Invoice
+                    </a>
+                    {% endif %}
                     {% if can_acknowledge %}
                     <a href="#acknowledge" class="btn btn-success btn-sm shadow-sm">
                         <i class="fa-solid fa-signature me-1"></i> Acknowledge Order

@@ -53,7 +53,7 @@ urlpatterns = [
     ),
     # Supplier Performance
     path("performance/", views.vendor_performance_view, name="vendor_performance"),
-    # Invoices & Contracts (Coming Soon)
+    # Invoices & Payments
     path("invoices/", views.vendor_invoices_view, name="vendor_invoices"),
     path(
         "purchase-orders/<uuid:po_id>/submit-invoice/",
