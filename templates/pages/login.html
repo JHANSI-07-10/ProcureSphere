@@ -38,7 +38,7 @@
                             {% endfor %}
                         {% endif %}
 
-                        <form id="loginForm" method="POST" action="/login/{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}">
+                        <form id="loginForm" method="POST" action="/login/{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}" autocomplete="off">
                             {% csrf_token %}
                             
                             <div class="mb-3">
@@ -93,9 +93,29 @@
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        function getCsrfToken() {
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, 10) === 'csrftoken=') {
+                        return decodeURIComponent(cookie.substring(10));
+                    }
+                }
+            }
+            return null;
+        }
+
         function quickLogin(email) {
             document.getElementById('email').value = email;
             document.getElementById('password').value = 'Password123!';
+
+            // Synchronize hidden input with current live csrftoken cookie to prevent stale token mismatch
+            const liveToken = getCsrfToken();
+            const csrfInput = document.querySelector('#loginForm input[name="csrfmiddlewaretoken"]');
+            if (liveToken && csrfInput) {
+                csrfInput.value = liveToken;
+            }
             document.getElementById('loginForm').submit();
         }
     </script>
