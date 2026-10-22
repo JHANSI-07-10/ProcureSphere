@@ -89,6 +89,8 @@ class VendorFilter(django_filters.FilterSet):
             | Q(legal_name__icontains=value)
             | Q(trade_name__icontains=value)
             | Q(tax_identification_number__icontains=value)
+            | Q(pan_number__icontains=value)
+            | Q(gstin__icontains=value)
             | Q(category__name__icontains=value)
             | Q(category__code__icontains=value)
         )

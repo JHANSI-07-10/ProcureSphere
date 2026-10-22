@@ -3,7 +3,12 @@
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
 <div class="modal-body">
-    <div class="mb-2 small text-muted">Status: {% include 'partials/vendor_status_badge.html' with status=vendor.status label=vendor.get_status_display %}</div>
+    <div class="mb-2 small text-muted d-flex flex-wrap gap-3 align-items-center">
+        <span>Status: {% include 'partials/vendor_status_badge.html' with status=vendor.status label=vendor.get_status_display %}</span>
+        <span>Tax ID: <strong class="text-dark">{{ vendor.tax_identification_number }}</strong></span>
+        {% if vendor.pan_number %}<span>PAN: <code class="text-dark fw-bold">{{ vendor.pan_number }}</code></span>{% endif %}
+        {% if vendor.gstin %}<span>GSTIN: <code class="text-dark fw-bold">{{ vendor.gstin }}</code></span>{% endif %}
+    </div>
     <div class="table-responsive"><table class="table table-sm align-middle small mb-3">
         <thead><tr><th>Type</th><th>Title</th><th>Expiry</th><th>Review</th><th class="text-end">Actions</th></tr></thead>
         <tbody>

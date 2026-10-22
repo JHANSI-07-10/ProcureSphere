@@ -1008,7 +1008,7 @@ def test_clarifications_ask_and_view(client, vendor_setup):
 def test_secure_document_download_authorization(client, vendor_setup):
     """Authorized vendor can download own file; cross-vendor download returns HTTP 403."""
     client.force_login(vendor_setup["user_vendor_a"])
-    file_content = b"PDF-1.4 confidential vendor tax document bytes"
+    file_content = b"%PDF-1.4 confidential vendor tax document bytes"
     test_pdf = SimpleUploadedFile("vendor_a_tax.pdf", file_content, content_type="application/pdf")
 
     doc_a = upload_vendor_document_service(
@@ -1061,3 +1061,69 @@ def test_notifications_and_reports_render(client, vendor_setup):
     res_acc = client.get("/vendor/account/")
     assert res_acc.status_code == 200
     assert "agent@acme.com" in res_acc.content.decode()
+
+
+@pytest.mark.django_db
+def test_vendor_submit_partial_invoice(client, vendor_setup):
+    v1 = vendor_setup["vendor_a"]
+    u1 = vendor_setup["user_vendor_a"]
+    v2 = vendor_setup["vendor_b"]
+    u2 = vendor_setup["user_vendor_b"]
+    proc_exec = vendor_setup["proc_exec"]
+    cost_center = vendor_setup["cost_center"]
+
+    po = PurchaseOrder.objects.create(
+        vendor=v1,
+        cost_center=cost_center,
+        created_by=proc_exec,
+        status=PurchaseOrder.STATUS_ACKNOWLEDGED,
+        total_amount=Decimal("300.00"),
+    )
+    po_line1 = POLine.objects.create(
+        po=po, item_description="Server Rack", quantity=Decimal("2"), unit_price=Decimal("100.00"), line_total=Decimal("200.00")
+    )
+    po_line2 = POLine.objects.create(
+        po=po, item_description="Network Cable", quantity=Decimal("10"), unit_price=Decimal("10.00"), line_total=Decimal("100.00")
+    )
+
+    client.force_login(u2)
+    response = client.post(
+        f"/vendor/purchase-orders/{po.id}/submit-invoice/",
+        data={
+            "invoice_number": "INV-V2-001",
+            "invoice_date": timezone.now().date(),
+            "due_date": timezone.now().date() + timedelta(days=30),
+            f"qty_{po_line1.id}": "1",
+            f"price_{po_line1.id}": "100.00",
+        },
+    )
+    assert response.status_code == 403
+
+    client.force_login(u1)
+    response = client.post(
+        f"/vendor/purchase-orders/{po.id}/submit-invoice/",
+        data={
+            "invoice_number": "INV-V1-001",
+            "invoice_date": timezone.now().date(),
+            "due_date": timezone.now().date() + timedelta(days=30),
+            "notes": "Partial shipment for rack 1",
+            f"qty_{po_line1.id}": "1",
+            f"price_{po_line1.id}": "105.00",
+            f"qty_{po_line2.id}": "0",
+            f"price_{po_line2.id}": "10.00",
+        },
+    )
+    assert response.status_code == 302
+    assert response.url == f"/vendor/purchase-orders/{po.id}/"
+
+    from apps.invoices.models import SupplierInvoice
+    invoice = SupplierInvoice.objects.get(invoice_number="INV-V1-001")
+    assert invoice.vendor == v1
+    assert invoice.po == po
+    assert invoice.lines.count() == 1
+    
+    inv_line = invoice.lines.first()
+    assert inv_line.po_line == po_line1
+    assert inv_line.quantity == Decimal("1")
+    assert inv_line.unit_price == Decimal("105.00")
+    assert inv_line.line_total == Decimal("105.00")

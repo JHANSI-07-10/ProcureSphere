@@ -18,10 +18,7 @@ from apps.accounts.models import Role
 from apps.audit.models import AuditLog
 from apps.contracts.models import Contract
 from apps.invoices.models import SupplierInvoice
-from apps.invoices.services import (
-    create_supplier_invoice_service,
-    run_3_way_match_service,
-)
+from apps.invoices.services import create_supplier_invoice_service
 from apps.notifications.models import Notification
 from apps.orders.models import PurchaseOrder
 from apps.orders.services import acknowledge_purchase_order_service
@@ -233,8 +230,17 @@ def vendor_profile_view(request):
                     messages.success(
                         request, f"KYC document '{title or doc_file.name}' uploaded successfully."
                     )
-                except Exception as e:
-                    messages.error(request, f"Document upload error: {str(e)}")
+                except ValidationError as e:
+                    msg = (
+                        e.message
+                        if hasattr(e, "message")
+                        else (e.messages[0] if hasattr(e, "messages") and e.messages else str(e))
+                    )
+                    messages.error(request, f"Upload validation failed: {msg}")
+                except Exception:
+                    messages.error(
+                        request, "Document upload failed. Please verify the file and try again."
+                    )
             next_url = request.POST.get("next")
             return redirect(next_url if next_url else "vendor_profile")
 
@@ -1234,6 +1240,7 @@ def vendor_purchase_order_detail_view(request, po_id):
         )
 
     can_acknowledge = po.status == PurchaseOrder.STATUS_ISSUED
+    can_invoice = po.status in [PurchaseOrder.STATUS_ACKNOWLEDGED, PurchaseOrder.STATUS_PARTIAL_RECEIPT, PurchaseOrder.STATUS_COMPLETED]
     amendments = po.amendments.select_related("requested_by").order_by("-amendment_number")
     delivery_schedules = po.delivery_schedules.select_related("po_line").order_by(
         "expected_delivery_date"
@@ -1246,6 +1253,7 @@ def vendor_purchase_order_detail_view(request, po_id):
         "amendments": amendments,
         "delivery_schedules": delivery_schedules,
         "can_acknowledge": can_acknowledge,
+        "can_invoice": can_invoice,
         "active_nav": "orders",
     }
     return render(request, "pages/vendor/order_detail.html", context)
@@ -1334,129 +1342,63 @@ def vendor_invoices_view(request):
 
 
 @vendor_required
-def vendor_invoice_submit_view(request, po_id=None):
-    """
-    Vendor Self-Service Invoice Submission:
-    - Allows vendor to submit an invoice directly against an eligible PO.
-    - Validates vendor ownership of PO.
-    - Detects duplicate invoice numbers within vendor context.
-    - Captures invoice line items (quantities, prices) matching or derived from PO lines.
-    - Enforces backend validation via create_supplier_invoice_service.
-    - Automatically executes 3-way matching and notifies Finance/AP.
-    """
+@require_POST
+def vendor_invoice_submit_view(request, po_id):
     vendor = request.vendor
-    eligible_pos = PurchaseOrder.objects.filter(
-        vendor=vendor,
-        status__in=[
-            PurchaseOrder.STATUS_ISSUED,
-            PurchaseOrder.STATUS_ACKNOWLEDGED,
-            PurchaseOrder.STATUS_PARTIAL_RECEIPT,
-            PurchaseOrder.STATUS_COMPLETED,
-        ],
-    ).order_by("-created_at")
+    po = get_object_or_404(PurchaseOrder, id=po_id)
+    
+    if po.vendor != vendor and not request.user.is_superuser:
+        raise PermissionDenied("Access Denied: Unauthorized invoice submission attempt.")
+        
+    invoice_number = request.POST.get("invoice_number", "").strip()
+    invoice_date = request.POST.get("invoice_date")
+    due_date = request.POST.get("due_date")
+    notes = request.POST.get("notes", "").strip()
+    
+    if not invoice_number or not invoice_date or not due_date:
+        messages.error(request, "Invoice number, date, and due date are required.")
+        return redirect("vendor_purchase_order_detail", po_id=po.id)
+        
+    line_items = []
+    for po_line in po.lines.all():
+        qty_str = request.POST.get(f"qty_{po_line.id}")
+        price_str = request.POST.get(f"price_{po_line.id}")
+        
+        if qty_str and price_str:
+            try:
+                qty = Decimal(qty_str)
+                price = Decimal(price_str)
+                if qty > 0:
+                    line_items.append({
+                        "po_line": po_line,
+                        "quantity": qty,
+                        "unit_price": price,
+                        "item_description": po_line.item_description,
+                    })
+            except Exception:
+                messages.error(request, f"Invalid quantity or price for line item: {po_line.item_description}")
+                return redirect("vendor_purchase_order_detail", po_id=po.id)
 
-    selected_po = None
-    if po_id:
-        selected_po = get_object_or_404(eligible_pos, id=po_id)
-    elif request.GET.get("po_id"):
-        selected_po = eligible_pos.filter(id=request.GET.get("po_id")).first()
-
-    if request.method == "POST":
-        target_po_id = request.POST.get("po_id")
-        po = get_object_or_404(eligible_pos, id=target_po_id)
-        invoice_number = request.POST.get("invoice_number", "").strip()
-        invoice_date_str = request.POST.get("invoice_date", "").strip()
-        due_date_str = request.POST.get("due_date", "").strip()
-        notes = request.POST.get("notes", "").strip()
-
-        if not invoice_number:
-            messages.error(request, "Invoice number is required.")
-            return redirect(request.path)
-
-        if not invoice_date_str or not due_date_str:
-            messages.error(request, "Invoice date and due date are required.")
-            return redirect(request.path)
-
-        if SupplierInvoice.objects.filter(vendor=vendor, invoice_number=invoice_number).exists():
-            messages.error(
-                request,
-                f"Duplicate invoice detected: Invoice '{invoice_number}' already exists for your company.",
-            )
-            return redirect(request.path)
-
-        line_items = []
-        for line in po.lines.all():
-            qty_key = f"qty_{line.id}"
-            price_key = f"price_{line.id}"
-            if qty_key in request.POST:
-                try:
-                    qty = Decimal(request.POST.get(qty_key, "0"))
-                    price = Decimal(request.POST.get(price_key, str(line.unit_price)))
-                    if qty > Decimal("0.00"):
-                        line_items.append(
-                            {
-                                "po_line": line,
-                                "item_description": line.item_description,
-                                "quantity": qty,
-                                "unit_price": price,
-                            }
-                        )
-                except Exception:
-                    continue
-
-        if not line_items:
-            for line in po.lines.all():
-                line_items.append(
-                    {
-                        "po_line": line,
-                        "item_description": line.item_description,
-                        "quantity": line.remaining_quantity or line.quantity,
-                        "unit_price": line.unit_price,
-                    }
-                )
-
-        try:
-            from datetime import date
-
-            invoice_date = date.fromisoformat(invoice_date_str)
-            due_date = date.fromisoformat(due_date_str)
-
-            invoice = create_supplier_invoice_service(
-                vendor=vendor,
-                po=po,
-                invoice_number=invoice_number,
-                invoice_date=invoice_date,
-                due_date=due_date,
-                line_items=line_items,
-                notes=notes,
-                created_by_user=request.user,
-            )
-
-            # Auto-run 3-way match
-            run_3_way_match_service(invoice=invoice, user=request.user)
-
-            messages.success(
-                request,
-                f"Invoice '{invoice.invoice_number}' for PO {po.po_number} submitted successfully. "
-                f"3-Way Match Status: {invoice.get_status_display()}.",
-            )
-            return redirect("vendor_invoices")
-
-        except ValidationError as e:
-            msg = " ".join(e.messages) if hasattr(e, "messages") else str(e)
-            messages.error(request, f"Submission Failed: {msg}")
-        except Exception as e:
-            messages.error(request, f"Submission Error: {str(e)}")
-
-    context = {
-        "vendor": vendor,
-        "eligible_pos": eligible_pos,
-        "selected_po": selected_po,
-        "active_nav": "invoices",
-        "today": timezone.now().date().isoformat(),
-        "default_due_date": (timezone.now().date() + timedelta(days=30)).isoformat(),
-    }
-    return render(request, "pages/vendor/invoice_submit.html", context)
+    if not line_items:
+        messages.error(request, "You must include at least one line item with a quantity greater than 0.")
+        return redirect("vendor_purchase_order_detail", po_id=po.id)
+        
+    try:
+        invoice = create_supplier_invoice_service(
+            vendor=vendor,
+            po=po,
+            invoice_number=invoice_number,
+            invoice_date=invoice_date,
+            due_date=due_date,
+            line_items=line_items,
+            notes=notes,
+            created_by_user=request.user
+        )
+        messages.success(request, f"Invoice {invoice.invoice_number} submitted successfully.")
+    except Exception as e:
+        messages.error(request, f"Failed to submit invoice: {str(e)}")
+        
+    return redirect("vendor_purchase_order_detail", po_id=po.id)
 
 
 @vendor_required
@@ -1510,6 +1452,7 @@ def vendor_documents_view(request):
         "bid_attachments": bid_attachments,
         "category": category,
         "category_counts": category_counts,
+        "doc_types": VendorDocument.DOC_TYPE_CHOICES,
         "active_nav": "documents",
     }
     return render(request, "pages/vendor/documents.html", context)
