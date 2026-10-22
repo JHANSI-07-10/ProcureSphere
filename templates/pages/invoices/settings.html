@@ -37,23 +37,23 @@
                     <div class="mb-4">
                         <label for="price_tolerance_pct" class="form-label fw-semibold">Price Variance Tolerance (%)</label>
                         <div class="input-group">
-                            <input type="number" step="1" min="0" max="100" class="form-control" id="price_tolerance_pct" name="price_tolerance_pct" value="{% if policy.price_tolerance_pct_int is not None %}{{ policy.price_tolerance_pct_int }}{% else %}{% widthratio policy.price_tolerance_pct 1 100 %}{% endif %}" onkeydown="if(event.key==='.' || event.key===',') event.preventDefault();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" required>
+                            <input type="number" step="1" min="0" max="100" class="form-control" id="price_tolerance_pct" name="price_tolerance_pct" value="{% if policy.price_tolerance_pct_int is not None %}{{ policy.price_tolerance_pct_int }}{% else %}{% widthratio policy.price_tolerance_pct 1 100 %}{% endif %}" onkeydown="if(event.key==='.' || event.key===',' || event.key==='-' || event.key==='+' || event.key==='e' || event.key==='E') event.preventDefault();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" required>
                             <span class="input-group-text bg-light">%</span>
                         </div>
-                        <div class="form-text">Percentage difference allowed for unit price (whole numbers only).</div>
+                        <div class="form-text">Allowed percentage variance for unit price (0–100%, whole numbers only. Negative values prohibited).</div>
                     </div>
 
                     <div class="mb-4">
                         <label for="qty_tolerance_pct" class="form-label fw-semibold">Quantity Variance Tolerance (%)</label>
                         <div class="input-group">
-                            <input type="number" step="1" min="0" max="100" class="form-control" id="qty_tolerance_pct" name="qty_tolerance_pct" value="{% if policy.qty_tolerance_pct_int is not None %}{{ policy.qty_tolerance_pct_int }}{% else %}{% widthratio policy.qty_tolerance_pct 1 100 %}{% endif %}" onkeydown="if(event.key==='.' || event.key===',') event.preventDefault();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" required>
+                            <input type="number" step="1" min="0" max="100" class="form-control" id="qty_tolerance_pct" name="qty_tolerance_pct" value="{% if policy.qty_tolerance_pct_int is not None %}{{ policy.qty_tolerance_pct_int }}{% else %}{% widthratio policy.qty_tolerance_pct 1 100 %}{% endif %}" onkeydown="if(event.key==='.' || event.key===',' || event.key==='-' || event.key==='+' || event.key==='e' || event.key==='E') event.preventDefault();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" required>
                             <span class="input-group-text bg-light">%</span>
                         </div>
-                        <div class="form-text">Percentage difference allowed for received quantity (whole numbers only).</div>
+                        <div class="form-text">Allowed percentage variance for received quantity (0–100%, whole numbers only. Negative values prohibited).</div>
                     </div>
 
                     <div class="d-flex justify-content-end border-top pt-3 mt-4">
-                        <button type="submit" class="btn btn-primary px-4">Save Configuration</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">Save Configuration</button>
                     </div>
                 </form>
             </div>
