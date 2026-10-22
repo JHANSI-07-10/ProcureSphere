@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
 
 from apps.core.models import TimeStampedModel
@@ -55,11 +57,37 @@ class InvoiceLine(TimeStampedModel):
     invoice = models.ForeignKey(SupplierInvoice, on_delete=models.CASCADE, related_name="lines")
     po_line = models.ForeignKey("orders.POLine", on_delete=models.SET_NULL, null=True, blank=True)
     item_description = models.CharField(max_length=255)
-    quantity = models.DecimalField(max_digits=12, decimal_places=2)
-    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    quantity = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[
+            MinValueValidator(
+                Decimal("0.01"), message="Quantity must be greater than zero."
+            )
+        ],
+    )
+    unit_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[
+            MinValueValidator(Decimal("0.00"), message="Unit price cannot be negative.")
+        ],
+    )
     line_total = models.DecimalField(max_digits=14, decimal_places=2)
 
+    def clean(self):
+        super().clean()
+        if self.quantity is not None and self.quantity <= Decimal("0.00"):
+            raise ValidationError(
+                {"quantity": "Quantity must be greater than zero. Negative or zero counts are not permitted."}
+            )
+        if self.unit_price is not None and self.unit_price < Decimal("0.00"):
+            raise ValidationError(
+                {"unit_price": "Unit price cannot be negative."}
+            )
+
     def save(self, *args, **kwargs):
+        self.clean()
         self.line_total = self.quantity * self.unit_price
         super().save(*args, **kwargs)
 
