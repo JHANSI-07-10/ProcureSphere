@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -35,6 +36,8 @@ def portal_login_view(request):
 
 
 
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
     if request.method == "POST":
 
         email = (request.POST.get("email") or request.POST.get("username") or "").strip()
@@ -44,7 +47,8 @@ def portal_login_view(request):
 
 
         if not email or not password:
-
+            if is_ajax:
+                return JsonResponse({"ok": False, "error": "Please provide both email and password."}, status=400)
             messages.error(request, "Please provide both email and password.")
 
             return render(request, "pages/login.html", {"email": email})
@@ -60,7 +64,8 @@ def portal_login_view(request):
         if user is not None:
 
             if not user.is_active:
-
+                if is_ajax:
+                    return JsonResponse({"ok": False, "error": "Your account has been deactivated. Please contact support."}, status=403)
                 messages.error(
 
                     request, "Your account has been deactivated. Please contact support."
@@ -115,7 +120,10 @@ def portal_login_view(request):
 
 
             if getattr(user, "must_change_password", False):
-                return redirect(reverse("accounts:change_password"))
+                change_url = reverse("accounts:change_password")
+                if is_ajax:
+                    return JsonResponse({"ok": True, "redirect": change_url})
+                return redirect(change_url)
 
             next_url = request.GET.get("next") or request.POST.get("next")
             if next_url and not url_has_allowed_host_and_scheme(
@@ -131,10 +139,13 @@ def portal_login_view(request):
                 else:
                     next_url = "/"
 
+            if is_ajax:
+                return JsonResponse({"ok": True, "redirect": next_url})
             return redirect(next_url)
 
         else:
-
+            if is_ajax:
+                return JsonResponse({"ok": False, "error": "Invalid email or password. Please try again."}, status=401)
             messages.error(request, "Invalid email or password. Please try again.")
 
 
@@ -245,7 +256,7 @@ def portal_logout_view(request):
 
     """
 
-    Logs out the user from the ERP Portal and redirects to /login/.
+    Logs out the user from the ERP Portal and redirects to the public landing page (/).
 
     """
 
@@ -278,7 +289,7 @@ def portal_logout_view(request):
 
     messages.info(request, "You have been logged out successfully.")
 
-    return redirect("/login/")
+    return redirect("/")
 
 
 

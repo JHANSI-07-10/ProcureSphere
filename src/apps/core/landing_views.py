@@ -17,6 +17,7 @@ Integration notes
 * contact_submit uses Django's standard CSRF protection (no csrf_exempt).
 """
 
+from django.conf import settings
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
@@ -170,8 +171,10 @@ def landing_home(request):
             {'title': 'Contract Lifecycle Control', 'description': 'Never miss a renewal deadline. Keep obligations, SLAs, and version histories organized with automated expiry alerts.', 'color': '#ec4899', 'icon': 'calendar'},
             {'title': 'Traceable Audit Trails', 'description': 'Every critical action captures the actor, state change, and timestamp, providing structured event reporting for audit readiness.', 'color': '#06b6d4', 'icon': 'shield-check'},
         ],
+        'debug': settings.DEBUG,
     }
     return render(request, 'landing/home.html', context)
+
 
 
 # ---------------------------------------------------------------------------

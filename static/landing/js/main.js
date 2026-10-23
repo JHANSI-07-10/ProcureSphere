@@ -195,18 +195,22 @@
       });
     }
 
-    // Form submit — validates fields client-side then lets the native
-    // HTML form POST to /login/ (the real ERP authentication endpoint).
-    // The spinner gives visual feedback while the page navigates.
+    // Form submit — AJAX fetch to /login/ so the modal handles success/error
+    // without navigating to the separate ERP login page.
     const form = document.getElementById('login-form');
     if (form) {
-      form.addEventListener('submit', (e) => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
         const emailVal = form.querySelector('#login-userid')?.value.trim();
         const pwVal    = form.querySelector('#login-password')?.value.trim();
         const errorEl  = document.getElementById('login-error-msg');
+        const submitBtn = document.getElementById('login-submit-btn');
+        const btnText   = document.getElementById('login-btn-text');
+        const spinner   = document.getElementById('login-btn-spinner');
 
+        // Client-side empty check
         if (!emailVal || !pwVal) {
-          e.preventDefault();
           setLoginCharState('failed');
           if (errorEl) {
             errorEl.textContent = 'Please enter both email and password.';
@@ -215,15 +219,60 @@
           return;
         }
 
-        // Show loading state while the page navigates to /login/
-        const submitBtn = document.getElementById('login-submit-btn');
-        const btnText   = document.getElementById('login-btn-text');
-        const spinner   = document.getElementById('login-btn-spinner');
+        // Show spinner
         if (submitBtn) submitBtn.disabled = true;
         if (btnText)   btnText.style.display = 'none';
         if (spinner)   spinner.style.display = 'flex';
         if (errorEl)   errorEl.style.display = 'none';
-        // Native form POST continues — no e.preventDefault()
+
+        // Read CSRF token from the hidden input inside the form
+        const csrfToken = form.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
+
+        const body = new URLSearchParams();
+        body.set('email', emailVal);
+        body.set('password', pwVal);
+        body.set('csrfmiddlewaretoken', csrfToken);
+
+        let data;
+        try {
+          const resp = await fetch('/login/', {
+            method: 'POST',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: body.toString(),
+            credentials: 'same-origin',
+          });
+          data = await resp.json();
+        } catch (_) {
+          // Network / parse failure — restore button, show generic error
+          setLoginCharState('failed');
+          if (errorEl) {
+            errorEl.textContent = 'A network error occurred. Please try again.';
+            errorEl.style.display = 'flex';
+          }
+          if (submitBtn) submitBtn.disabled = false;
+          if (btnText)   btnText.style.display = '';
+          if (spinner)   spinner.style.display = 'none';
+          return;
+        }
+
+        if (data && data.ok) {
+          setLoginCharState('success');
+          // Navigate to role-based dashboard returned by ERP backend
+          window.location.href = data.redirect || '/';
+        } else {
+          // Invalid credentials — stay in modal, show error
+          setLoginCharState('failed');
+          if (errorEl) {
+            errorEl.textContent = data?.error || 'Invalid email or password. Please try again.';
+            errorEl.style.display = 'flex';
+          }
+          if (submitBtn) submitBtn.disabled = false;
+          if (btnText)   btnText.style.display = '';
+          if (spinner)   spinner.style.display = 'none';
+        }
       });
     }
   })();
@@ -750,4 +799,89 @@
     document.querySelectorAll('.animate-on-scroll:not(.in-view)').forEach(el => observer.observe(el));
   });
 
+  /* ─────────────────────────────────────────────
+     19. MODAL QUICK-LOGIN (dev-only convenience)
+     Mirrors quickLogin() in /login/ ERP page.
+     Fills confirmed dev credentials and triggers
+     the modal's AJAX submit handler.
+  ──────────────────────────────────────────────*/
+  window.modalQuickLogin = function (email) {
+    const emailInput = document.getElementById('login-userid');
+    const pwInput    = document.getElementById('login-password');
+    if (emailInput) emailInput.value = email;
+    if (pwInput)    pwInput.value    = 'Password123!';
+    // Trigger the modal's AJAX form submit
+    const form = document.getElementById('login-form');
+    if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  };
+
+  /* ─────────────────────────────────────────────
+     DEV QUICK-LOGIN STYLES (match modal palette)
+  ──────────────────────────────────────────────*/
+  (function devLoginStyles() {
+    const s = document.createElement('style');
+    s.textContent = `
+      .dev-quick-login-section {
+        margin-top: 18px;
+        padding: 14px 16px;
+        background: #fffbeb;
+        border: 1.5px solid #fde68a;
+        border-radius: 10px;
+      }
+      .dev-quick-login-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #92400e;
+        margin: 0 0 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .dev-quick-login-label code {
+        background: #fef3c7;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #b45309;
+        border: 1px solid #fde68a;
+      }
+      .dev-quick-login-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .dev-ql-btn {
+        padding: 5px 10px;
+        font-size: 11.5px;
+        font-weight: 600;
+        border: 1.5px solid #d1d5db;
+        border-radius: 6px;
+        background: #fff;
+        color: #374151;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+        font-family: inherit;
+      }
+      .dev-ql-btn:hover {
+        background: #f0f4ff;
+        border-color: #1d68f6;
+        color: #1d68f6;
+      }
+      .dev-ql-btn--vendor {
+        border-color: #06b6d4;
+        color: #0e7490;
+      }
+      .dev-ql-btn--vendor:hover {
+        background: #ecfeff;
+        border-color: #06b6d4;
+        color: #0e7490;
+      }
+      /* Keep modal scrollable when quick-login section is shown */
+      .login-form-section { overflow-y: auto; }
+    `;
+    document.head.appendChild(s);
+  })();
+
 })();
+
