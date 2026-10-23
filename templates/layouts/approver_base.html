@@ -69,30 +69,12 @@
                         <span>My Approvals</span>
                     </a>
                 </li>
-
-                <li class="nav-item my-2 border-top border-secondary border-opacity-25"></li>
-                
-                <li class="nav-section-label text-uppercase text-secondary fw-bold px-2 pt-1 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">
-                    FINANCIAL OVERSIGHT
-                </li>
-                <li class="nav-item">
-                    <a href="/budgets/" class="nav-link approver-nav-link rounded-3 py-2 px-3 small {% if '/budgets/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                        <i class="fa-solid fa-vault me-2"></i>
-                        <span>Budget Tracking</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/reports/hub/" class="nav-link approver-nav-link rounded-3 py-2 px-3 small {% if '/reports/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                        <i class="fa-solid fa-chart-line me-2"></i>
-                        <span>Financial Reports</span>
-                    </a>
-                </li>
             </ul>
         </div>
 
         <!-- Sidebar Footer -->
         <div class="sidebar-footer border-top border-secondary border-opacity-25 px-3 py-3 mt-auto">
-            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+            <div class="d-flex align-items-center justify-content-between gap-2">
                 <div class="d-flex align-items-center" style="min-width: 0;">
                     <div class="avatar-circle-sm bg-info text-dark fw-bold d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 me-2" style="width: 32px; height: 32px; font-size: 0.85rem;">
                         {{ user.email|slice:":1"|upper|default:"D" }}
@@ -106,13 +88,6 @@
                     <i class="fa-solid fa-arrow-right-from-bracket"></i>
                     <span class="visually-hidden">Sign out</span>
                 </a>
-            </div>
-            <div class="d-flex align-items-center justify-content-between small text-white-50 pt-2 border-top border-secondary border-opacity-25">
-                <span class="d-flex align-items-center text-truncate me-2">
-                    <i class="fa-solid fa-shield-halved me-2 text-info"></i>
-                    <span class="text-truncate">Authorized Signer Gateway</span>
-                </span>
-                <span class="badge bg-secondary bg-opacity-25 text-white-50 border border-secondary border-opacity-50">v2026.1</span>
             </div>
         </div>
     </aside>
