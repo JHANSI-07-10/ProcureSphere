@@ -52,16 +52,37 @@ def create_supplier_invoice_service(
         notes=notes,
     )
 
+    if not line_items:
+        raise ValidationError("Invoice must contain at least one line item.")
+
     for item in line_items:
         po_line = item.get("po_line")
-        qty = Decimal(str(item["quantity"]))
-        unit_price = Decimal(str(item["unit_price"]))
+        item_desc = item.get(
+            "item_description", getattr(po_line, "item_description", "Line Item")
+        )
+        try:
+            qty = Decimal(str(item["quantity"]))
+            unit_price = Decimal(str(item["unit_price"]))
+        except Exception:
+            raise ValidationError(
+                f"Quantity and unit price for '{item_desc}' must be valid numeric values."
+            )
+
+        if qty <= Decimal("0.00"):
+            raise ValidationError(
+                f"Invoice line quantity for '{item_desc}' must be greater than zero. "
+                f"Negative or zero counts ({qty}) are not permitted."
+            )
+        if unit_price < Decimal("0.00"):
+            raise ValidationError(
+                f"Invoice line unit price for '{item_desc}' cannot be negative. "
+                f"Negative value ({unit_price}) is not permitted."
+            )
+
         line = InvoiceLine.objects.create(
             invoice=invoice,
             po_line=po_line,
-            item_description=item.get(
-                "item_description", getattr(po_line, "item_description", "Line Item")
-            ),
+            item_description=item_desc,
             quantity=qty,
             unit_price=unit_price,
         )

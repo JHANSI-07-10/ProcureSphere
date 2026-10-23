@@ -14,7 +14,17 @@ from django.utils import timezone
 from apps.accounts.models import Role, User
 from apps.audit.models import AuditLog
 from apps.audit.services import create_audit_log_service
-from apps.core.validators import validate_file_upload
+from apps.core.validators import (
+    check_upload_rate_limit,
+    extract_pan_from_gstin,
+    is_valid_gstin,
+    is_valid_pan,
+    normalize_tax_identifier,
+    validate_file_upload,
+    validate_gstin,
+    validate_pan_gstin_consistency,
+    validate_pan_number,
+)
 from apps.notifications.models import Notification
 from apps.notifications.services import notify_vendor_users
 
@@ -47,37 +57,47 @@ def register_vendor_service(
     bank_account_number: str = "",
     bank_routing_code: str = "",
     created_by_user: User = None,
+    pan_number: str = "",
+    gstin: str = "",
 ) -> Vendor:
     """
     Registers a new vendor in DRAFT status with unique vendor number.
+    Safely validates and normalizes optional dedicated PAN and GSTIN fields.
     """
     if Vendor.objects.filter(tax_identification_number=tax_identification_number).exists():
         raise ValidationError(f"Vendor with tax ID '{tax_identification_number}' already exists.")
 
-    # Collision-safe vendor number generation.
-    # Uses MAX on the numeric suffix of existing vendor_numbers for the current
-    # year, so deletions and concurrent inserts cannot produce duplicates.
-    # The entire function is already wrapped in @transaction.atomic, so the
-    # MAX query and the INSERT are serialised by the surrounding DB transaction.
-    year = timezone.now().strftime("%Y")
-    prefix = f"VND-{year}-"
-    last = (
-        Vendor.objects.filter(vendor_number__startswith=prefix)
-        .select_for_update()  # row-level lock prevents concurrent duplicates
-        .aggregate(last_num=Max("vendor_number"))["last_num"]
-    )
-    if last:
-        match = re.search(r"(\d+)$", last)
-        next_seq = (int(match.group(1)) + 1) if match else 1
-    else:
-        next_seq = 1
-    vendor_number = f"{prefix}{next_seq:05d}"
+    norm_pan = normalize_tax_identifier(pan_number)
+    norm_gstin = normalize_tax_identifier(gstin)
+
+    if norm_pan:
+        validate_pan_number(norm_pan)
+    if norm_gstin:
+        validate_gstin(norm_gstin)
+    if norm_pan and norm_gstin:
+        validate_pan_gstin_consistency(norm_pan, norm_gstin)
+
+    # Derive recognizable PAN or GSTIN from legacy tax_identification_number if not provided
+    clean_tin = normalize_tax_identifier(tax_identification_number)
+    if not norm_pan and is_valid_pan(clean_tin):
+        norm_pan = clean_tin
+    if not norm_gstin and is_valid_gstin(clean_tin):
+        norm_gstin = clean_tin
+        if not norm_pan:
+            norm_pan = extract_pan_from_gstin(clean_tin) or ""
+    elif norm_gstin and not norm_pan:
+        norm_pan = extract_pan_from_gstin(norm_gstin) or ""
+
+    vendor_count = Vendor.objects.count() + 1
+    vendor_number = f"VND-{timezone.now().strftime('%Y')}-{vendor_count:05d}"
 
     vendor = Vendor.objects.create(
         legal_name=legal_name,
         trade_name=trade_name,
         vendor_number=vendor_number,
         tax_identification_number=tax_identification_number,
+        pan_number=norm_pan,
+        gstin=norm_gstin,
         registration_number=registration_number,
         category=category,
         email=email,
@@ -99,6 +119,8 @@ def register_vendor_service(
             "status": vendor.status,
             "vendor_number": vendor.vendor_number,
             "legal_name": vendor.legal_name,
+            "pan_number": vendor.pan_number,
+            "gstin": vendor.gstin,
         },
     )
 
@@ -612,7 +634,7 @@ def update_vendor_profile_service(
     data: dict,
 ) -> Vendor:
     """
-    Vendor self-service profile update: updates trade name, address, phone, and banking info.
+    Vendor self-service profile update: updates trade name, address, phone, banking info, and tax fields.
     Legal name, TIN, vendor number, and category are locked and require governance approval.
     """
     previous_state = {
@@ -622,32 +644,49 @@ def update_vendor_profile_service(
         "bank_name": vendor.bank_name,
         "bank_account_number": vendor.bank_account_number,
         "bank_routing_code": vendor.bank_routing_code,
+        "pan_number": vendor.pan_number,
+        "gstin": vendor.gstin,
     }
+
+    update_fields = ["updated_at"]
 
     if "trade_name" in data:
         vendor.trade_name = data["trade_name"]
+        update_fields.append("trade_name")
     if "address" in data:
         vendor.address = data["address"]
+        update_fields.append("address")
     if "phone" in data:
         vendor.phone = data["phone"]
+        update_fields.append("phone")
     if "bank_name" in data:
         vendor.bank_name = data["bank_name"]
+        update_fields.append("bank_name")
     if "bank_account_number" in data:
         vendor.bank_account_number = data["bank_account_number"]
+        update_fields.append("bank_account_number")
     if "bank_routing_code" in data:
         vendor.bank_routing_code = data["bank_routing_code"]
+        update_fields.append("bank_routing_code")
 
-    vendor.save(
-        update_fields=[
-            "trade_name",
-            "address",
-            "phone",
-            "bank_name",
-            "bank_account_number",
-            "bank_routing_code",
-            "updated_at",
-        ]
-    )
+    if "pan_number" in data or "gstin" in data:
+        new_pan = normalize_tax_identifier(data.get("pan_number", vendor.pan_number))
+        new_gstin = normalize_tax_identifier(data.get("gstin", vendor.gstin))
+        if new_pan:
+            validate_pan_number(new_pan)
+        if new_gstin:
+            validate_gstin(new_gstin)
+        if new_pan and new_gstin:
+            validate_pan_gstin_consistency(new_pan, new_gstin)
+
+        if "pan_number" in data:
+            vendor.pan_number = new_pan
+            update_fields.append("pan_number")
+        if "gstin" in data:
+            vendor.gstin = new_gstin
+            update_fields.append("gstin")
+
+    vendor.save(update_fields=list(set(update_fields)))
 
     AuditLog.objects.create(
         actor=user,
@@ -662,9 +701,15 @@ def update_vendor_profile_service(
             "bank_name": vendor.bank_name,
             "bank_account_number": vendor.bank_account_number,
             "bank_routing_code": vendor.bank_routing_code,
+            "pan_number": vendor.pan_number,
+            "gstin": vendor.gstin,
         },
     )
     return vendor
+
+
+MAX_VENDOR_DOCUMENT_COUNT = 25
+MAX_VENDOR_STORAGE_BYTES = 50 * 1024 * 1024  # 50MB
 
 
 @transaction.atomic
@@ -678,16 +723,50 @@ def upload_vendor_document_service(
     expiry_date=None,
 ) -> VendorDocument:
     """
-    Uploads a KYC or compliance document for a vendor.
+    Uploads a KYC or compliance document for a vendor with:
+    1. Upload rate limiting per user/vendor.
+    2. Document type choice validation.
+    3. File validation (0-byte rejection, size limit, extension & magic-byte check).
+    4. Concurrency-safe per-vendor document count quota (max 25).
+    5. Concurrency-safe per-vendor total storage quota (max 50MB).
     """
+    # 1. Rate limiting
+    rate_limit_key = f"user_{user.pk}" if (user and user.pk) else f"vendor_{vendor.pk}"
+    check_upload_rate_limit(rate_limit_key, max_requests=10, window_seconds=60)
+
+    # 2. Document type validation
     if document_type not in dict(VendorDocument.DOC_TYPE_CHOICES):
         raise ValidationError(f"Invalid document type '{document_type}'.")
+
+    # 3. File content & format validation
     validate_file_upload(file)
+
+    # 4. Concurrency-safe quota enforcement via select_for_update()
+    locked_vendor = Vendor.objects.select_for_update().get(pk=vendor.pk)
+    existing_docs = list(locked_vendor.documents.all())
+
+    if len(existing_docs) >= MAX_VENDOR_DOCUMENT_COUNT:
+        raise ValidationError(
+            f"Maximum document quota reached ({MAX_VENDOR_DOCUMENT_COUNT} documents). "
+            "Please remove obsolete documents or contact procurement."
+        )
+
+    current_storage = sum(
+        d.file.size for d in existing_docs if d.file and hasattr(d.file, "size")
+    )
+    incoming_size = getattr(file, "size", 0) or 0
+    if current_storage + incoming_size > MAX_VENDOR_STORAGE_BYTES:
+        max_mb = MAX_VENDOR_STORAGE_BYTES // (1024 * 1024)
+        raise ValidationError(
+            f"Vendor storage quota exceeded (maximum {max_mb}MB across all KYC documents). "
+            "Please contact procurement if you require additional quota."
+        )
+
     if not title or not title.strip():
         title = getattr(file, "name", "Vendor Document")
 
     doc = VendorDocument.objects.create(
-        vendor=vendor,
+        vendor=locked_vendor,
         document_type=document_type,
         title=title.strip(),
         file=file,
@@ -701,7 +780,7 @@ def upload_vendor_document_service(
         target_model="VendorDocument",
         target_object_id=str(doc.id),
         new_state={
-            "vendor": vendor.legal_name,
+            "vendor": locked_vendor.legal_name,
             "document_type": doc.document_type,
             "title": doc.title,
         },

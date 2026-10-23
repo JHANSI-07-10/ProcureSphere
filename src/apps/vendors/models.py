@@ -2,7 +2,13 @@ from django.conf import settings
 from django.db import models
 
 from apps.core.models import TimeStampedModel
-from apps.core.validators import validate_file_upload
+from apps.core.validators import (
+    normalize_tax_identifier,
+    validate_file_upload,
+    validate_gstin,
+    validate_pan_gstin_consistency,
+    validate_pan_number,
+)
 
 
 class VendorCategory(TimeStampedModel):
@@ -41,6 +47,12 @@ class Vendor(TimeStampedModel):
     trade_name = models.CharField(max_length=255, blank=True)
     vendor_number = models.CharField(max_length=50, unique=True)
     tax_identification_number = models.CharField(max_length=100, unique=True)
+    pan_number = models.CharField(
+        max_length=10, blank=True, default="", validators=[validate_pan_number]
+    )
+    gstin = models.CharField(
+        max_length=15, blank=True, default="", validators=[validate_gstin]
+    )
     registration_number = models.CharField(max_length=100, blank=True)
 
     category = models.ForeignKey(VendorCategory, on_delete=models.PROTECT, related_name="vendors")
@@ -61,6 +73,24 @@ class Vendor(TimeStampedModel):
     # Hold/Suspend notes
     status_notes = models.TextField(blank=True)
 
+    def clean(self):
+        super().clean()
+        if self.pan_number:
+            self.pan_number = normalize_tax_identifier(self.pan_number)
+            validate_pan_number(self.pan_number)
+        if self.gstin:
+            self.gstin = normalize_tax_identifier(self.gstin)
+            validate_gstin(self.gstin)
+        if self.pan_number and self.gstin:
+            validate_pan_gstin_consistency(self.pan_number, self.gstin)
+
+    def save(self, *args, **kwargs):
+        if self.pan_number:
+            self.pan_number = normalize_tax_identifier(self.pan_number)
+        if self.gstin:
+            self.gstin = normalize_tax_identifier(self.gstin)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.legal_name} ({self.vendor_number}) [{self.status}]"
 
@@ -79,15 +109,24 @@ class VendorContact(TimeStampedModel):
 
 
 class VendorDocument(TimeStampedModel):
-    DOC_TYPE_CERT = "INC_CERT"
-    DOC_TYPE_TAX = "TAX_CLEARANCE"
+    DOC_TYPE_PAN = "PAN"
+    DOC_TYPE_GST = "GST_CERT"
+    DOC_TYPE_INC = "INC_CERT"
+    DOC_TYPE_CERT = "INC_CERT"  # Backwards compatibility alias
     DOC_TYPE_BANK = "BANK_LETTER"
+    DOC_TYPE_ADDRESS = "ADDRESS_PROOF"
+    DOC_TYPE_SIGNATORY = "SIGNATORY_PROOF"
+    DOC_TYPE_TAX = "TAX_CLEARANCE"
     DOC_TYPE_OTHER = "OTHER"
 
     DOC_TYPE_CHOICES = [
-        (DOC_TYPE_CERT, "Certificate of Incorporation"),
-        (DOC_TYPE_TAX, "Tax Clearance Certificate"),
+        (DOC_TYPE_PAN, "Permanent Account Number (PAN) Card"),
+        (DOC_TYPE_GST, "GST Registration Certificate"),
+        (DOC_TYPE_INC, "Certificate of Incorporation"),
         (DOC_TYPE_BANK, "Bank Verification Document"),
+        (DOC_TYPE_ADDRESS, "Business Address Proof"),
+        (DOC_TYPE_SIGNATORY, "Authorized Signatory Proof"),
+        (DOC_TYPE_TAX, "Tax Clearance Certificate"),
         (DOC_TYPE_OTHER, "Other KYC Document"),
     ]
 

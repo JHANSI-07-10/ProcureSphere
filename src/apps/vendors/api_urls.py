@@ -147,6 +147,8 @@ class VendorSerializer(serializers.ModelSerializer):
             "trade_name",
             "vendor_number",
             "tax_identification_number",
+            "pan_number",
+            "gstin",
             "registration_number",
             "category",
             "category_name",
@@ -305,6 +307,8 @@ class VendorViewSet(viewsets.ModelViewSet):
         "trade_name",
         "vendor_number",
         "tax_identification_number",
+        "pan_number",
+        "gstin",
         "email",
     ]
     ordering_fields = ["created_at", "legal_name", "vendor_number", "status"]
@@ -344,6 +348,8 @@ class VendorViewSet(viewsets.ModelViewSet):
                 | Q(trade_name__icontains=search_query)
                 | Q(vendor_number__icontains=search_query)
                 | Q(tax_identification_number__icontains=search_query)
+                | Q(pan_number__icontains=search_query)
+                | Q(gstin__icontains=search_query)
                 | Q(email__icontains=search_query)
             )
 

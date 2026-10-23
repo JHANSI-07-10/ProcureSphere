@@ -1,5 +1,12 @@
 from django import forms
 
+from apps.core.validators import (
+    normalize_tax_identifier,
+    validate_gstin,
+    validate_pan_gstin_consistency,
+    validate_pan_number,
+)
+
 from .models import Vendor, VendorCategory, VendorRiskRecord
 
 
@@ -26,6 +33,8 @@ class VendorRegistrationForm(forms.Form):
     legal_name = forms.CharField(max_length=255)
     trade_name = forms.CharField(max_length=255, required=False)
     tax_identification_number = forms.CharField(max_length=100)
+    pan_number = forms.CharField(max_length=10, required=False, label="PAN")
+    gstin = forms.CharField(max_length=15, required=False, label="GSTIN")
     registration_number = forms.CharField(max_length=100, required=False)
     category = forms.ModelChoiceField(queryset=VendorCategory.objects.order_by("name"))
     email = forms.EmailField()
@@ -40,6 +49,29 @@ class VendorRegistrationForm(forms.Form):
         if Vendor.objects.filter(tax_identification_number=tin).exists():
             raise forms.ValidationError("A vendor with this tax ID already exists.")
         return tin
+
+    def clean_pan_number(self):
+        pan = normalize_tax_identifier(self.cleaned_data.get("pan_number", ""))
+        if pan:
+            validate_pan_number(pan)
+        return pan
+
+    def clean_gstin(self):
+        gst = normalize_tax_identifier(self.cleaned_data.get("gstin", ""))
+        if gst:
+            validate_gstin(gst)
+        return gst
+
+    def clean(self):
+        cleaned_data = super().clean()
+        pan = cleaned_data.get("pan_number")
+        gst = cleaned_data.get("gstin")
+        if pan and gst:
+            try:
+                validate_pan_gstin_consistency(pan, gst)
+            except forms.ValidationError as exc:
+                self.add_error("gstin", exc)
+        return cleaned_data
 
 
 class RiskAssessmentForm(forms.Form):
@@ -66,6 +98,7 @@ class VendorProfileUpdateForm(forms.Form):
     """
     Vendor Dashboard self-service company profile update form.
     Validates phone number to strictly enforce country code (+91) followed by 10 digits.
+    Allows updating PAN and GSTIN with consistency validation.
     """
     trade_name = forms.CharField(max_length=255, required=False)
     address = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}), required=True)
@@ -76,6 +109,8 @@ class VendorProfileUpdateForm(forms.Form):
             "required": "Contact phone number is required.",
         },
     )
+    pan_number = forms.CharField(max_length=10, required=False, label="PAN")
+    gstin = forms.CharField(max_length=15, required=False, label="GSTIN")
     bank_name = forms.CharField(max_length=150, required=False)
     bank_account_number = forms.CharField(max_length=100, required=False)
     bank_routing_code = forms.CharField(max_length=100, required=False)
@@ -96,6 +131,29 @@ class VendorProfileUpdateForm(forms.Form):
                 "Phone number must have country code (+91) followed by exactly 10 digits (e.g., +919876543210)."
             )
         return clean_phone
+
+    def clean_pan_number(self):
+        pan = normalize_tax_identifier(self.cleaned_data.get("pan_number", ""))
+        if pan:
+            validate_pan_number(pan)
+        return pan
+
+    def clean_gstin(self):
+        gst = normalize_tax_identifier(self.cleaned_data.get("gstin", ""))
+        if gst:
+            validate_gstin(gst)
+        return gst
+
+    def clean(self):
+        cleaned_data = super().clean()
+        pan = cleaned_data.get("pan_number")
+        gst = cleaned_data.get("gstin")
+        if pan and gst:
+            try:
+                validate_pan_gstin_consistency(pan, gst)
+            except forms.ValidationError as exc:
+                self.add_error("gstin", exc)
+        return cleaned_data
 
 
 class VendorContactForm(forms.Form):

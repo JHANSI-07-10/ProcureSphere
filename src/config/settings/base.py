@@ -1,3 +1,5 @@
+import os
+import sys
 from pathlib import Path
 
 import environ
@@ -18,9 +20,17 @@ env = environ.Env(
     REDIS_URL=(str, "redis://127.0.0.1:6379/0"),
 )
 
-# Read .env file if present
+# Read .env file if present, unless running in an isolated test environment
+# to ensure automated tests never load production database credentials.
 env_file = BASE_DIR / ".env"
-if env_file.exists():
+_is_test_env = (
+    os.environ.get("DJANGO_SETTINGS_MODULE") == "config.settings.test"
+    or os.environ.get("PROCURESPHERE_TESTING") == "1"
+    or "pytest" in sys.modules
+    or any("pytest" in arg for arg in sys.argv)
+    or any(arg == "test" for arg in sys.argv)
+)
+if env_file.exists() and not _is_test_env:
     env.read_env(str(env_file))
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")

@@ -106,7 +106,11 @@ def resolve_exception_view(request, exception_id):
     if request.method == "POST":
         exception = get_object_or_404(MatchException, id=exception_id)
         action = request.POST.get("action")  # 'RESOLVE' or 'REJECT'
-        notes = request.POST.get("resolution_notes", "")
+        notes = request.POST.get("resolution_notes", "").strip()
+
+        if not notes:
+            messages.error(request, "Resolution notes are required and cannot be empty.")
+            return redirect("exception_detail", exception_id=exception_id)
 
         try:
             resolve_match_exception_service(
@@ -147,16 +151,83 @@ def pay_invoice_view(request, invoice_id):
 
 @login_required(login_url="/login/")
 def create_invoice_view(request):
-    if request.method == "POST":
-        vendor_id = request.POST.get("vendor_id")
-        po_id = request.POST.get("po_id")
-        invoice_number = request.POST.get("invoice_number")
-        invoice_date = request.POST.get("invoice_date")
-        due_date = request.POST.get("due_date")
-        notes = request.POST.get("notes", "")
+    vendors = Vendor.objects.filter(status="ACTIVE").order_by("legal_name")
+    pos = PurchaseOrder.objects.filter(
+        status__in=["ISSUED", "PARTIAL_RECEIPT", "ACKNOWLEDGED"]
+    ).select_related("vendor").order_by("-created_at")
 
-        quantity = Decimal(request.POST.get("quantity", "1.00"))
-        unit_price = Decimal(request.POST.get("unit_price", "0.00"))
+    form_data = {}
+
+    if request.method == "POST":
+        vendor_id = request.POST.get("vendor_id", "").strip()
+        po_id = request.POST.get("po_id", "").strip()
+        invoice_number = request.POST.get("invoice_number", "").strip()
+        invoice_date = request.POST.get("invoice_date", "").strip()
+        due_date = request.POST.get("due_date", "").strip()
+        notes = request.POST.get("notes", "").strip()
+        qty_raw = request.POST.get("quantity", "").strip()
+        price_raw = request.POST.get("unit_price", "").strip()
+
+        form_data = {
+            "vendor_id": vendor_id,
+            "po_id": po_id,
+            "invoice_number": invoice_number,
+            "invoice_date": invoice_date,
+            "due_date": due_date,
+            "notes": notes,
+            "quantity": qty_raw,
+            "unit_price": price_raw,
+        }
+
+        # 1. Required field validations
+        if not vendor_id:
+            messages.error(request, "Please select a Supplier / Vendor.")
+            return render(request, "pages/invoices/create.html", {"vendors": vendors, "pos": pos, "form_data": form_data})
+
+        if not po_id:
+            messages.error(request, "Please select a Linked Purchase Order.")
+            return render(request, "pages/invoices/create.html", {"vendors": vendors, "pos": pos, "form_data": form_data})
+
+        if not invoice_number:
+            messages.error(request, "Invoice Number is required.")
+            return render(request, "pages/invoices/create.html", {"vendors": vendors, "pos": pos, "form_data": form_data})
+
+        if not invoice_date:
+            messages.error(request, "Invoice Date is required.")
+            return render(request, "pages/invoices/create.html", {"vendors": vendors, "pos": pos, "form_data": form_data})
+
+        if not due_date:
+            messages.error(request, "Payment Due Date is required.")
+            return render(request, "pages/invoices/create.html", {"vendors": vendors, "pos": pos, "form_data": form_data})
+
+        if due_date < invoice_date:
+            messages.error(request, "Payment Due Date cannot be earlier than Invoice Date.")
+            return render(request, "pages/invoices/create.html", {"vendors": vendors, "pos": pos, "form_data": form_data})
+
+        # 2. Count / Quantity validations: cannot be zero or negative
+        try:
+            quantity = Decimal(qty_raw)
+        except Exception:
+            messages.error(request, "Total Quantity Billed must be a valid numeric count.")
+            return render(request, "pages/invoices/create.html", {"vendors": vendors, "pos": pos, "form_data": form_data})
+
+        if quantity <= Decimal("0.00"):
+            messages.error(
+                request,
+                "Total Quantity Billed must be greater than zero. The count cannot be less than zero or negative."
+            )
+            return render(request, "pages/invoices/create.html", {"vendors": vendors, "pos": pos, "form_data": form_data})
+
+        # 3. Unit Price validation: cannot be negative
+        try:
+            unit_price = Decimal(price_raw)
+        except Exception:
+            messages.error(request, "Unit Price must be a valid numeric amount.")
+            return render(request, "pages/invoices/create.html", {"vendors": vendors, "pos": pos, "form_data": form_data})
+
+        if unit_price < Decimal("0.00"):
+            messages.error(request, "Unit Price cannot be less than zero or negative.")
+            return render(request, "pages/invoices/create.html", {"vendors": vendors, "pos": pos, "form_data": form_data})
 
         try:
             vendor = get_object_or_404(Vendor, id=vendor_id)
@@ -168,7 +239,7 @@ def create_invoice_view(request):
                     "po_line": po_line,
                     "quantity": quantity,
                     "unit_price": unit_price,
-                    "item_description": "Manual Entry Item",
+                    "item_description": po_line.item_description if po_line else "Manual Entry Item",
                 }
             ]
 
@@ -189,8 +260,6 @@ def create_invoice_view(request):
 
         except Exception as e:
             messages.error(request, f"Error creating invoice: {str(e)}")
+            return render(request, "pages/invoices/create.html", {"vendors": vendors, "pos": pos, "form_data": form_data})
 
-    vendors = Vendor.objects.filter(status="ACTIVE")
-    pos = PurchaseOrder.objects.filter(status__in=["ISSUED", "PARTIAL_RECEIPT", "ACKNOWLEDGED"])
-
-    return render(request, "pages/invoices/create.html", {"vendors": vendors, "pos": pos})
+    return render(request, "pages/invoices/create.html", {"vendors": vendors, "pos": pos, "form_data": form_data})

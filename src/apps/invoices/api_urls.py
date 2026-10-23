@@ -69,6 +69,20 @@ class InvoiceLineSerializer(serializers.ModelSerializer):
         model = InvoiceLine
         fields = "__all__"
 
+    def validate_quantity(self, value):
+        if value <= Decimal("0.00"):
+            raise serializers.ValidationError(
+                "Total Quantity Billed must be greater than zero. The count cannot be less than zero or negative."
+            )
+        return value
+
+    def validate_unit_price(self, value):
+        if value < Decimal("0.00"):
+            raise serializers.ValidationError(
+                "Unit price cannot be less than zero or negative."
+            )
+        return value
+
 
 class MatchExceptionSerializer(serializers.ModelSerializer):
     class Meta:

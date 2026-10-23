@@ -7,9 +7,12 @@ across all upload modules in ProcureSphere 360:
 4. Contract Documents (upload_contract_document_service - extension & size)
 """
 
+import io
+import zipfile
 from datetime import timedelta
 from decimal import Decimal
 import pytest
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
@@ -27,6 +30,22 @@ from apps.core.validators import validate_pr_attachment, validate_file_upload
 
 
 pytestmark = [pytest.mark.django_db, pytest.mark.regression]
+
+
+def _valid_docx_bytes():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("[Content_Types].xml", '<?xml version="1.0"?><Types/>')
+        zf.writestr("word/document.xml", '<?xml version="1.0"?><w:document/>')
+    return buf.getvalue()
+
+
+def _valid_xlsx_bytes():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("[Content_Types].xml", '<?xml version="1.0"?><Types/>')
+        zf.writestr("xl/workbook.xml", '<?xml version="1.0"?><workbook/>')
+    return buf.getvalue()
 
 
 # =====================================================================
@@ -107,18 +126,213 @@ class TestVendorKycUploadRejections:
                 title="Oversized Tax Doc",
             )
 
-    def test_vendor_kyc_accepts_valid_documents(self, procurement_world):
+    def test_vendor_kyc_rejects_empty_file(self, procurement_world):
         w = procurement_world
-        valid_pdf = SimpleUploadedFile("cert.pdf", b"%PDF-1.4 tax certificate", content_type="application/pdf")
-        doc = upload_vendor_document_service(
-            vendor=w["vendor_a"],
-            user=w["user_a"],
-            file=valid_pdf,
-            document_type=VendorDocument.DOC_TYPE_CERT,
-            title="Certificate of Incorporation",
+        empty_file = SimpleUploadedFile("empty.pdf", b"", content_type="application/pdf")
+        with pytest.raises(ValidationError, match="Uploaded file is empty"):
+            upload_vendor_document_service(
+                vendor=w["vendor_a"],
+                user=w["user_a"],
+                file=empty_file,
+                document_type=VendorDocument.DOC_TYPE_TAX,
+                title="Empty File",
+            )
+
+    def test_vendor_kyc_rejects_spoofed_pdf(self, procurement_world):
+        w = procurement_world
+        spoofed = SimpleUploadedFile("fake.pdf", b"MZ\x90\x00Not a real pdf", content_type="application/pdf")
+        with pytest.raises(ValidationError, match="Invalid file content for .pdf"):
+            upload_vendor_document_service(
+                vendor=w["vendor_a"],
+                user=w["user_a"],
+                file=spoofed,
+                document_type=VendorDocument.DOC_TYPE_TAX,
+                title="Spoofed PDF",
+            )
+
+    def test_vendor_kyc_rejects_spoofed_png(self, procurement_world):
+        w = procurement_world
+        spoofed = SimpleUploadedFile("fake.png", b"GIF89aNot a png", content_type="image/png")
+        with pytest.raises(ValidationError, match="Invalid file content for .png"):
+            upload_vendor_document_service(
+                vendor=w["vendor_a"],
+                user=w["user_a"],
+                file=spoofed,
+                document_type=VendorDocument.DOC_TYPE_TAX,
+                title="Spoofed PNG",
+            )
+
+    def test_vendor_kyc_rejects_spoofed_jpeg(self, procurement_world):
+        w = procurement_world
+        spoofed = SimpleUploadedFile("fake.jpg", b"BM\x00\x00Not a jpeg", content_type="image/jpeg")
+        with pytest.raises(ValidationError, match="Invalid file content for JPEG"):
+            upload_vendor_document_service(
+                vendor=w["vendor_a"],
+                user=w["user_a"],
+                file=spoofed,
+                document_type=VendorDocument.DOC_TYPE_TAX,
+                title="Spoofed JPG",
+            )
+
+    def test_vendor_kyc_rejects_spoofed_doc(self, procurement_world):
+        w = procurement_world
+        spoofed = SimpleUploadedFile("fake.doc", b"MZ\x90\x00Not CFBF", content_type="application/msword")
+        with pytest.raises(ValidationError, match="Invalid file content for .doc"):
+            upload_vendor_document_service(
+                vendor=w["vendor_a"],
+                user=w["user_a"],
+                file=spoofed,
+                document_type=VendorDocument.DOC_TYPE_TAX,
+                title="Spoofed DOC",
+            )
+
+    def test_vendor_kyc_rejects_spoofed_docx(self, procurement_world):
+        w = procurement_world
+        # Zip without OpenXML word/ directory
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("notes.txt", "not docx")
+        spoofed = SimpleUploadedFile("fake.docx", buf.getvalue())
+        with pytest.raises(ValidationError, match="Invalid file content for .docx"):
+            upload_vendor_document_service(
+                vendor=w["vendor_a"],
+                user=w["user_a"],
+                file=spoofed,
+                document_type=VendorDocument.DOC_TYPE_TAX,
+                title="Spoofed DOCX",
+            )
+
+    def test_vendor_kyc_rejects_spoofed_xlsx(self, procurement_world):
+        w = procurement_world
+        # Zip without OpenXML xl/ directory
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("notes.txt", "not xlsx")
+        spoofed = SimpleUploadedFile("fake.xlsx", buf.getvalue())
+        with pytest.raises(ValidationError, match="Invalid file content for .xlsx"):
+            upload_vendor_document_service(
+                vendor=w["vendor_a"],
+                user=w["user_a"],
+                file=spoofed,
+                document_type=VendorDocument.DOC_TYPE_OTHER,
+                title="Spoofed XLSX",
+            )
+
+    def test_vendor_kyc_rejects_csv_with_binary_or_null_bytes(self, procurement_world):
+        w = procurement_world
+        null_csv = SimpleUploadedFile("bad.csv", b"col1,col2\x00payload\n1,2\n", content_type="text/csv")
+        with pytest.raises(ValidationError, match="Binary content and null bytes are not permitted"):
+            upload_vendor_document_service(
+                vendor=w["vendor_a"],
+                user=w["user_a"],
+                file=null_csv,
+                document_type=VendorDocument.DOC_TYPE_OTHER,
+                title="Null Byte CSV",
+            )
+
+        binary_csv = SimpleUploadedFile("fake.csv", b"MZ\x90\x00binary executable disguised as csv", content_type="text/csv")
+        with pytest.raises(ValidationError, match="Binary file disguised with .csv extension"):
+            upload_vendor_document_service(
+                vendor=w["vendor_a"],
+                user=w["user_a"],
+                file=binary_csv,
+                document_type=VendorDocument.DOC_TYPE_OTHER,
+                title="Binary CSV",
+            )
+
+    def test_vendor_kyc_accepts_all_valid_formats(self, procurement_world):
+        w = procurement_world
+        cache.clear()
+        valid_files = [
+            ("cert.pdf", b"%PDF-1.4 tax certificate", VendorDocument.DOC_TYPE_CERT),
+            ("seal.png", b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR", VendorDocument.DOC_TYPE_CERT),
+            ("photo.jpg", b"\xff\xd8\xff\xe0\x00\x10JFIF", VendorDocument.DOC_TYPE_CERT),
+            ("legacy.doc", b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1word", VendorDocument.DOC_TYPE_OTHER),
+            ("modern.docx", _valid_docx_bytes(), VendorDocument.DOC_TYPE_CERT),
+            ("sheet.xlsx", _valid_xlsx_bytes(), VendorDocument.DOC_TYPE_OTHER),
+            ("data.csv", b"col1,col2\nval1,val2\n", VendorDocument.DOC_TYPE_OTHER),
+        ]
+        for fname, content, dtype in valid_files:
+            doc = upload_vendor_document_service(
+                vendor=w["vendor_a"],
+                user=w["user_a"],
+                file=SimpleUploadedFile(fname, content),
+                document_type=dtype,
+                title=f"Valid {fname}",
+            )
+            assert doc.id is not None
+            assert doc.file.name is not None
+
+    def test_vendor_kyc_enforces_document_count_quota(self, procurement_world):
+        w = procurement_world
+        vendor = w["vendor_a"]
+        cache.clear()
+        # Seed 25 existing documents
+        for i in range(25):
+            VendorDocument.objects.create(
+                vendor=vendor,
+                document_type=VendorDocument.DOC_TYPE_OTHER,
+                title=f"Doc {i}",
+                file=SimpleUploadedFile(f"doc_{i}.pdf", b"%PDF-1.4 sample content"),
+            )
+        # Attempting 26th upload raises document quota error
+        with pytest.raises(ValidationError, match="Maximum document quota reached"):
+            upload_vendor_document_service(
+                vendor=vendor,
+                user=w["user_a"],
+                file=SimpleUploadedFile("doc_26.pdf", b"%PDF-1.4 test"),
+                document_type=VendorDocument.DOC_TYPE_OTHER,
+                title="Quota Breaker",
+            )
+
+    def test_vendor_kyc_enforces_total_storage_quota(self, procurement_world, monkeypatch):
+        w = procurement_world
+        vendor = w["vendor_a"]
+        cache.clear()
+
+        doc = VendorDocument.objects.create(
+            vendor=vendor,
+            document_type=VendorDocument.DOC_TYPE_OTHER,
+            title="Existing Large Doc",
+            file=SimpleUploadedFile("existing.pdf", b"%PDF-1.4 test"),
         )
-        assert doc.id is not None
-        assert doc.document_type == VendorDocument.DOC_TYPE_CERT
+        # Mock FieldFile.size property to simulate 49MB on file
+        from django.db.models.fields.files import FieldFile
+        monkeypatch.setattr(FieldFile, "size", 49 * 1024 * 1024)
+
+        # 2MB incoming file exceeds 50MB storage quota
+        incoming = SimpleUploadedFile("new.pdf", b"%PDF-1.4 " + b"0" * (2 * 1024 * 1024))
+        with pytest.raises(ValidationError, match="Vendor storage quota exceeded"):
+            upload_vendor_document_service(
+                vendor=vendor,
+                user=w["user_a"],
+                file=incoming,
+                document_type=VendorDocument.DOC_TYPE_OTHER,
+                title="Storage Breaker",
+            )
+
+    def test_vendor_kyc_upload_rate_limiting(self, procurement_world):
+        w = procurement_world
+        cache.clear()
+        # 10 uploads within window succeed
+        for i in range(10):
+            valid_pdf = SimpleUploadedFile(f"rate_{i}.pdf", b"%PDF-1.4 test")
+            upload_vendor_document_service(
+                vendor=w["vendor_a"],
+                user=w["user_a"],
+                file=valid_pdf,
+                document_type=VendorDocument.DOC_TYPE_OTHER,
+                title=f"Rate Test {i}",
+            )
+        # 11th upload triggers rate limit ValidationError
+        with pytest.raises(ValidationError, match="Upload rate limit exceeded"):
+            upload_vendor_document_service(
+                vendor=w["vendor_a"],
+                user=w["user_a"],
+                file=SimpleUploadedFile("rate_11.pdf", b"%PDF-1.4 test"),
+                document_type=VendorDocument.DOC_TYPE_OTHER,
+                title="Rate Breaker",
+            )
 
 
 # =====================================================================
@@ -170,7 +384,7 @@ class TestSourcingBidAttachmentUploadRejections:
     def test_bid_attachment_rejects_oversized_file(self, procurement_world):
         w = procurement_world
         bid = self._create_bid(w)
-        oversized = SimpleUploadedFile("huge_tech_proposal.pdf", b"B" * (10 * 1024 * 1024 + 50), content_type="application/pdf")
+        oversized = SimpleUploadedFile("huge_tech_proposal.pdf", b"A" * (10 * 1024 * 1024 + 50), content_type="application/pdf")
         with pytest.raises(ValidationError, match="File size exceeds maximum allowed limit"):
             upload_bid_attachment_service(
                 bid=bid,
@@ -183,7 +397,7 @@ class TestSourcingBidAttachmentUploadRejections:
     def test_bid_attachment_accepts_valid_files(self, procurement_world):
         w = procurement_world
         bid = self._create_bid(w)
-        valid_file = SimpleUploadedFile("tech_specs.docx", b"PK\x03\x04 Valid docx content")
+        valid_file = SimpleUploadedFile("tech_specs.docx", _valid_docx_bytes())
         attachment = upload_bid_attachment_service(
             bid=bid,
             user=w["user_a"],

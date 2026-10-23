@@ -176,7 +176,7 @@
                         <i class="fa-solid fa-tags text-info fs-5"></i>
                     </div>
                     <div>
-                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-2 fs-6 text-wrap text-start d-inline-block text-break" style="max-width: 100%;">
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-2 fs-6 text-wrap text-start lh-base d-inline-block text-break" style="max-width: 100%;">
                             <i class="fa-solid fa-tag me-1"></i> {{ vendor.category.name }}
                         </span>
                     </div>
@@ -195,11 +195,11 @@
                     </div>
                     <div>
                         {% if latest_risk %}
-                            <span class="badge {% if latest_risk.risk_level == 'LOW' %}bg-success{% elif latest_risk.risk_level == 'MEDIUM' %}bg-warning text-dark{% else %}bg-danger{% endif %} rounded-pill px-3 py-2 fs-6 text-wrap text-start d-inline-block text-break" style="max-width: 100%;">
+                            <span class="badge {% if latest_risk.risk_level == 'LOW' %}bg-success{% elif latest_risk.risk_level == 'MEDIUM' %}bg-warning text-dark{% else %}bg-danger{% endif %} rounded-pill px-3 py-2 fs-6 text-wrap text-start lh-base d-inline-block text-break" style="max-width: 100%;">
                                 <i class="fa-solid fa-shield me-1"></i> {{ latest_risk.get_risk_level_display }}
                             </span>
                         {% else %}
-                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 fs-6 text-wrap text-start d-inline-block text-break" style="max-width: 100%;">
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 fs-6 text-wrap text-start lh-base d-inline-block text-break" style="max-width: 100%;">
                                 <i class="fa-solid fa-check me-1"></i> Low Risk (Good Standing)
                             </span>
                         {% endif %}
@@ -292,14 +292,38 @@
                 </div>
                 <div class="card-body p-4">
                     <div class="mb-4">
-                        <label class="text-muted small fw-semibold text-uppercase">Tax Identification Number (TIN / GSTIN / EIN)</label>
+                        <label class="text-muted small fw-semibold text-uppercase">Tax Identification Number (TIN / Legacy ID)</label>
                         <div class="d-flex align-items-center gap-2 mt-1">
                             <span class="fs-5 fw-bold font-monospace text-dark">{{ vendor.tax_identification_number }}</span>
                             <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill">
                                 <i class="fa-solid fa-check-circle me-1"></i> Recorded
                             </span>
                         </div>
-                        <small class="text-muted">Tax ID is locked to prevent unauthorized alterations.</small>
+                        <small class="text-muted">Legacy Tax ID is locked to prevent unauthorized alterations.</small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="text-muted small fw-semibold text-uppercase">Permanent Account Number (PAN)</label>
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <span class="fs-6 fw-bold font-monospace text-dark">{{ vendor.pan_number|default:"Not Provided" }}</span>
+                            {% if vendor.pan_number %}
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill">
+                                <i class="fa-solid fa-id-card me-1"></i> Valid PAN
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="text-muted small fw-semibold text-uppercase">Goods &amp; Services Tax Identification Number (GSTIN)</label>
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <span class="fs-6 fw-bold font-monospace text-dark">{{ vendor.gstin|default:"Not Provided" }}</span>
+                            {% if vendor.gstin %}
+                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill">
+                                <i class="fa-solid fa-certificate me-1"></i> Valid GSTIN
+                            </span>
+                            {% endif %}
+                        </div>
                     </div>
 
                     <div class="mb-4">
@@ -700,6 +724,18 @@
                         <div class="col-12">
                             <label class="form-label small fw-semibold">Registered Office Address</label>
                             <textarea name="address" rows="2" class="form-control form-control-sm" required>{{ vendor.address }}</textarea>
+                        </div>
+                        <div class="col-12"><hr class="my-2"></div>
+                        <h6 class="fw-bold text-dark small mb-0">Tax &amp; Identification Credentials</h6>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Permanent Account Number (PAN)</label>
+                            <input type="text" name="pan_number" class="form-control form-control-sm font-monospace text-uppercase" maxlength="10" placeholder="e.g. ABCDE1234F" value="{{ vendor.pan_number }}">
+                            <div class="form-text text-muted" style="font-size: 0.72rem;">10-character alphanumeric PAN</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">GSTIN</label>
+                            <input type="text" name="gstin" class="form-control form-control-sm font-monospace text-uppercase" maxlength="15" placeholder="e.g. 29ABCDE1234F1Z5" value="{{ vendor.gstin }}">
+                            <div class="form-text text-muted" style="font-size: 0.72rem;">15-character GST identification number</div>
                         </div>
                         <div class="col-12"><hr class="my-2"></div>
                         <h6 class="fw-bold text-dark small mb-0">Bank Remittance Credentials</h6>

@@ -134,6 +134,90 @@
                 </div>
             </div>
             {% endif %}
+
+            {% if can_invoice %}
+            <div class="card border-0 shadow-sm bg-primary bg-opacity-10 border-start border-primary border-4 mt-3" id="invoice">
+                <div class="card-body p-3">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-primary text-white p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="fa-solid fa-file-invoice-dollar fs-5"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark">Submit Supplier Invoice</div>
+                                <div class="small text-muted">
+                                    Generate an invoice for the fulfilled line items of this Purchase Order.
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm fw-bold px-3 shadow-sm" data-bs-toggle="collapse" data-bs-target="#invoiceFormCollapse">
+                            <i class="fa-solid fa-plus me-1"></i> Create Invoice
+                        </button>
+                    </div>
+
+                    <div class="collapse mt-3 pt-3 border-top border-primary border-opacity-25" id="invoiceFormCollapse">
+                        <form method="post" action="{% url 'vendor_invoice_submit' po_id=po.id %}">
+                            {% csrf_token %}
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold text-dark">Invoice Number *</label>
+                                    <input type="text" name="invoice_number" class="form-control" required placeholder="INV-2026-001">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold text-dark">Invoice Date *</label>
+                                    <input type="date" name="invoice_date" class="form-control" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold text-dark">Due Date *</label>
+                                    <input type="date" name="due_date" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold text-dark">Line Items</label>
+                                <div class="table-responsive border rounded">
+                                    <table class="table table-sm table-hover align-middle mb-0">
+                                        <thead class="table-light small text-secondary">
+                                            <tr>
+                                                <th class="ps-3">Item Description</th>
+                                                <th style="width: 100px;">PO Qty</th>
+                                                <th style="width: 120px;">Inv Qty</th>
+                                                <th style="width: 140px;" class="pe-3">Unit Price ($)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for line in lines %}
+                                            <tr>
+                                                <td class="small ps-3 text-dark">{{ line.item_description }}</td>
+                                                <td class="small text-muted">{{ line.quantity|floatformat:2 }}</td>
+                                                <td>
+                                                    <input type="number" step="0.01" name="qty_{{ line.id }}" class="form-control form-control-sm" value="{{ line.quantity|stringformat:'f' }}" min="0">
+                                                </td>
+                                                <td class="pe-3">
+                                                    <input type="number" step="0.01" name="price_{{ line.id }}" class="form-control form-control-sm" value="{{ line.unit_price|stringformat:'f' }}" min="0">
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="form-text small text-muted mt-1 mb-3"><i class="fa-solid fa-circle-info me-1"></i>Set quantity to 0 to exclude a line item from this invoice.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold text-dark">Additional Notes</label>
+                                <textarea name="notes" class="form-control" rows="2" placeholder="Optional notes for Accounts Payable..."></textarea>
+                            </div>
+                            <div class="d-flex justify-content-end gap-2">
+                                <button type="button" class="btn btn-light btn-sm" data-bs-toggle="collapse" data-bs-target="#invoiceFormCollapse">Cancel</button>
+                                <button type="submit" class="btn btn-primary btn-sm fw-bold px-3 shadow-sm">
+                                    <i class="fa-solid fa-paper-plane me-1"></i> Submit Invoice
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 

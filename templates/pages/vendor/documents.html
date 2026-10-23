@@ -26,15 +26,7 @@
         </div>
     </div>
 
-    <!-- Security notice banner -->
-    <div class="alert alert-dark border-0 shadow-sm d-flex align-items-center py-2 px-3 mb-4 rounded-3 bg-dark text-white">
-        <i class="fa-solid fa-shield-halved text-info fs-5 me-3"></i>
-        <div class="small">
-            <span class="badge bg-info text-dark fw-bold me-2 text-uppercase tracking-wider">Security</span>
-            <strong class="text-white fw-bolder fs-6">Strict Backend Authorization Enforced:</strong>
-            <span class="text-light ms-1">All documents are secured behind object-level authorization gates. Direct URL tampering or cross-vendor file access is strictly blocked and audited.</span>
-        </div>
-    </div>
+
 
     <!-- Filter Tabs -->
     <div class="card glass-card border-0 shadow-sm mb-4">
@@ -219,12 +211,9 @@
                     <div class="mb-3">
                         <label class="form-label small fw-semibold">Document Classification</label>
                         <select name="document_type" class="form-select form-select-sm" required>
-                            <option value="REGISTRATION">Certificate of Incorporation</option>
-                            <option value="TAX_CLEARANCE">Tax Clearance Certificate</option>
-                            <option value="PAN_GST">PAN / GST Registration</option>
-                            <option value="BANK_STATEMENT">Bank Statement / Canceled Cheque</option>
-                            <option value="COMPLIANCE_CERT">ISO / Compliance Certification</option>
-                            <option value="OTHER">Other Compliance Document</option>
+                            {% for code, label in doc_types %}
+                            <option value="{{ code }}">{{ label }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                     <div class="mb-3">
