@@ -29,6 +29,7 @@
             <div class="col-12">
                 <label class="form-label fw-semibold text-secondary small">Manager <span class="text-muted">(Optional)</span></label>
                 {{ form.manager }}
+                <div class="form-text">Enter the email of an existing user. Leave blank to keep this cost center unassigned.</div>
                 {% if form.manager.errors %}<div class="text-danger small mt-1">{{ form.manager.errors }}</div>{% endif %}
             </div>
         </div>

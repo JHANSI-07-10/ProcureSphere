@@ -202,14 +202,24 @@ class DepartmentAdminForm(forms.ModelForm):
 
 
 class CostCenterAdminForm(forms.ModelForm):
+    manager = forms.EmailField(
+        required=False,
+        widget=forms.EmailInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Enter manager email",
+                "autocomplete": "off",
+            }
+        ),
+    )
+
     class Meta:
         model = CostCenter
-        fields = ["code", "name", "department", "manager"]
+        fields = ["code", "name", "department"]
         widgets = {
             "code": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. CC-IT-101"}),
             "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. IT Operations"}),
             "department": forms.Select(attrs={"class": "form-select"}),
-            "manager": forms.Select(attrs={"class": "form-select"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -218,11 +228,25 @@ class CostCenterAdminForm(forms.ModelForm):
             Department.objects.select_related("organization").all().order_by("name")
         )
         self.fields["department"].empty_label = "-- Select Department --"
-        self.fields["manager"].queryset = (
-            User.objects.filter(is_active=True).order_by("email")
-        )
-        self.fields["manager"].empty_label = "-- Select Manager (Optional) --"
-        self.fields["manager"].required = False
+        if self.instance.pk and self.instance.manager_id and not self.is_bound:
+            self.initial["manager"] = self.instance.manager.email
+
+    def clean_manager(self):
+        raw = (self.cleaned_data.get("manager") or "").strip()
+        if not raw:
+            return None
+        user = User.objects.filter(email__iexact=raw, is_active=True).first()
+        if user is None:
+            raise forms.ValidationError("No active user exists with this email.")
+        return user
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.manager = self.cleaned_data.get("manager")
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
 
     def clean_code(self):
         code = self.cleaned_data.get("code", "").strip().upper()
