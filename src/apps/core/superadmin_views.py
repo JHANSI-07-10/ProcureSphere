@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
+from django.db.models import Prefetch
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 
@@ -247,7 +248,16 @@ def org_list_view(request):
         )
     orgs = Organization.objects.all().order_by("name")
     departments = Department.objects.select_related("organization").all().order_by("name")
-    cost_centers = CostCenter.objects.select_related("department", "manager").all().order_by("code")
+    cost_centers = (
+        CostCenter.objects.select_related("department", "manager")
+        .prefetch_related(
+            Prefetch(
+                "requester_users",
+                queryset=User.objects.order_by("email"),
+            )
+        )
+        .order_by("code")
+    )
     selected_dept = request.GET.get("department", "").strip()
     if selected_dept:
         try:
