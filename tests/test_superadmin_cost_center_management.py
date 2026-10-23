@@ -64,6 +64,31 @@ def test_cost_center_section_and_add_button_rendered(superadmin_client, sample_o
 
 
 @pytest.mark.django_db
+def test_cost_center_manager_column_shows_assigned_user_email(superadmin_client, sample_org_and_dept):
+    client, _ = superadmin_client
+    _, dept_it, dept_hr = sample_org_and_dept
+    role, _ = Role.objects.get_or_create(code=Role.REQUESTER, defaults={"name": "Requester"})
+
+    assigned_cc = CostCenter.objects.create(name="Infra Ops", code="CC-HPE-INF", department=dept_it)
+    empty_cc = CostCenter.objects.create(name="Finance Operations", code="CC-FIN-101", department=dept_hr)
+    User.objects.create_user(
+        email="eabcd5463@gmail.com",
+        password="Password123!",
+        role=role,
+        department=dept_it,
+        cost_center=assigned_cc,
+    )
+
+    response = client.get(reverse("superadmin:organizations"))
+    assert response.status_code == 200
+    content = response.content.decode("utf-8")
+    assert "eabcd5463@gmail.com" in content
+    assert assigned_cc.manager is None
+    assert empty_cc.manager is None
+    assert "Unassigned" in content
+
+
+@pytest.mark.django_db
 def test_cost_center_department_filter(superadmin_client, sample_org_and_dept):
     client, _ = superadmin_client
     _, dept_it, dept_hr = sample_org_and_dept
