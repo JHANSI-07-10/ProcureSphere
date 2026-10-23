@@ -531,9 +531,18 @@ def detail_view(request, pk):
         fiscal_period__is_closed=False,
     ).first()
     available_budget = active_budget.available_amount if active_budget else None
+    is_pending_review = pr.status in [
+        PurchaseRequisition.STATUS_DRAFT,
+        PurchaseRequisition.STATUS_SUBMITTED,
+        PurchaseRequisition.STATUS_MANAGER_REVIEW,
+        PurchaseRequisition.STATUS_BUDGET_REVIEW,
+    ]
     is_budget_exceeded = bool(
-        pr.status == PurchaseRequisition.STATUS_BUDGET_REVIEW
-        or (available_budget is not None and pr.total_amount > available_budget)
+        is_pending_review
+        and (
+            pr.status == PurchaseRequisition.STATUS_BUDGET_REVIEW
+            or (available_budget is not None and pr.total_amount > available_budget)
+        )
     )
 
     base_layout = (
