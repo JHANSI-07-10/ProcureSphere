@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 
 {% block title %}Procurement Executive Dashboard{% endblock %}
 
@@ -27,12 +27,12 @@
 </div>
 
 {% if ready_prs_count > 0 %}
-<div class="alert alert-info border-info border-2 shadow-sm rounded-4 d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between p-3 mb-4 gap-3">
-    <div class="d-flex align-items-center">
+<div class="alert alert-info border-info border-2 shadow-sm rounded-4 d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center justify-content-between p-3 mb-4 gap-3">
+    <div class="d-flex align-items-center flex-grow-1">
         <div class="bg-primary text-white rounded-circle p-2 me-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width:44px;height:44px;">
             <i class="fa-solid fa-file-circle-check fa-lg"></i>
         </div>
-        <div>
+        <div class="flex-grow-1">
             <h6 class="fw-bold mb-1 text-dark"><i class="fa-solid fa-bell text-primary me-1"></i> Approved Requisitions Intake: {{ ready_prs_count }} PR{{ ready_prs_count|pluralize }} Ready for Sourcing</h6>
             <span class="small text-secondary d-block">Department-approved requisitions awaiting RFQ/RFP event creation and vendor invites.</span>
         </div>
