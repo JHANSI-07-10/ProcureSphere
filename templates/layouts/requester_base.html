@@ -39,17 +39,15 @@
 {% block layout %}
 <div class="d-flex" style="min-height: calc(100vh - 56px);">
     <!-- Desktop Sidebar (>= 992px) -->
-    <aside class="bg-dark border-end border-secondary border-opacity-25 shadow-sm d-none d-lg-flex flex-column" style="width: 260px; flex-shrink: 0;">
-        <div class="p-3 d-flex flex-column flex-grow-1">
-            <h6 class="text-uppercase text-light fw-bold mb-3 small"><i class="fa-solid fa-compass me-2"></i>Requester Menu</h6>
-            <ul class="nav flex-column gap-1">
+    <aside class="bg-dark border-end border-secondary border-opacity-25 shadow-sm d-none d-lg-flex flex-column" style="width: 260px; flex-shrink: 0; position: sticky; top: 56px; height: calc(100vh - 56px);">
+        <div class="p-3 d-flex flex-column flex-grow-1 overflow-y-auto">
+            <ul class="nav flex-column gap-2">
                 <li class="nav-item">
                     <a href="/" class="nav-link rounded sidebar-link {% if request.path == '/' %}active bg-primary fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
                         <i class="fa-solid fa-chart-pie me-2 {% if request.path == '/' %}text-white{% else %}text-primary{% endif %} w-20px text-center"></i> Dashboard
                     </a>
                 </li>
-                <li class="nav-item mt-2">
-                    <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Requisitions</div>
+                <li class="nav-item">
                     <a href="/requisitions/" class="nav-link rounded sidebar-link {% if '/requisitions/' in request.path and 'create' not in request.path %}active bg-primary fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
                         <i class="fa-solid fa-list me-2 {% if '/requisitions/' in request.path and 'create' not in request.path %}text-white{% else %}text-info{% endif %} w-20px text-center"></i> My PRs
                     </a>
@@ -59,13 +57,17 @@
                         <i class="fa-solid fa-plus me-2 {% if '/requisitions/create' in request.path %}text-white{% else %}text-success{% endif %} w-20px text-center"></i> Create New PR
                     </a>
                 </li>
-                <li class="nav-item mt-2">
-                    <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Tracking</div>
+                <li class="nav-item">
                     <a href="/approvals/inbox/" class="nav-link rounded sidebar-link {% if '/approvals/' in request.path %}active bg-primary fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
                         <i class="fa-solid fa-timeline me-2 {% if '/approvals/' in request.path %}text-white{% else %}text-warning{% endif %} w-20px text-center"></i> My Approvals
                     </a>
                 </li>
             </ul>
+        </div>
+        <div class="mt-auto p-3 border-top border-secondary border-opacity-25 flex-shrink-0">
+            <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill w-100 d-flex align-items-center justify-content-center py-2 fw-semibold" title="Sign Out">
+                <i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out
+            </a>
         </div>
     </aside>
 
@@ -79,15 +81,13 @@
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
         <div class="offcanvas-body p-3 d-flex flex-column">
-            <h6 class="text-uppercase text-light fw-bold mb-3 small"><i class="fa-solid fa-compass me-2"></i>Requester Menu</h6>
-            <ul class="nav flex-column gap-1">
+            <ul class="nav flex-column gap-2">
                 <li class="nav-item">
                     <a href="/" class="nav-link rounded sidebar-link {% if request.path == '/' %}active bg-primary fw-bold text-white{% else %}text-light{% endif %}">
                         <i class="fa-solid fa-chart-pie me-2 text-center" style="width: 20px;"></i> Dashboard
                     </a>
                 </li>
-                <li class="nav-item mt-2">
-                    <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Requisitions</div>
+                <li class="nav-item">
                     <a href="/requisitions/" class="nav-link rounded sidebar-link {% if '/requisitions/' in request.path and 'create' not in request.path %}active bg-primary fw-bold text-white{% else %}text-light{% endif %}">
                         <i class="fa-solid fa-list me-2 text-center" style="width: 20px;"></i> My PRs
                     </a>
@@ -97,24 +97,17 @@
                         <i class="fa-solid fa-plus me-2 text-center" style="width: 20px;"></i> Create New PR
                     </a>
                 </li>
-                <li class="nav-item mt-2">
-                    <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Tracking</div>
+                <li class="nav-item">
                     <a href="/approvals/inbox/" class="nav-link rounded sidebar-link {% if '/approvals/' in request.path %}active bg-primary fw-bold text-white{% else %}text-light{% endif %}">
                         <i class="fa-solid fa-timeline me-2 text-center" style="width: 20px;"></i> My Approvals
                     </a>
                 </li>
             </ul>
 
-            <div class="mt-auto pt-4 border-top border-secondary border-opacity-25">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="text-start leading-tight">
-                        <div class="fw-semibold text-white small text-truncate" style="max-width: 150px;">{{ user.email }}</div>
-                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">{{ user.role_code|default:"REQUESTER" }}</div>
-                    </div>
-                    <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-3">
-                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                    </a>
-                </div>
+            <div class="mt-auto pt-3 border-top border-secondary border-opacity-25">
+                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill w-100 d-flex align-items-center justify-content-center py-2 fw-semibold" title="Sign Out">
+                    <i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out
+                </a>
             </div>
         </div>
     </div>
