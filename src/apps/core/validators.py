@@ -163,6 +163,33 @@ def validate_file_upload(file):
             )
         )
 
+    # 3b. MIME type check if content_type is provided (VEN-07)
+    content_type = getattr(file, "content_type", None)
+    if content_type:
+        raw_mime = content_type.split(";")[0].strip().lower()
+        allowed_mimes = {
+            "pdf": {"application/pdf"},
+            "png": {"image/png"},
+            "jpg": {"image/jpeg", "image/pjpeg"},
+            "jpeg": {"image/jpeg", "image/pjpeg"},
+            "doc": {"application/msword", "application/x-msword", "application/octet-stream"},
+            "docx": {
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/zip",
+                "application/octet-stream",
+            },
+            "xlsx": {
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "application/zip",
+                "application/octet-stream",
+            },
+            "csv": {"text/csv", "application/csv", "text/plain", "application/vnd.ms-excel"},
+        }.get(ext, set())
+        if allowed_mimes and raw_mime not in allowed_mimes:
+            raise ValidationError(
+                _(f"Invalid MIME type '{content_type}' for .{ext} file.")
+            )
+
     # 4. Binary signature & content validation (with pointer preservation)
     initial_pos = None
     if hasattr(file, "tell"):

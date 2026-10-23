@@ -129,6 +129,11 @@ def test_demo_2_pr_multi_level_approval_and_budget_reservation(db_roles):
     pr = approve_purchase_requisition_service(
         requisition=pr, approver=dept_mgr_user, comments="Step 1 Dept approval granted."
     )
+    assert pr.status == PurchaseRequisition.STATUS_MANAGER_REVIEW
+
+    pr = approve_purchase_requisition_service(
+        requisition=pr, approver=proc_mgr_user, comments="Step 2 Proc Mgr approval granted."
+    )
     assert pr.status == PurchaseRequisition.STATUS_APPROVED
 
     # 8. Verify Approval Actions & Audit Trail
@@ -173,6 +178,18 @@ def test_pr_creation_fails_when_budget_exceeded(db_roles):
     # Budget allocation: $50,000
     allocate_budget_service(
         cost_center=cost_center, fiscal_period=period, allocated_amount=Decimal("50000.00")
+    )
+
+    policy = create_approval_policy_service(
+        name="IT Services Over-budget Policy",
+        module=ApprovalPolicy.MODULE_PR,
+        min_amount=Decimal("0.00"),
+        department=dept,
+    )
+    add_approval_step_service(
+        policy=policy,
+        step_number=1,
+        approver_role=db_roles[Role.DEPT_APPROVER],
     )
 
     # Attempt to create PR totaling $80,000 (exceeds $50,000)

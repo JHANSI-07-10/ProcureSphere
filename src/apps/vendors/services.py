@@ -1,5 +1,4 @@
 import logging
-import re
 import secrets
 import string
 
@@ -8,7 +7,6 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.mail import send_mail
 from django.db import transaction
-from django.db.models import Max
 from django.utils import timezone
 
 from apps.accounts.models import Role, User
@@ -88,8 +86,9 @@ def register_vendor_service(
     elif norm_gstin and not norm_pan:
         norm_pan = extract_pan_from_gstin(norm_gstin) or ""
 
-    vendor_count = Vendor.objects.count() + 1
-    vendor_number = f"VND-{timezone.now().strftime('%Y')}-{vendor_count:05d}"
+    from apps.core.services import generate_document_number
+
+    vendor_number = generate_document_number(Vendor, "vendor_number", "VND")
 
     vendor = Vendor.objects.create(
         legal_name=legal_name,

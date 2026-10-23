@@ -7,6 +7,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.audit.models import AuditLog
 from apps.budgets.models import Budget, SpendLedger
+from apps.notifications.models import Notification
 from apps.organization.models import CostCenter
 from apps.vendors.models import Vendor
 
@@ -30,13 +31,14 @@ def generate_purchase_order_service(
     Generates a new Purchase Order from requisition/award.
     Moves BudgetReservation to SpendLedger COMMITMENT when in ISSUED status.
     """
+    from apps.core.services import generate_document_number
+
     if vendor.status == Vendor.STATUS_SUSPENDED:
         raise ValidationError(
             f"Vendor '{vendor.legal_name}' is suspended and cannot be issued POs."
         )
 
-    po_count = PurchaseOrder.objects.count() + 1
-    po_number = f"PO-{timezone.now().strftime('%Y')}-{po_count:05d}"
+    po_number = generate_document_number(PurchaseOrder, "po_number", "PO")
 
     po = PurchaseOrder.objects.create(
         po_number=po_number,
@@ -84,6 +86,25 @@ def generate_purchase_order_service(
                 amount=total,
                 reference_number=po.po_number,
                 description=f"PO Commitment for {vendor.legal_name}",
+            )
+
+        # Notify active vendor users
+        for v_user in User.objects.filter(vendor=vendor, is_active=True):
+            Notification.objects.create(
+                recipient=v_user,
+                notification_type=Notification.TYPE_PO_ISSUED,
+                title=f"New Purchase Order Issued: {po.po_number}",
+                message=f"A new Purchase Order {po.po_number} (${po.total_amount:,.2f}) has been issued to {vendor.legal_name}.",
+                target_url=f"/orders/{po.id}/",
+            )
+        # Notify requisition requester if present
+        if requisition and requisition.requester:
+            Notification.objects.create(
+                recipient=requisition.requester,
+                notification_type=Notification.TYPE_PO_ISSUED,
+                title=f"PO {po.po_number} Generated for PR {requisition.pr_number}",
+                message=f"Purchase Order {po.po_number} has been generated from your approved requisition {requisition.pr_number}.",
+                target_url=f"/orders/{po.id}/",
             )
 
     AuditLog.objects.create(
@@ -140,6 +161,15 @@ def acknowledge_purchase_order_service(
             "acknowledgement_notes": po.acknowledgement_notes,
         },
     )
+
+    if po.requisition and po.requisition.requester:
+        Notification.objects.create(
+            recipient=po.requisition.requester,
+            notification_type=Notification.TYPE_PO_ACKNOWLEDGED,
+            title=f"PO {po.po_number} Acknowledged by Vendor",
+            message=f"Vendor {po.vendor.legal_name} has acknowledged Purchase Order {po.po_number}.",
+            target_url=f"/orders/{po.id}/",
+        )
 
     return po
 
@@ -243,6 +273,23 @@ def amend_purchase_order_service(
             "amendment_number": amendment.amendment_number,
         },
     )
+
+    for v_user in User.objects.filter(vendor=po.vendor, is_active=True):
+        Notification.objects.create(
+            recipient=v_user,
+            notification_type=Notification.TYPE_PO_AMENDMENT,
+            title=f"Purchase Order Amendment: {po.po_number} V{po.version}",
+            message=f"Purchase Order {po.po_number} has been updated to Version {po.version} (Reason: {reason}).",
+            target_url=f"/orders/{po.id}/",
+        )
+    if po.requisition and po.requisition.requester:
+        Notification.objects.create(
+            recipient=po.requisition.requester,
+            notification_type=Notification.TYPE_PO_AMENDMENT,
+            title=f"PO {po.po_number} Amended to V{po.version}",
+            message=f"Purchase Order {po.po_number} linked to PR {po.requisition.pr_number} was amended to V{po.version}.",
+            target_url=f"/orders/{po.id}/",
+        )
 
     return amendment
 

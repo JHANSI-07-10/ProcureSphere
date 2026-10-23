@@ -18,6 +18,7 @@ class Notification(TimeStampedModel):
     TYPE_PO_ISSUED = "PO_ISSUED"
     TYPE_PO_AMENDMENT = "PO_AMENDMENT"
     TYPE_KYC_REQUEST = "KYC_REQUEST"
+    TYPE_GOODS_RECEIVED = "GOODS_RECEIVED"
 
     TYPE_CHOICES = [
         (TYPE_APPROVAL_REQUIRED, "Approval Required"),
@@ -34,6 +35,7 @@ class Notification(TimeStampedModel):
         (TYPE_PO_ISSUED, "Purchase Order Issued"),
         (TYPE_PO_AMENDMENT, "PO Amendment Notification"),
         (TYPE_KYC_REQUEST, "KYC / Compliance Notification"),
+        (TYPE_GOODS_RECEIVED, "Goods Receipt Recorded"),
     ]
 
     recipient = models.ForeignKey(

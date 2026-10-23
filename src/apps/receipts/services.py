@@ -177,8 +177,10 @@ def create_goods_receipt_service(
     ]:
         raise ValidationError(f"Cannot record goods receipt against PO in status '{po.status}'.")
 
-    grn_count = GoodsReceipt.objects.count() + 1
-    grn_number = f"GRN-{timezone.now().strftime('%Y')}-{grn_count:05d}"
+    from apps.core.services import generate_document_number
+    from apps.notifications.models import Notification
+
+    grn_number = generate_document_number(GoodsReceipt, "grn_number", "GRN")
 
     receipt = GoodsReceipt.objects.create(
         grn_number=grn_number,
@@ -210,6 +212,15 @@ def create_goods_receipt_service(
             "po_status": po.status,
         },
     )
+
+    if po.requisition and po.requisition.requester:
+        Notification.objects.create(
+            recipient=po.requisition.requester,
+            notification_type=Notification.TYPE_GOODS_RECEIVED,
+            title=f"Goods Receipt Recorded: {receipt.grn_number}",
+            message=f"Goods/services have been received under receipt {receipt.grn_number} for PO {po.po_number}.",
+            target_url=f"/receipts/{receipt.id}/",
+        )
 
     return receipt
 

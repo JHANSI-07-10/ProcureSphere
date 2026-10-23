@@ -35,6 +35,11 @@ def _is_super_admin(user):
 
 @login_required
 def user_list_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
     users = User.objects.select_related("role", "department", "cost_center").all().order_by("-date_joined")
     return render(request, "pages/dashboards/superadmin/users.html", {"users": users})
 
@@ -235,6 +240,11 @@ def cost_center_options_view(request):
 
 @login_required
 def org_list_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
     orgs = Organization.objects.all().order_by("name")
     departments = Department.objects.select_related("organization").all().order_by("name")
     cost_centers = CostCenter.objects.select_related("department", "manager").all().order_by("code")
@@ -479,18 +489,33 @@ def cost_center_edit_view(request, cc_id):
 
 @login_required
 def budget_list_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
     budgets = Budget.objects.select_related("cost_center", "fiscal_period").all()
     return render(request, "pages/dashboards/superadmin/budgets.html", {"budgets": budgets})
 
 
 @login_required
 def policy_list_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
     policies = ApprovalPolicy.objects.select_related("department").all()
     return render(request, "pages/dashboards/superadmin/policies.html", {"policies": policies})
 
 
 @login_required
 def audit_list_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
     logs_list = AuditLog.objects.select_related("actor").all().order_by("-timestamp")
     paginator = Paginator(logs_list, 10)  # Show 10 logs per page
 
@@ -576,6 +601,11 @@ def policy_edit_view(request, policy_id):
 
 @login_required
 def audit_export_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
     format_type = request.GET.get("format", "csv")
     logs = AuditLog.objects.select_related("actor").all().order_by("-timestamp")
 

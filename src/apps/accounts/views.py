@@ -1,19 +1,11 @@
 from django.contrib import messages
-
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
-
 from django.contrib.auth.decorators import login_required
-
 from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
-
-from django.utils.http import url_has_allowed_host_and_scheme
 from django.shortcuts import redirect, render
-
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
-
-
-
 
 
 @never_cache
@@ -88,7 +80,6 @@ def portal_login_view(request):
             try:
 
                 from apps.audit.models import AuditLog
-
                 from apps.audit.services import create_audit_log_service
 
 
@@ -183,7 +174,6 @@ def change_password_view(request):
 
 
             from apps.audit.models import AuditLog
-
             from apps.audit.services import create_audit_log_service
 
 
@@ -264,7 +254,6 @@ def portal_logout_view(request):
     if user:
 
         from apps.audit.models import AuditLog
-
         from apps.audit.services import create_audit_log_service
 
 
@@ -326,7 +315,6 @@ def password_change_view(request):
 
 
             from apps.audit.models import AuditLog
-
             from apps.audit.services import create_audit_log_service
 
 

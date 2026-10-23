@@ -4,8 +4,6 @@ Uses a fast, local SQLite database and memory caches.
 Completely isolated from remote Supabase / PostgreSQL.
 """
 import os
-import sys
-from pathlib import Path
 
 # Signal to base settings that this is an isolated test environment
 # to ensure production database credentials are never loaded from .env

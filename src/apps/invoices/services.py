@@ -149,21 +149,40 @@ def run_3_way_match_service(
             exceptions.append(exc)
             continue
 
-        # 1. Quantity Variance check (Billed Qty vs Goods Receipt Accepted Qty)
+        # 1. Quantity Variance check (Billed Qty vs Remaining Uninvoiced Goods Receipt Accepted Qty)
         accepted_qty_agg = ReceiptLine.objects.filter(po_line=po_line).aggregate(
             total_accepted=models.Sum("quantity_accepted")
         )["total_accepted"] or Decimal("0.00")
 
-        max_allowed_qty = accepted_qty_agg * (Decimal("1.00") + qty_tolerance_pct)
+        # Deduct prior invoiced quantities from other active/matched invoices on this PO line
+        prior_invoiced_qty = (
+            InvoiceLine.objects.filter(
+                po_line=po_line,
+                invoice__status__in=[
+                    SupplierInvoice.STATUS_MATCHING,
+                    SupplierInvoice.STATUS_EXCEPTION,
+                    SupplierInvoice.STATUS_APPROVAL,
+                    SupplierInvoice.STATUS_READY_FOR_PAYMENT,
+                    SupplierInvoice.STATUS_PAID,
+                ],
+            )
+            .exclude(invoice_id=invoice.id)
+            .aggregate(total_prior=models.Sum("quantity"))["total_prior"]
+            or Decimal("0.00")
+        )
+
+        remaining_accepted_qty = max(Decimal("0.00"), accepted_qty_agg - prior_invoiced_qty)
+        max_allowed_qty = remaining_accepted_qty * (Decimal("1.00") + qty_tolerance_pct)
+
         if inv_line.quantity > max_allowed_qty:
-            qty_diff = inv_line.quantity - accepted_qty_agg
+            qty_diff = inv_line.quantity - remaining_accepted_qty
             variance = qty_diff * inv_line.unit_price
             exc = MatchException.objects.create(
                 invoice=invoice,
                 exception_type=MatchException.TYPE_QUANTITY_VARIANCE,
                 description=(
-                    f"Billed qty {inv_line.quantity} exceeds accepted GRN qty {accepted_qty_agg} "
-                    f"for item '{po_line.item_description}' (Tolerance: {qty_tolerance_pct * 100}%)."
+                    f"Billed qty {inv_line.quantity} exceeds remaining uninvoiced accepted GRN qty "
+                    f"{remaining_accepted_qty} (Total accepted: {accepted_qty_agg}, Prior invoiced: {prior_invoiced_qty}, Tolerance: {qty_tolerance_pct * 100}%)."
                 ),
                 variance_amount=variance,
             )
@@ -187,6 +206,22 @@ def run_3_way_match_service(
 
     if exceptions:
         invoice.status = SupplierInvoice.STATUS_EXCEPTION
+
+        from apps.accounts.models import Role, User
+        from apps.notifications.models import Notification
+
+        finance_users = User.objects.filter(role__code=Role.FINANCE_AP, is_active=True)
+        for fin_user in finance_users:
+            Notification.objects.create(
+                recipient=fin_user,
+                notification_type=Notification.TYPE_EXCEPTION_RAISED,
+                title=f"3-Way Match Exception: Invoice {invoice.invoice_number}",
+                message=(
+                    f"Invoice {invoice.invoice_number} from {invoice.vendor.legal_name} "
+                    f"has {len(exceptions)} match exception(s) requiring Finance resolution."
+                ),
+                target_url=f"/invoices/{invoice.id}/",
+            )
     else:
         invoice.status = SupplierInvoice.STATUS_READY_FOR_PAYMENT
 

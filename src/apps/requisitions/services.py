@@ -64,8 +64,9 @@ def create_purchase_requisition_service(
         if deliv_obj and deliv_obj < timezone.now().date():
             raise ValidationError("Requested delivery date cannot be in the past.")
 
-    pr_count = PurchaseRequisition.objects.count() + 1
-    pr_number = f"PR-{timezone.now().strftime('%Y')}-{pr_count:05d}"
+    from apps.core.services import generate_document_number
+
+    pr_number = generate_document_number(PurchaseRequisition, "pr_number", "PR")
 
     pr = PurchaseRequisition.objects.create(
         pr_number=pr_number,
@@ -155,12 +156,18 @@ def submit_purchase_requisition_service(
     if requisition.total_amount <= Decimal("0.00"):
         raise ValidationError("Requisition total amount must be greater than zero.")
 
-    # Evaluate approval policy
-    evaluate_approval_chain(
+    # Evaluate approval policy (PR-08 fail-closed on missing policy)
+    chain = evaluate_approval_chain(
         module=ApprovalPolicy.MODULE_PR,
         amount=requisition.total_amount,
         department=requisition.department,
     )
+    if not chain:
+        dept_name = requisition.department.name if requisition.department else "Global"
+        raise ValidationError(
+            f"No active approval policy found matching requisition amount ${requisition.total_amount:,.2f} "
+            f"and department '{dept_name}'. Submission rejected under fail-closed routing rule."
+        )
 
     try:
         # Execute budget reservation check
@@ -229,7 +236,9 @@ def approve_purchase_requisition_service(
     *, requisition: PurchaseRequisition, approver: User, comments: str = ""
 ) -> PurchaseRequisition:
     """
-    Approves a PR and transitions state to APPROVED.
+    Approves a PR through its multi-step approval policy chain.
+    Advances the step sequence or completes with APPROVED on final step (SMK-PR-050).
+    Enforces that the approver is authorized for the current step (SMK-AP-005).
     """
     allowed_statuses = [
         PurchaseRequisition.STATUS_SUBMITTED,
@@ -244,6 +253,59 @@ def approve_purchase_requisition_service(
             "Self-approval is strictly prohibited: Requesters cannot approve their own Purchase Requisitions."
         )
 
+    from apps.accounts.models import Role, User
+    from apps.notifications.models import Notification
+
+    # Evaluate approval chain for this requisition
+    chain = evaluate_approval_chain(
+        module=ApprovalPolicy.MODULE_PR,
+        amount=requisition.total_amount,
+        department=requisition.department,
+    )
+
+    # Determine completed approval steps
+    existing_approvals = ApprovalAction.objects.filter(
+        target_object_id=requisition.id,
+        target_model_name="PurchaseRequisition",
+        action=ApprovalAction.ACTION_APPROVE,
+    ).order_by("created_at")
+    current_step_index = existing_approvals.count()
+
+    current_policy_step = None
+    if chain:
+        if current_step_index >= len(chain):
+            raise ValidationError("All approval steps for this requisition have already been completed.")
+
+        step_info = chain[current_step_index]
+        current_policy_step = step_info["policy_step"]
+        required_role = step_info["approver_role"]
+        specific_approver = step_info["specific_approver"]
+        effective_approver = step_info["effective_approver"]
+
+        # Validate approver authorization for this step (SMK-AP-005)
+        is_authorized = False
+        if approver.is_superuser:
+            is_authorized = True
+        elif specific_approver:
+            if approver == effective_approver or approver == specific_approver:
+                is_authorized = True
+        else:
+            approver_role_code = getattr(approver.role, "code", None)
+            if (getattr(approver, "role_id", None) == required_role.id) or (approver_role_code == required_role.code):
+                if required_role.code == Role.DEPT_APPROVER and requisition.department and approver.department:
+                    if approver.department == requisition.department:
+                        is_authorized = True
+                    else:
+                        raise ValidationError("Department Approver can only approve requisitions for their own department.")
+                else:
+                    is_authorized = True
+
+        if not is_authorized:
+            raise ValidationError(
+                f"User '{approver.email}' is not authorized to approve step {step_info['step_number']}. "
+                f"Required role: '{required_role.name}'."
+            )
+
     previous_status = requisition.status
 
     if requisition.status == PurchaseRequisition.STATUS_BUDGET_REVIEW:
@@ -251,15 +313,20 @@ def approve_purchase_requisition_service(
         check_and_reserve_budget_service(
             requisition=requisition, requested_by_user=approver, force_overrun=True
         )
-    elif requisition.status == PurchaseRequisition.STATUS_MANAGER_REVIEW:
-        # Manager is approving. If it wasn't already reserved, reserve it now.
-        # Wait, if it didn't overrun, it was reserved during submission. But we should ideally just leave it reserved.
-        # However, to be safe, we just update status.
-        pass
 
-    requisition.status = PurchaseRequisition.STATUS_APPROVED
+    # Determine next status based on multi-step chain (SMK-PR-050)
+    is_final_step = True
+    if chain and (current_step_index + 1 < len(chain)):
+        is_final_step = False
+
+    if is_final_step:
+        requisition.status = PurchaseRequisition.STATUS_APPROVED
+    else:
+        requisition.status = PurchaseRequisition.STATUS_MANAGER_REVIEW
+
     requisition.save(update_fields=["status", "updated_at"])
 
+    step_label = f"Step {chain[current_step_index]['step_number']}" if chain else "Step 1"
     record_approval_action_service(
         target_object_id=requisition.id,
         target_model_name="PurchaseRequisition",
@@ -267,24 +334,46 @@ def approve_purchase_requisition_service(
         action=ApprovalAction.ACTION_APPROVE,
         previous_state=previous_status,
         new_state=requisition.status,
-        comments=comments or "Requisition approved.",
+        policy_step=current_policy_step,
+        comments=comments or f"{step_label} approved.",
     )
 
-    try:
-        from apps.accounts.models import Role, User
-        from apps.notifications.services import create_notification_service
+    if requisition.status == PurchaseRequisition.STATUS_APPROVED:
+        try:
+            proc_execs = User.objects.filter(role__code=Role.PROC_EXEC, is_active=True)
+            for pe in proc_execs:
+                Notification.objects.create(
+                    recipient=pe,
+                    notification_type=Notification.TYPE_APPROVAL_REQUIRED,
+                    title="Approved PR Ready for Sourcing",
+                    message=f"Requisition {requisition.pr_number} has been approved by {approver.email} and is ready on your Sourcing Intake.",
+                    target_url=f"/requisitions/{requisition.id}/",
+                )
+        except Exception:
+            pass
+    elif chain and not is_final_step:
+        try:
+            next_step = chain[current_step_index + 1]
+            next_role = next_step["approver_role"]
+            if next_step["effective_approver"]:
+                target_users = [next_step["effective_approver"]]
+            else:
+                target_users = list(User.objects.filter(role=next_role, is_active=True))
+                if next_role.code == Role.DEPT_APPROVER and requisition.department:
+                    dept_users = [u for u in target_users if u.department == requisition.department]
+                    if dept_users:
+                        target_users = dept_users
 
-        proc_execs = User.objects.filter(role__code=Role.PROC_EXEC, is_active=True)
-        for pe in proc_execs:
-            create_notification_service(
-                recipient=pe,
-                title="Approved PR Ready for Sourcing",
-                message=f"Requisition {requisition.pr_number} has been approved by {approver.email} and is ready on your Sourcing Intake.",
-                notification_type="IN_APP",
-                action_url=f"/requisitions/{requisition.id}/",
-            )
-    except Exception:
-        pass
+            for u in target_users:
+                Notification.objects.create(
+                    recipient=u,
+                    notification_type=Notification.TYPE_APPROVAL_REQUIRED,
+                    title=f"Approval Required: PR {requisition.pr_number} (Step {next_step['step_number']})",
+                    message=f"Requisition {requisition.pr_number} requires your approval for Step {next_step['step_number']} ({next_role.name}).",
+                    target_url=f"/requisitions/{requisition.id}/",
+                )
+        except Exception:
+            pass
 
     return requisition
 
