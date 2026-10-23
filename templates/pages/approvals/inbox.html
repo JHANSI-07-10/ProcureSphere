@@ -22,12 +22,12 @@
     </div>
 
     <!-- Navigation Pills for Tabs -->
-    <div class="nav nav-pills bg-white p-1 rounded-pill shadow-sm border">
-        <a href="/approvals/inbox/" class="nav-link rounded-pill px-4 fw-semibold {% if active_tab != 'history' %}active bg-primary text-white{% else %}text-secondary{% endif %}">
-            <i class="fa-solid fa-square-check me-1"></i> Pending ({{ pending_prs.count }})
+    <div class="nav nav-pills bg-white p-1 rounded-pill shadow-sm border flex-nowrap w-100 w-md-auto justify-content-center">
+        <a href="/approvals/inbox/" class="nav-link rounded-pill px-2 px-sm-4 py-2 fw-semibold text-nowrap flex-grow-1 flex-md-grow-0 text-center small d-inline-flex align-items-center justify-content-center {% if active_tab != 'history' %}active bg-primary text-white shadow-sm{% else %}text-secondary{% endif %}" style="height: 38px;">
+            <i class="fa-solid fa-square-check me-2"></i> Pending ({{ pending_prs.count }})
         </a>
-        <a href="/approvals/inbox/?tab=history" class="nav-link rounded-pill px-4 fw-semibold {% if active_tab == 'history' %}active bg-primary text-white{% else %}text-secondary{% endif %}">
-            <i class="fa-solid fa-history me-1"></i> Evaluated History
+        <a href="/approvals/inbox/?tab=history" class="nav-link rounded-pill px-2 px-sm-4 py-2 fw-semibold text-nowrap flex-grow-1 flex-md-grow-0 text-center small d-inline-flex align-items-center justify-content-center {% if active_tab == 'history' %}active bg-primary text-white shadow-sm{% else %}text-secondary{% endif %}" style="height: 38px;">
+            <i class="fa-solid fa-clock-rotate-left me-2"></i> Evaluated History
         </a>
     </div>
 </div>
@@ -60,13 +60,13 @@
             {% if active_tab == 'history' %}
                 <input type="hidden" name="tab" value="history">
             {% endif %}
-            <div class="col-md-6 col-lg-7">
+            <div class="col-12 col-md-6 col-lg-7">
                 <div class="input-group">
                     <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-solid fa-search"></i></span>
                     <input type="text" name="q" class="form-control border-start-0 ps-0" placeholder="Search by PR #, title, requester email..." value="{{ search_q|default:'' }}">
                 </div>
             </div>
-            <div class="col-md-4 col-lg-3">
+            <div class="col-12 col-sm-8 col-md-4 col-lg-3">
                 <select name="status" class="form-select text-secondary fw-medium" onchange="this.form.submit()">
                     <option value="">All Statuses</option>
                     <option value="SUBMITTED" {% if status_filter == 'SUBMITTED' %}selected{% endif %}>Submitted</option>
@@ -76,8 +76,8 @@
                     <option value="REJECTED" {% if status_filter == 'REJECTED' %}selected{% endif %}>Rejected</option>
                 </select>
             </div>
-            <div class="col-md-2 col-lg-2 d-flex gap-2">
-                <button type="submit" class="btn btn-primary w-100 rounded-3"><i class="fa-solid fa-filter me-1"></i> Filter</button>
+            <div class="col-12 col-sm-4 col-md-2 col-lg-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100 rounded-3 text-nowrap"><i class="fa-solid fa-filter me-1"></i> Filter</button>
                 {% if search_q or status_filter %}
                     <a href="{% if active_tab == 'history' %}?tab=history{% else %}/approvals/inbox/{% endif %}" class="btn btn-outline-secondary rounded-3" title="Clear Filters"><i class="fa-solid fa-xmark"></i></a>
                 {% endif %}
@@ -90,16 +90,56 @@
     <div class="card-body p-0">
         {% if active_tab == 'history' %}
             {% if history_prs %}
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+            <!-- Mobile History Card View (< 768px) -->
+            <div class="d-md-none p-3 d-flex flex-column gap-3">
+                {% for pr in history_prs %}
+                <div class="card border rounded-3 p-3 shadow-none bg-white">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                        <div style="min-width: 0;">
+                            <a href="{% url 'requisition_detail' pr.pk %}" class="fw-bold text-navy text-decoration-none d-block text-truncate">
+                                {{ pr.title }}
+                            </a>
+                            <div class="text-muted small">
+                                <code>{{ pr.pr_number }}</code> &bull; {{ pr.department.name }}
+                            </div>
+                        </div>
+                        <div class="text-end flex-shrink-0">
+                            <div class="fw-bold text-navy fs-6">${{ pr.total_amount|floatformat:2 }}</div>
+                            {% if pr.status == 'APPROVED' or pr.status == 'SOURCING' or pr.status == 'PO_ISSUED' %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">
+                                    <i class="fa-solid fa-check me-1"></i>Approved
+                                </span>
+                            {% elif pr.status == 'REJECTED' %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">
+                                    <i class="fa-solid fa-xmark me-1"></i>Rejected
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">{{ pr.get_status_display }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between text-muted small py-2 my-2 border-top border-bottom">
+                        <span class="text-truncate me-2" title="{{ pr.requester.email }}"><i class="fa-solid fa-user me-1"></i>{{ pr.requester.email }}</span>
+                        <span class="flex-shrink-0 text-secondary"><i class="fa-solid fa-calendar me-1"></i>{{ pr.updated_at|date:"M d, Y" }}</span>
+                    </div>
+                    <a href="{% url 'requisition_detail' pr.pk %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-2 text-secondary fw-semibold text-nowrap w-100 text-center d-inline-flex align-items-center justify-content-center shadow-sm" style="height: 38px; background-color: #F8F9FA;">
+                        <i class="fa-solid fa-eye me-2"></i> View Audit Detail
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Desktop History Table (>= 768px) -->
+            <div class="table-responsive d-none d-md-block">
+                <table class="table table-hover align-middle mb-0" style="min-width: 680px;">
                     <thead class="table-light">
                         <tr class="small text-uppercase text-secondary fw-bold">
-                            <th class="ps-4 py-3">Reference & Title</th>
-                            <th class="py-3">Requester</th>
-                            <th class="py-3 text-end">Amount</th>
-                            <th class="py-3 text-center">Final Decision</th>
-                            <th class="py-3 text-center">Processed Date</th>
-                            <th class="pe-4 py-3 text-end">Action</th>
+                            <th class="ps-4 py-3" style="min-width: 200px;">Reference & Title</th>
+                            <th class="py-3" style="min-width: 160px;">Requester</th>
+                            <th class="py-3 text-end" style="min-width: 110px;">Amount</th>
+                            <th class="py-3 text-center" style="min-width: 130px;">Final Decision</th>
+                            <th class="py-3 text-center" style="min-width: 130px;">Processed Date</th>
+                            <th class="pe-4 py-3 text-end" style="min-width: 170px;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -109,9 +149,9 @@
                                 <div class="fw-bold text-dark"><a href="{% url 'requisition_detail' pr.pk %}" class="text-decoration-none text-navy">{{ pr.title }}</a></div>
                                 <div class="text-muted small"><code>{{ pr.pr_number }}</code> &bull; {{ pr.department.name }}</div>
                             </td>
-                            <td><span class="small text-dark fw-semibold">{{ pr.requester.email }}</span></td>
-                            <td class="text-end fw-bold text-navy">${{ pr.total_amount|floatformat:2 }}</td>
-                            <td class="text-center">
+                            <td><span class="small text-dark fw-semibold text-truncate d-inline-block" style="max-width: 160px;">{{ pr.requester.email }}</span></td>
+                            <td class="text-end fw-bold text-navy text-nowrap">${{ pr.total_amount|floatformat:2 }}</td>
+                            <td class="text-center text-nowrap">
                                 {% if pr.status == 'APPROVED' or pr.status == 'SOURCING' or pr.status == 'PO_ISSUED' %}
                                     <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1">
                                         <i class="fa-solid fa-check me-1"></i> Approved
@@ -124,10 +164,10 @@
                                     <span class="badge bg-secondary rounded-pill px-3 py-1">{{ pr.get_status_display }}</span>
                                 {% endif %}
                             </td>
-                            <td class="text-center text-muted small">{{ pr.updated_at|date:"M d, Y" }}</td>
-                            <td class="pe-4 text-end">
-                                <a href="{% url 'requisition_detail' pr.pk %}" class="btn btn-sm btn-light rounded-pill px-3 text-secondary border">
-                                    <i class="fa-solid fa-eye me-1"></i> View Audit Detail
+                            <td class="text-center text-muted small text-nowrap">{{ pr.updated_at|date:"M d, Y" }}</td>
+                            <td class="pe-4 text-end" style="white-space: nowrap !important; min-width: 190px;">
+                                <a href="{% url 'requisition_detail' pr.pk %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 text-secondary border text-nowrap d-inline-flex align-items-center" style="height: 34px; background-color: #F8F9FA;">
+                                    <i class="fa-solid fa-eye me-1.5"></i> View Audit Detail
                                 </a>
                             </td>
                         </tr>
@@ -147,16 +187,70 @@
 
         {% else %}
             {% if pending_prs %}
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+            <!-- Mobile Pending PRs Card View (< 768px) -->
+            <div class="d-md-none p-3 d-flex flex-column gap-3">
+                {% for pr in pending_prs %}
+                <div class="card border rounded-3 p-3 shadow-none bg-white">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                        <div style="min-width: 0;">
+                            <a href="{% url 'requisition_detail' pr.pk %}" class="fw-bold text-navy text-decoration-none d-block text-truncate">
+                                {{ pr.title }}
+                            </a>
+                            <div class="text-muted small">
+                                <code>{{ pr.pr_number }}</code> &bull; Submitted {{ pr.created_at|date:"M d, Y" }}
+                            </div>
+                        </div>
+                        <div class="text-end flex-shrink-0">
+                            <div class="fw-bold text-navy fs-6">${{ pr.total_amount|floatformat:2 }}</div>
+                            {% if pr.status == 'BUDGET_REVIEW' %}
+                                <span class="badge bg-danger text-white rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">Budget Review</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">{{ pr.get_status_display }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between text-muted small py-2 my-2 border-top border-bottom">
+                        <span class="text-truncate me-2" title="{{ pr.requester.email }}"><i class="fa-solid fa-user me-1"></i>{{ pr.requester.email }}</span>
+                        {% if pr.status == 'MANAGER_REVIEW' %}
+                            <span class="badge bg-light text-dark border flex-shrink-0"><i class="fa-solid fa-user-tie me-1"></i>Dept Approver</span>
+                        {% elif pr.status == 'BUDGET_REVIEW' %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle flex-shrink-0"><i class="fa-solid fa-calculator me-1"></i>Budget</span>
+                        {% else %}
+                            <span class="badge bg-light text-muted border flex-shrink-0">Routing...</span>
+                        {% endif %}
+                    </div>
+
+                    {% if pr.attachments.all %}
+                    <div class="d-flex flex-wrap gap-1 mb-2">
+                        {% for att in pr.attachments.all %}
+                            <a href="{% url 'requisition_attachment_download' pr.pk att.pk %}?action=download" 
+                               class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill text-decoration-none py-1 px-2" 
+                               title="Download {{ att.title }} ({{ att.file_size_display }})">
+                                <i class="fa-solid fa-paperclip me-1"></i>{{ att.title|truncatechars:18 }}
+                            </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <a href="{% url 'requisition_detail' pr.pk %}" class="btn btn-sm btn-primary rounded-pill px-3 py-2 fw-semibold shadow-sm text-nowrap w-100 text-center d-inline-flex align-items-center justify-content-center" style="height: 38px;">
+                        <i class="fa-solid fa-arrow-right me-2"></i> Review & Decision
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Desktop Pending PRs Table (>= 768px) -->
+            <div class="table-responsive d-none d-md-block">
+                <table class="table table-hover align-middle mb-0" style="min-width: 700px;">
                     <thead class="table-light">
                         <tr class="small text-uppercase text-secondary fw-bold">
-                            <th class="ps-4 py-3">Reference & Title</th>
-                            <th class="py-3">Requester</th>
-                            <th class="py-3 text-end">Amount</th>
-                            <th class="py-3 text-center">Current Status</th>
-                            <th class="py-3 text-center">Pending Role</th>
-                            <th class="pe-4 py-3 text-end">Action</th>
+                            <th class="ps-4 py-3" style="min-width: 200px;">Reference & Title</th>
+                            <th class="py-3" style="min-width: 150px;">Requester</th>
+                            <th class="py-3 text-end" style="min-width: 110px;">Amount</th>
+                            <th class="py-3 text-center" style="min-width: 130px;">Current Status</th>
+                            <th class="py-3 text-center" style="min-width: 130px;">Pending Role</th>
+                            <th class="pe-4 py-3 text-end" style="min-width: 150px;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -179,16 +273,16 @@
                                     {% endif %}
                                 </div>
                             </td>
-                            <td><span class="small text-dark fw-semibold">{{ pr.requester.email }}</span></td>
-                            <td class="text-end fw-bold text-navy">
+                            <td><span class="small text-dark fw-semibold text-truncate d-inline-block" style="max-width: 160px;">{{ pr.requester.email }}</span></td>
+                            <td class="text-end fw-bold text-navy text-nowrap">
                                 ${{ pr.total_amount|floatformat:2 }}
                                 {% if pr.status == 'BUDGET_REVIEW' %}
-                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0 small d-block mt-1" style="font-size: 0.68rem;">
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0 small d-block mt-1 text-nowrap" style="font-size: 0.68rem;">
                                     <i class="fa-solid fa-triangle-exclamation me-1"></i>Over Budget
                                 </span>
                                 {% endif %}
                             </td>
-                            <td class="text-center">
+                            <td class="text-center text-nowrap">
                                 {% if pr.status == 'BUDGET_REVIEW' %}
                                 <span class="badge bg-danger text-white rounded-pill px-3 py-1">
                                     <i class="fa-solid fa-triangle-exclamation me-1"></i> Budget Review
@@ -199,7 +293,7 @@
                                 </span>
                                 {% endif %}
                             </td>
-                            <td class="text-center">
+                            <td class="text-center text-nowrap">
                                 {% if pr.status == 'MANAGER_REVIEW' %}
                                     <span class="text-muted small"><i class="fa-solid fa-user-tie me-1"></i> Department Approver</span>
                                 {% elif pr.status == 'BUDGET_REVIEW' %}
@@ -208,9 +302,15 @@
                                     <span class="text-muted small"><i class="fa-solid fa-user-tie me-1"></i> Routing...</span>
                                 {% endif %}
                             </td>
+<<<<<<< Updated upstream
                             <td class="pe-4 text-end">
                                 <a href="{% url 'requisition_detail' pr.pk %}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm">
                                     <i class="fa-solid fa-eye me-1"></i> View Details
+=======
+                            <td class="pe-4 text-end" style="white-space: nowrap !important; min-width: 190px;">
+                                <a href="{% url 'requisition_detail' pr.pk %}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm text-nowrap d-inline-flex align-items-center" style="height: 34px;">
+                                    <i class="fa-solid fa-arrow-right me-1.5"></i> Review & Decision
+>>>>>>> Stashed changes
                                 </a>
                             </td>
                         </tr>

@@ -1,115 +1,348 @@
 {% extends 'base.html' %}
 
-{% block navbar %}
-<!-- Top Navigation Bar for Department Approver -->
-<nav class="navbar navbar-dark bg-dark shadow-sm py-2 sticky-top border-bottom border-secondary border-opacity-25">
-    <div class="container-fluid px-3 px-lg-4">
-        <div class="d-flex align-items-center">
-            <!-- Mobile / Tablet Hamburger Button -->
-            <button class="btn btn-outline-light btn-sm d-lg-none me-2 rounded-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#approverSidebar" aria-controls="approverSidebar" aria-label="Toggle navigation">
-                <i class="fa-solid fa-bars"></i>
-            </button>
-            <a href="/" class="navbar-brand d-flex align-items-center text-white me-2 mb-0">
-                <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
-                <span class="fs-5 fw-bold">ProcureSphere <span class="text-primary fw-light">360</span></span>
-            </a>
-            <span class="badge bg-secondary bg-opacity-25 text-white border border-secondary border-opacity-50 px-2.5 py-1 rounded-pill d-none d-sm-inline-flex align-items-center ms-2" style="font-size: 0.75rem;">
-                <i class="fa-solid fa-user-check text-info me-1"></i> Department Approver
-            </span>
-        </div>
+{% block title %}Department Approver Portal — ProcureSphere 360{% endblock %}
 
-        <div class="d-flex align-items-center gap-2">
-            {% if user.is_authenticated %}
-            <div class="d-flex align-items-center px-2 px-sm-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary border-opacity-50 text-white">
-                <i class="fa-solid fa-circle-user text-info me-2 fs-5"></i>
-                <div class="text-start leading-tight me-2 d-none d-sm-block">
-                    <div class="fw-semibold text-white small text-truncate" style="max-width: 160px;" title="{{ user.email }}">
-                        {{ user.email }}
-                    </div>
-                    <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">
-                        {{ user.role_code|default:"DEPT_APPROVER" }}
-                    </div>
-                </div>
-            </div>
-            <a href="/approvals/inbox/" class="btn btn-outline-warning btn-sm rounded-pill px-3 position-relative d-inline-flex align-items-center" title="Approvals Inbox">
-                <i class="fa-solid fa-bell me-1"></i> <span class="d-none d-sm-inline">Inbox</span>
-                {% if pending_approvals_count > 0 %}
-                <span class="badge bg-danger rounded-pill ms-1">{{ pending_approvals_count }}</span>
-                {% endif %}
-            </a>
-            <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-3" title="Sign Out">
-                <i class="fa-solid fa-arrow-right-from-bracket me-1"></i> <span class="d-none d-sm-inline">Sign Out</span>
-            </a>
-            {% endif %}
-        </div>
-    </div>
-</nav>
+{% block navbar %}
+{# Suppress default base top navbar to match Picture 2's clean enterprise portal architecture #}
 {% endblock navbar %}
 
 {% block layout %}
-<div class="d-flex min-vh-100 position-relative">
-    <!-- Responsive Offcanvas Dark Sidebar for Department Approver -->
-    <aside class="offcanvas-lg offcanvas-start bg-dark text-white border-end border-secondary border-opacity-25" tabindex="-1" id="approverSidebar" aria-labelledby="approverSidebarLabel" style="width: 260px; flex-shrink: 0; min-height: calc(100vh - 56px);">
-        <div class="d-flex flex-column h-100 w-100 p-3">
-            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-secondary border-opacity-25 d-lg-none">
-                <div class="d-flex align-items-center" id="approverSidebarLabel">
-                    <i class="fa-solid fa-layer-group text-primary me-2"></i>
-                    <span class="fw-bold text-white">Approver Menu</span>
+<!-- Mobile & Tablet Sidebar Backdrop Overlay -->
+<div id="approverSidebarBackdrop" class="approver-backdrop d-lg-none" onclick="toggleApproverSidebar()"></div>
+
+<div class="approver-app-layout d-flex min-vh-100 bg-slate-50">
+
+    <!-- ========================================================================= -->
+    <!-- 1. STICKY DARK SIDEBAR (ProcureSphere 360 Dark Theme - Matching Picture 2)-->
+    <!-- ========================================================================= -->
+    <aside id="approverSidebar" class="approver-sidebar bg-dark text-white border-end border-secondary border-opacity-25 d-flex flex-column flex-shrink-0 shadow-sm" style="width: 268px;">
+        
+        <!-- Sidebar Brand Header -->
+        <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
+            <a href="/" class="d-flex align-items-center text-white text-decoration-none">
+                <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
+                <div>
+                    <div class="brand-title fw-bold font-heading lh-1 text-white fs-6">ProcureSphere <span class="text-primary fw-light">360</span></div>
+                    <span class="badge bg-info text-dark rounded-pill fw-bold mt-1" style="font-size: 0.62rem; letter-spacing: 0.04em;">
+                        DEPARTMENT APPROVER
+                    </span>
                 </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#approverSidebar" aria-label="Close navigation"></button>
-            </div>
+            </a>
+            <!-- Mobile/Tablet Close Button -->
+            <button class="btn btn-link text-white-50 p-1 d-lg-none" type="button" aria-label="Close Navigation" onclick="toggleApproverSidebar()">
+                <i class="fa-solid fa-xmark fs-5"></i>
+            </button>
+        </div>
 
-            <h6 class="text-uppercase text-light text-opacity-75 fw-bold mb-3 small d-none d-lg-block">
-                <i class="fa-solid fa-compass me-2 text-primary"></i>Approver Menu
-            </h6>
-
-            <ul class="nav nav-pills flex-column gap-1 w-100">
+        <!-- Sidebar Navigation Items (Dedicated Routes) -->
+        <div class="sidebar-nav-container flex-grow-1 overflow-y-auto px-2 py-3">
+            <ul class="nav nav-pills flex-column gap-1 small" id="sidebarMenu">
+                <li class="nav-section-label text-uppercase text-secondary fw-bold px-2 pt-1 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">
+                    APPROVER &amp; WORKFLOW
+                </li>
                 <li class="nav-item">
-                    <a href="/"
-                        class="nav-link rounded-3 sidebar-link {% if request.path == '/' %}active bg-primary fw-bold text-white shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
-                        <i class="fa-solid fa-chart-pie me-2 text-center" style="width: 20px;"></i> Dashboard
+                    <a href="/" class="nav-link approver-nav-link rounded-3 py-2 px-3 small {% if request.path == '/' or request.path == '/approver/dashboard/' %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-chart-pie me-2"></i>
+                        <span>Department Dashboard</span>
                     </a>
                 </li>
-                <li class="nav-item mt-2">
-                    <div class="text-uppercase text-secondary text-opacity-75 fw-bold mb-2 small px-2" style="font-size: 0.68rem; letter-spacing: 0.08em;">Approvals</div>
-                    <a href="/approvals/inbox/"
-                        class="nav-link rounded-3 sidebar-link {% if '/approvals/' in request.path and request.GET.tab != 'history' %}active bg-primary fw-bold text-white shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
-                        <i class="fa-solid fa-square-check me-2 text-center" style="width: 20px;"></i> Pending Approvals
+                <li class="nav-item">
+                    <a href="/approvals/inbox/" class="nav-link approver-nav-link rounded-3 py-2 px-3 small d-flex align-items-center justify-content-between {% if '/approvals/' in request.path and request.GET.tab != 'history' %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <span class="d-flex align-items-center">
+                            <i class="fa-solid fa-square-check me-2"></i>
+                            <span>Pending Approvals</span>
+                        </span>
+                        {% if metrics.pending_count > 0 %}
+                        <span class="badge bg-warning text-dark rounded-pill fw-bold ms-auto" style="font-size: 0.68rem;">{{ metrics.pending_count }}</span>
+                        {% endif %}
                     </a>
                 </li>
-                <li class="nav-item mt-2">
-                    <div class="text-uppercase text-secondary text-opacity-75 fw-bold mb-2 small px-2" style="font-size: 0.68rem; letter-spacing: 0.08em;">Requisitions</div>
-                    <a href="/requisitions/"
-                        class="nav-link rounded-3 sidebar-link {% if '/requisitions/' in request.path %}active bg-primary fw-bold text-white shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
-                        <i class="fa-solid fa-list me-2 text-center" style="width: 20px;"></i> Department PRs
+                <li class="nav-item">
+                    <a href="/requisitions/" class="nav-link approver-nav-link rounded-3 py-2 px-3 small {% if '/requisitions/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-list me-2"></i>
+                        <span>Department PRs</span>
                     </a>
                 </li>
-                <li class="nav-item mt-2">
-                    <div class="text-uppercase text-secondary text-opacity-75 fw-bold mb-2 small px-2" style="font-size: 0.68rem; letter-spacing: 0.08em;">Tracking</div>
-                    <a href="/approvals/inbox/?tab=history"
-                        class="nav-link rounded-3 sidebar-link {% if request.GET.tab == 'history' %}active bg-primary fw-bold text-white shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
-                        <i class="fa-solid fa-timeline me-2 text-center" style="width: 20px;"></i> My Approvals
+                <li class="nav-item">
+                    <a href="/approvals/inbox/?tab=history" class="nav-link approver-nav-link rounded-3 py-2 px-3 small {% if request.GET.tab == 'history' %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-timeline me-2"></i>
+                        <span>My Approvals</span>
                     </a>
                 </li>
             </ul>
+        </div>
 
-            <div class="mt-auto pt-4 border-top border-secondary border-opacity-25 d-lg-none">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="text-start leading-tight" style="min-width: 0;">
-                        <div class="fw-semibold text-white small text-truncate" style="max-width: 140px;" title="{{ user.email }}">{{ user.email }}</div>
-                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">DEPT_APPROVER</div>
+        <!-- Sidebar Footer -->
+        <div class="sidebar-footer border-top border-secondary border-opacity-25 px-3 py-3 mt-auto">
+            <div class="d-flex align-items-center justify-content-between gap-2">
+                <div class="d-flex align-items-center" style="min-width: 0;">
+                    <div class="avatar-circle-sm bg-info text-dark fw-bold d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 me-2" style="width: 32px; height: 32px; font-size: 0.85rem;">
+                        {{ user.email|slice:":1"|upper|default:"D" }}
                     </div>
-                    <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-3" title="Sign Out">
-                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                    </a>
+                    <div style="min-width: 0;">
+                        <div class="small fw-semibold text-white text-truncate" title="{{ user.email }}">{{ user.email }}</div>
+                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Department Approver</div>
+                    </div>
                 </div>
+                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill" title="Sign out">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    <span class="visually-hidden">Sign out</span>
+                </a>
             </div>
         </div>
     </aside>
 
-    <!-- Main Content Area -->
-    <main class="flex-grow-1 p-3 p-md-4 p-xl-4 bg-light overflow-auto" style="min-width: 0;">
-        {% block content %}{% endblock %}
-    </main>
+    <!-- ========================================================================= -->
+    <!-- 2. MAIN CONTENT WRAPPER                                                   -->
+    <!-- ========================================================================= -->
+    <div class="approver-main-content flex-grow-1 d-flex flex-column min-vh-100">
+        
+        <!-- Top Sticky Header Bar (Sticky on Desktop, Tablet, and Mobile - Matching Picture 2) -->
+        <header class="approver-topbar sticky-top bg-white border-bottom px-3 px-md-4 py-2 d-flex align-items-center justify-content-between shadow-xs z-3">
+            <div class="d-flex align-items-center gap-2 gap-md-3">
+                <!-- Hamburger Button for Mobile & Tablet -->
+                <button class="btn btn-outline-secondary btn-sm rounded-3 d-lg-none d-flex align-items-center justify-content-center" type="button" aria-label="Toggle Navigation" onclick="toggleApproverSidebar()" style="width: 36px; height: 36px;">
+                    <i class="fa-solid fa-bars fs-6"></i>
+                </button>
+                
+                <!-- Scope Switcher Dropdown (Matching Picture 2) -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-light border dropdown-toggle fw-semibold rounded-pill px-2 px-md-3 py-1 text-dark d-flex align-items-center gap-1 gap-md-2 shadow-2xs" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fa-solid fa-globe text-primary"></i>
+                        <span id="activeScopeLabel" class="d-none d-sm-inline">Scope: {{ user_department.name|default:"IT Infrastructure Operations" }}</span>
+                        <span class="d-inline d-sm-none">{{ user_department.code|default:"Dept" }}</span>
+                    </button>
+                    <ul class="dropdown-menu shadow-sm border-0 small">
+                        <li><a class="dropdown-item active" href="javascript:void(0)">🌐 {{ user_department.name|default:"Department Scope" }}</a></li>
+                        <li><a class="dropdown-item" href="/requisitions/"><i class="fa-solid fa-list me-2 text-primary"></i> Department Requisitions</a></li>
+                        <li><a class="dropdown-item" href="/approvals/inbox/"><i class="fa-solid fa-inbox me-2 text-warning"></i> Pending Approvals</a></li>
+                        <li><a class="dropdown-item" href="/budgets/"><i class="fa-solid fa-vault me-2 text-info"></i> Cost Center Budgets</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- User Pill & Signout Button (EXACT MATCHING PICTURE 2) -->
+            <div class="d-flex align-items-center gap-2 gap-md-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar-circle-sm bg-primary text-white fw-bold d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 shadow-2xs">
+                        {{ user.email|slice:":1"|upper|default:"A" }}
+                    </div>
+                    <div class="d-none d-md-block text-start leading-tight">
+                        <div class="fw-bold text-dark small">{{ user.email|default:"approver@hpe.com" }}</div>
+                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Department Approver</div>
+                    </div>
+                </div>
+                <!-- Picture 2 Sign Out Button -->
+                <a href="/logout/" class="btn btn-outline-secondary btn-sm rounded-pill px-2 px-md-3 fw-semibold d-flex align-items-center gap-1 shadow-2xs">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    <span class="d-none d-sm-inline">Sign out</span>
+                </a>
+            </div>
+        </header>
+
+        <!-- Main Body Content Block -->
+        <main class="approver-page-body flex-grow-1 p-2 p-sm-3 p-md-4">
+            {% block approver_content %}
+                {% block content %}{% endblock content %}
+            {% endblock approver_content %}
+        </main>
+    </div>
 </div>
-{% endblock layout %}
+
+<style>
+    /* ProcureSphere 360 Approver Design Tokens - Matching Picture 2 */
+    :root {
+        --hpe-navy: #0F172A;
+        --hpe-cyan: #00B0B9;
+        --hpe-emerald: #10B981;
+        --hpe-rose: #F43F5E;
+        --hpe-indigo: #6366F1;
+        --slate-50: #F8FAFC;
+        --slate-100: #F1F5F9;
+        --slate-200: #E2E8F0;
+    }
+
+    .bg-slate-50 { background-color: var(--slate-50) !important; }
+    .bg-slate-100 { background-color: var(--slate-100) !important; }
+
+    /* Sticky Navbar across all screen sizes */
+    .approver-topbar {
+        position: -webkit-sticky !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 1030 !important;
+        background-color: rgba(255, 255, 255, 0.98) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border-bottom: 1px solid #E2E8F0 !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .approver-main-content {
+        min-width: 0;
+        overflow-x: clip;
+    }
+
+    .approver-sidebar,
+    .sidebar-nav-container {
+        overscroll-behavior: contain !important;
+        overscroll-behavior-y: contain !important;
+    }
+
+    /* Desktop Sidebar (>= 992px) */
+    @media (min-width: 992px) {
+        .approver-sidebar {
+            width: 268px !important;
+            min-width: 268px !important;
+            height: 100vh;
+            position: -webkit-sticky;
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+            background-color: #212529 !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
+        }
+        .approver-backdrop {
+            display: none !important;
+        }
+    }
+
+    /* Mobile & Tablet Responsive Sidebar (< 992px) */
+    @media (max-width: 991.98px) {
+        .approver-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 280px;
+            max-width: 85vw;
+            height: 100vh;
+            z-index: 1050;
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background-color: #212529 !important;
+            box-shadow: none;
+        }
+        .approver-sidebar.show {
+            transform: translateX(0);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.45) !important;
+        }
+        .approver-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 1040;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .approver-backdrop.show {
+            opacity: 1;
+            visibility: visible;
+        }
+    }
+
+    /* Navigation links matching Picture 2 */
+    .approver-nav-link {
+        font-size: 0.875rem !important;
+        transition: all 0.18s ease-in-out;
+        border: 1px solid transparent;
+        color: rgba(255, 255, 255, 0.75) !important;
+    }
+    .approver-nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.08) !important;
+        color: #FFFFFF !important;
+        transform: none;
+    }
+    .approver-nav-link.active {
+        background-color: #0d6efd !important;
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+        border-color: transparent !important;
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.25) !important;
+    }
+    .approver-nav-link.active i {
+        color: #FFFFFF !important;
+    }
+
+    /* Avatar and Pulse */
+    .avatar-circle-sm {
+        width: 32px;
+        height: 32px;
+        font-size: 0.85rem;
+    }
+    .status-dot-pulse {
+        width: 8px;
+        height: 8px;
+        background-color: var(--hpe-emerald);
+        border-radius: 50%;
+        display: inline-block;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        animation: pulse-green 2s infinite;
+    }
+    @keyframes pulse-green {
+        0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    .shadow-xs {
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+    }
+    .shadow-2xs {
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    }
+</style>
+
+<script>
+    function toggleApproverSidebar() {
+        const sidebar = document.getElementById('approverSidebar');
+        const backdrop = document.getElementById('approverSidebarBackdrop');
+        if (sidebar) {
+            sidebar.classList.toggle('show');
+        }
+        if (backdrop) {
+            backdrop.classList.toggle('show');
+        }
+    }
+
+    // Auto-close sidebar on mobile/tablet when a route is clicked & isolate sidebar mouse wheel scroll
+    document.addEventListener('DOMContentLoaded', () => {
+        const sidebar = document.getElementById('approverSidebar');
+        if (sidebar) {
+            sidebar.addEventListener('wheel', (e) => {
+                const nav = sidebar.querySelector('.sidebar-nav-container');
+                if (nav && nav.scrollHeight > nav.clientHeight) {
+                    const atTop = nav.scrollTop <= 0 && e.deltaY < 0;
+                    const atBottom = (nav.scrollHeight - nav.scrollTop - nav.clientHeight <= 1) && e.deltaY > 0;
+                    if (!atTop && !atBottom) {
+                        nav.scrollTop += e.deltaY;
+                    }
+                }
+                e.preventDefault();
+                e.stopPropagation();
+            }, { passive: false });
+        }
+
+        // Close sidebar on Esc key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const sidebar = document.getElementById('approverSidebar');
+                const backdrop = document.getElementById('approverSidebarBackdrop');
+                if (sidebar && sidebar.classList.contains('show')) {
+                    sidebar.classList.remove('show');
+                }
+                if (backdrop && backdrop.classList.contains('show')) {
+                    backdrop.classList.remove('show');
+                }
+            }
+        });
+    });
+</script>
+{% endblock layout %}
