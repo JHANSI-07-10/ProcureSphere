@@ -120,6 +120,17 @@ def generate_purchase_order_service(
         },
     )
 
+    if initial_status == PurchaseOrder.STATUS_ISSUED:
+        from apps.notifications.services import notify_vendor_users
+
+        notify_vendor_users(
+            vendor=vendor,
+            notification_type=Notification.TYPE_PO_ISSUED,
+            title=f"Purchase Order Issued: {po.po_number}",
+            message=f"Purchase Order {po.po_number} for ${po.total_amount:,.2f} has been issued and requires formal acknowledgement.",
+            target_url=f"/vendor/purchase-orders/{po.id}/",
+        )
+
     return po
 
 
@@ -162,6 +173,9 @@ def acknowledge_purchase_order_service(
         },
     )
 
+    from apps.accounts.models import Role
+    from apps.notifications.services import notify_role_users
+
     if po.requisition and po.requisition.requester:
         Notification.objects.create(
             recipient=po.requisition.requester,
@@ -170,6 +184,14 @@ def acknowledge_purchase_order_service(
             message=f"Vendor {po.vendor.legal_name} has acknowledged Purchase Order {po.po_number}.",
             target_url=f"/orders/{po.id}/",
         )
+
+    notify_role_users(
+        role_codes=[Role.PROC_EXEC, Role.PROC_MGR, Role.SUPER_ADMIN],
+        notification_type=Notification.TYPE_PO_ACKNOWLEDGED,
+        title=f"PO Acknowledged: {po.po_number}",
+        message=f"Purchase Order {po.po_number} has been acknowledged by {vendor_user.get_full_name() or vendor_user.email} from {po.vendor.legal_name}.",
+        target_url=f"/orders/{po.id}/",
+    )
 
     return po
 

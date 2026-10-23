@@ -238,6 +238,19 @@ def run_3_way_match_service(
         },
     )
 
+    if exceptions:
+        from apps.accounts.models import Role
+        from apps.notifications.models import Notification
+        from apps.notifications.services import notify_role_users
+
+        notify_role_users(
+            role_codes=[Role.FINANCE_AP, Role.SUPER_ADMIN],
+            notification_type=Notification.TYPE_EXCEPTION_RAISED,
+            title=f"3-Way Match Exception: Invoice {invoice.invoice_number}",
+            message=f"Invoice {invoice.invoice_number} from {invoice.vendor.legal_name} triggered {len(exceptions)} variance exception(s).",
+            target_url=f"/invoices/{invoice.id}/",
+        )
+
     return invoice, exceptions
 
 

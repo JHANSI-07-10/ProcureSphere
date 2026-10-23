@@ -16,11 +16,16 @@
     <!-- Header & Action Ribbon -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
         <div>
-            <div class="d-flex align-items-center gap-2 mb-1">
+            <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                 <span class="badge bg-dark">{{ event.event_type }}</span>
-                <span class="badge {% if event.status == 'BID_WINDOW' %}bg-success{% elif event.status == 'AWARDED' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
+                <span class="badge {% if event.status == 'BID_WINDOW' %}bg-success{% elif event.status == 'PUBLISHED' %}bg-info text-dark{% elif event.status == 'AWARDED' %}bg-primary{% elif event.status == 'CANCELLED' %}bg-danger{% else %}bg-secondary{% endif %}">
                     {{ event.get_status_display }}
                 </span>
+                {% if event.requisition %}
+                <span class="badge bg-secondary bg-opacity-25 text-dark border">
+                    <i class="fa-solid fa-file-invoice me-1"></i>PR: {{ event.requisition.pr_number }} &bull; {{ event.requisition.title }}{% if event.requisition.department %} ({{ event.requisition.department.name }}){% endif %}
+                </span>
+                {% endif %}
                 {% if event.is_sealed %}
                 <span class="badge bg-secondary bg-opacity-25 text-dark border">
                     <i class="fa-solid fa-lock me-1"></i> Sealed Bidding Protocol
@@ -42,6 +47,14 @@
                     <i class="fa-solid fa-paper-plane me-1"></i> Prepare & Submit Bid
                 </a>
                 {% endif %}
+            {% elif is_future_start or event.status == 'PUBLISHED' %}
+            <button class="btn btn-outline-primary btn-sm rounded-pill px-3" disabled>
+                <i class="fa-solid fa-clock me-1"></i> Bid Window Opens {{ event.bid_start_date|date:"M d, Y H:i" }}
+            </button>
+            {% elif event.status == 'CANCELLED' %}
+            <button class="btn btn-danger btn-sm rounded-pill px-3" disabled>
+                <i class="fa-solid fa-ban me-1"></i> Event Cancelled
+            </button>
             {% else %}
             <button class="btn btn-secondary btn-sm rounded-pill px-3" disabled>
                 <i class="fa-solid fa-lock me-1"></i> Bid Window Closed
@@ -53,6 +66,39 @@
             </button>
         </div>
     </div>
+
+    {% if event.status == 'AWARDED' %}
+        {% if is_winner %}
+        <div class="alert alert-success border-0 shadow-sm d-flex flex-wrap align-items-center justify-content-between py-3 px-4 mb-4 rounded-3 bg-success bg-opacity-10 border-start border-success border-4">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-success text-white p-2 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                    <i class="fa-solid fa-trophy fs-5"></i>
+                </div>
+                <div>
+                    <h6 class="fw-bold mb-1 text-success">Award Decision Confirmed — Congratulations!</h6>
+                    <div class="small text-dark">
+                        Your proposal for <strong>{{ event.event_number }}</strong> has been officially awarded by the Procurement Board.
+                        {% if resulting_po %}
+                        Purchase Order <strong>{{ resulting_po.po_number }}</strong> has been issued.
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% if resulting_po %}
+            <a href="{% url 'vendor_purchase_order_detail' po_id=resulting_po.id %}" class="btn btn-success btn-sm rounded-pill px-4 shadow-sm mt-2 mt-md-0">
+                <i class="fa-solid fa-file-invoice me-1"></i> View & Acknowledge PO &rarr;
+            </a>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="alert alert-secondary border-0 shadow-sm d-flex align-items-center py-2 px-3 mb-4 rounded-3">
+            <i class="fa-solid fa-flag-checkered text-secondary fs-4 me-3"></i>
+            <div class="small text-dark">
+                <strong>Sourcing Event Concluded:</strong> Evaluation has finalized and an award decision has been approved for this event. Bidding is formally closed.
+            </div>
+        </div>
+        {% endif %}
+    {% endif %}
 
     <!-- Sealed Privacy Alert Notice -->
     <div class="alert alert-info border-0 shadow-sm d-flex align-items-center py-2 px-3 mb-4 rounded-3">
@@ -132,6 +178,47 @@
                                     <td class="fw-semibold text-dark">{{ r_line.item_description }}</td>
                                     <td class="fw-bold text-dark">{{ r_line.quantity }}</td>
                                     <td class="small text-muted">{{ r_line.unit_of_measure|default:"EA" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- PR Reference Specification Attachments (if Requisition linked) -->
+            {% if reference_attachments %}
+            <div class="card glass-card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom border-light py-3">
+                    <h6 class="mb-0 fw-bold text-dark">
+                        <i class="fa-solid fa-paperclip text-primary me-2"></i> Specification Documents & Event Attachments
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light small text-uppercase text-secondary">
+                                <tr>
+                                    <th class="ps-4">#</th>
+                                    <th>Document Title</th>
+                                    <th>File Size</th>
+                                    <th class="text-end pe-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for att in reference_attachments %}
+                                <tr>
+                                    <td class="ps-4 text-muted small">{{ forloop.counter }}</td>
+                                    <td class="fw-semibold text-dark">
+                                        <i class="fa-solid fa-file-pdf text-danger me-2"></i>{{ att.title }}
+                                    </td>
+                                    <td class="small text-muted">{{ att.file_size_display|default:"PDF Document" }}</td>
+                                    <td class="text-end pe-4">
+                                        <a href="{% url 'vendor_document_download' doc_type='event' doc_id=att.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                            <i class="fa-solid fa-download me-1"></i> Download
+                                        </a>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -254,6 +341,28 @@
                             <a href="{% url 'vendor_bid_create' event_id=event.id %}" class="btn btn-primary btn-sm rounded-pill py-2 shadow-sm">
                                 Prepare Bid Now &rarr;
                             </a>
+                            {% endif %}
+                        {% elif is_future_start or event.status == 'PUBLISHED' %}
+                        <button class="btn btn-outline-primary btn-sm rounded-pill py-2" disabled>
+                            Window Opens {{ event.bid_start_date|date:"M d, H:i" }}
+                        </button>
+                        {% elif event.status == 'CANCELLED' %}
+                        <button class="btn btn-danger btn-sm rounded-pill py-2" disabled>
+                            Event Cancelled
+                        </button>
+                        {% elif event.status == 'AWARDED' %}
+                            {% if is_winner and resulting_po %}
+                            <a href="{% url 'vendor_purchase_order_detail' po_id=resulting_po.id %}" class="btn btn-success btn-sm rounded-pill py-2 shadow-sm">
+                                <i class="fa-solid fa-trophy me-1"></i> Awarded &bull; View PO &rarr;
+                            </a>
+                            {% elif is_winner %}
+                            <span class="btn btn-success btn-sm rounded-pill py-2 disabled">
+                                <i class="fa-solid fa-trophy me-1"></i> Awarded (PO Pending)
+                            </span>
+                            {% else %}
+                            <button class="btn btn-secondary btn-sm rounded-pill py-2" disabled>
+                                <i class="fa-solid fa-flag-checkered me-1"></i> Event Awarded
+                            </button>
                             {% endif %}
                         {% else %}
                         <button class="btn btn-secondary btn-sm rounded-pill py-2" disabled>

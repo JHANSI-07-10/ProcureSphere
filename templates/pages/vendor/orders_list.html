@@ -101,6 +101,9 @@
                                 {% if po.requisition %}
                                 <small class="text-muted font-monospace">{{ po.requisition.pr_number }}</small>
                                 {% endif %}
+                                {% if po.sourcing_event %}
+                                <small class="badge bg-secondary bg-opacity-10 text-dark border ms-1 font-monospace">{{ po.sourcing_event.event_number }}</small>
+                                {% endif %}
                             </td>
                             <td class="fw-bold text-dark fs-6">${{ po.total_amount|floatformat:2 }}</td>
                             <td>

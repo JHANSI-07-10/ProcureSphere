@@ -17,11 +17,38 @@
             <p class="text-muted mb-0 small">Track submitted invoices, match exceptions, and payment status.</p>
         </div>
         <div>
-            <a href="{% url 'vendor_purchase_orders_list' %}" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
-                <i class="fa-solid fa-file-invoice-dollar me-2"></i> Submit Invoice
-            </a>
+            {% if eligible_pos %}
+                {% if eligible_pos|length == 1 %}
+                    <a href="{% url 'vendor_invoice_submit' eligible_pos.first.id %}" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+                        <i class="fa-solid fa-file-invoice-dollar me-2"></i> Submit Invoice
+                    </a>
+                {% else %}
+                    <div class="dropdown">
+                        <button class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm dropdown-toggle" type="button" id="submitInvoiceDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa-solid fa-file-invoice-dollar me-2"></i> Submit Invoice
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" aria-labelledby="submitInvoiceDropdown">
+                            <li class="dropdown-header small text-uppercase text-secondary">Select Purchase Order</li>
+                            {% for p in eligible_pos %}
+                            <li>
+                                <a class="dropdown-item py-2" href="{% url 'vendor_invoice_submit' p.id %}">
+                                    <div class="fw-semibold">{{ p.po_number }}</div>
+                                    <small class="text-muted">${{ p.total_amount }} &bull; {{ p.get_status_display }}</small>
+                                </a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+            {% else %}
+                <a href="/vendor/purchase-orders/" class="btn btn-outline-secondary rounded-pill px-4 fw-bold shadow-sm" title="Review Purchase Orders">
+                    <i class="fa-solid fa-file-invoice-dollar me-2"></i> Submit Invoice
+                </a>
+            {% endif %}
         </div>
     </div>
+
+    {% include 'partials/messages.html' %}
 
     <div class="card border-0 shadow-sm rounded-4">
         <div class="card-body p-0">

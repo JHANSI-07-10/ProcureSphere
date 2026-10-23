@@ -32,7 +32,7 @@
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                 <ul class="nav nav-pills gap-2">
                     <li class="nav-item">
-                        <a class="nav-link rounded-pill px-3 py-1 small fw-semibold {% if tab == 'invitations' %}active{% else %}text-secondary{% endif %}" href="?tab=invitations">
+                        <a class="nav-link rounded-pill px-3 py-1 small fw-semibold {% if tab == 'invitations' or tab == 'all' or tab == 'invited' %}active{% else %}text-secondary{% endif %}" href="?tab=invitations">
                             All Invitations <span class="badge bg-secondary bg-opacity-25 text-dark ms-1">{{ tab_counts.all }}</span>
                         </a>
                     </li>
@@ -76,7 +76,7 @@
                         <tr>
                             <th class="ps-4">Event Ref</th>
                             <th>Type</th>
-                            <th>Event Title</th>
+                            <th>Event Title & Scope</th>
                             <th>Bid Window</th>
                             <th>Event Status</th>
                             <th>My Bid Status</th>
@@ -98,18 +98,26 @@
                                 <div class="fw-semibold text-dark text-truncate" style="max-width: 280px;">
                                     {{ item.event.title }}
                                 </div>
+                                {% if item.event.requisition %}
+                                <div class="small text-muted mt-1">
+                                    <span class="badge bg-secondary bg-opacity-10 text-dark border">
+                                        <i class="fa-solid fa-file-lines me-1"></i>{{ item.event.requisition.pr_number }}
+                                        {% if item.event.requisition.department %} &bull; {{ item.event.requisition.department.name }}{% endif %}
+                                    </span>
+                                </div>
+                                {% endif %}
                                 <small class="text-muted text-truncate d-block" style="max-width: 280px;">
                                     {{ item.event.description|truncatechars:70 }}
                                 </small>
                             </td>
                             <td class="small">
-                                <div class="text-muted"><i class="fa-regular fa-calendar-check me-1"></i>Start: {{ item.event.bid_start_date|date:"M d, Y" }}</div>
+                                <div class="text-muted"><i class="fa-regular fa-calendar-check me-1"></i>Start: {{ item.event.bid_start_date|date:"M d, Y H:i" }}</div>
                                 <div class="{% if item.is_open %}text-danger fw-semibold{% else %}text-muted{% endif %}">
                                     <i class="fa-solid fa-clock me-1"></i>Close: {{ item.event.bid_end_date|date:"M d, Y H:i" }}
                                 </div>
                             </td>
                             <td>
-                                <span class="badge {% if item.event.status == 'BID_WINDOW' %}bg-success{% elif item.event.status == 'DRAFT' %}bg-secondary{% elif item.event.status == 'AWARDED' %}bg-info text-dark{% else %}bg-warning text-dark{% endif %}">
+                                <span class="badge {% if item.event.status == 'BID_WINDOW' %}bg-success{% elif item.event.status == 'PUBLISHED' %}bg-info text-dark{% elif item.event.status == 'AWARDED' %}bg-primary{% elif item.event.status == 'CANCELLED' %}bg-danger{% else %}bg-secondary{% endif %}">
                                     {{ item.event.get_status_display }}
                                 </span>
                             </td>
@@ -119,6 +127,8 @@
                                     <a href="{% url 'vendor_bid_detail' bid_id=item.bid.id %}" class="badge bg-success text-decoration-none">
                                         <i class="fa-solid fa-lock me-1"></i> {{ item.bid.status }} (V{{ item.bid.version }})
                                     </a>
+                                    {% elif item.bid.status == 'WITHDRAWN' %}
+                                    <span class="badge bg-danger text-decoration-none">Withdrawn</span>
                                     {% else %}
                                     <a href="{% url 'vendor_bid_create' event_id=item.event.id %}" class="badge bg-warning text-dark text-decoration-none">
                                         Draft (V{{ item.bid.version }})
@@ -143,6 +153,10 @@
                                                 Prepare Bid
                                             </a>
                                         {% endif %}
+                                    {% elif item.is_future or item.event.status == 'PUBLISHED' %}
+                                        <span class="btn btn-outline-info disabled" style="font-size: 0.75rem;">
+                                            <i class="fa-solid fa-clock me-1"></i> Opens {{ item.event.bid_start_date|date:"M d" }}
+                                        </span>
                                     {% endif %}
                                 </div>
                             </td>

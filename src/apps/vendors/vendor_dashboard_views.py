@@ -22,8 +22,10 @@ from apps.invoices.services import create_supplier_invoice_service
 from apps.notifications.models import Notification
 from apps.orders.models import PurchaseOrder
 from apps.orders.services import acknowledge_purchase_order_service
+from apps.requisitions.models import PRAttachment
 from apps.scorecards.models import VendorScorecard
 from apps.sourcing.models import (
+    AwardDecision,
     BidAttachment,
     BidInvite,
     Clarification,
@@ -35,6 +37,8 @@ from apps.sourcing.services import (
     ask_clarification_service,
     save_draft_bid_service,
     submit_vendor_bid_service,
+    sync_all_event_windows,
+    sync_event_window_status,
     upload_bid_attachment_service,
     validate_bid_service,
     withdraw_vendor_bid_service,
@@ -111,6 +115,10 @@ def vendor_dashboard_overview_view(request):
     """
     vendor = request.vendor
     now = timezone.now()
+    try:
+        sync_all_event_windows(now=now)
+    except Exception:
+        pass
 
     metrics = get_vendor_dashboard_metrics(vendor, request.user)
 
@@ -123,9 +131,11 @@ def vendor_dashboard_overview_view(request):
     )
 
     # Section B: Upcoming Bid Deadlines (Events closing within 7 days)
-    upcoming_events = SourcingEvent.objects.filter(
+    upcoming_events = SourcingEvent.objects.exclude(
+        status=SourcingEvent.STATUS_DRAFT
+    ).filter(
         invitations__vendor=vendor,
-        status=SourcingEvent.STATUS_BID_WINDOW,
+        status__in=[SourcingEvent.STATUS_BID_WINDOW, SourcingEvent.STATUS_PUBLISHED],
         bid_end_date__gte=now,
     ).order_by("bid_end_date")[:5]
 
@@ -366,21 +376,26 @@ def vendor_sourcing_list_view(request):
     Vendor Sourcing events list:
     Vendor sees ONLY sourcing events for which they have a valid invitation.
     Tabs:
-    - invitations (All invited events)
-    - active (Currently in BID_WINDOW and open)
+    - invitations / all / invited (All invited events)
+    - active (Currently in PUBLISHED or BID_WINDOW and open)
     - closing (Closing in ≤ 3 days)
     - closed (Bid window ended or evaluated)
     """
     vendor = request.vendor
     now = timezone.now()
-    tab = request.GET.get("tab", "invitations")
+    try:
+        sync_all_event_windows(now=now)
+    except Exception:
+        pass
+
+    tab = request.GET.get("tab", "invitations").strip().lower()
     query = request.GET.get("q", "").strip()
 
-    # Base query: events where vendor has invitation
+    # Base query: events where vendor has invitation (strictly excluding DRAFT)
     invites_qs = (
         BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
         .filter(vendor=vendor)
-        .select_related("event", "event__requisition")
+        .select_related("event", "event__requisition", "event__requisition__department")
         .order_by("-event__created_at")
     )
 
@@ -393,12 +408,12 @@ def vendor_sourcing_list_view(request):
 
     if tab == "active":
         invites_qs = invites_qs.filter(
-            event__status=SourcingEvent.STATUS_BID_WINDOW,
+            event__status__in=[SourcingEvent.STATUS_BID_WINDOW, SourcingEvent.STATUS_PUBLISHED],
             event__bid_end_date__gte=now,
         )
     elif tab == "closing":
         invites_qs = invites_qs.filter(
-            event__status=SourcingEvent.STATUS_BID_WINDOW,
+            event__status__in=[SourcingEvent.STATUS_BID_WINDOW, SourcingEvent.STATUS_PUBLISHED],
             event__bid_end_date__gte=now,
             event__bid_end_date__lte=now + timedelta(days=3),
         )
@@ -423,13 +438,18 @@ def vendor_sourcing_list_view(request):
     for inv in invites_qs:
         event = inv.event
         bid = vendor_bids_map.get(event.id)
-        is_open = event.status == SourcingEvent.STATUS_BID_WINDOW and event.bid_end_date >= now
+        is_open = (
+            event.status == SourcingEvent.STATUS_BID_WINDOW
+            and event.bid_start_date <= now <= event.bid_end_date
+        )
+        is_future = event.bid_start_date > now
         invitations_data.append(
             {
                 "invite": inv,
                 "event": event,
                 "bid": bid,
                 "is_open": is_open,
+                "is_future": is_future,
             }
         )
 
@@ -441,14 +461,14 @@ def vendor_sourcing_list_view(request):
         "active": BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
         .filter(
             vendor=vendor,
-            event__status=SourcingEvent.STATUS_BID_WINDOW,
+            event__status__in=[SourcingEvent.STATUS_BID_WINDOW, SourcingEvent.STATUS_PUBLISHED],
             event__bid_end_date__gte=now,
         )
         .count(),
         "closing": BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
         .filter(
             vendor=vendor,
-            event__status=SourcingEvent.STATUS_BID_WINDOW,
+            event__status__in=[SourcingEvent.STATUS_BID_WINDOW, SourcingEvent.STATUS_PUBLISHED],
             event__bid_end_date__gte=now,
             event__bid_end_date__lte=now + timedelta(days=3),
         )
@@ -488,18 +508,21 @@ def vendor_sourcing_detail_view(request, event_id):
     Backend enforces invitation-level authorization.
     Changing the ID in the URL for an uninvited event returns 403 Forbidden.
     Shows:
-    - Event Information
-    - Technical Requirements
-    - Commercial Requirements
-    - Required Documents
+    - Event Information & Requisition details
+    - Technical Requirements & Commercial Requirements
+    - Bill of Quantities / Line items
+    - Reference Specification Documents / Attachments
     - Bid Window & Important Dates
     - Clarification History for this event
     - Action buttons: Participate, Prepare Bid, Ask Clarification
     """
     vendor = request.vendor
-    event = get_object_or_404(SourcingEvent, id=event_id)
+    event = get_object_or_404(
+        SourcingEvent.objects.select_related("requisition", "requisition__department"),
+        id=event_id,
+    )
 
-    # BACKEND AUTHORIZATION: Vendor must be invited to this event
+    # BACKEND AUTHORIZATION: Vendor must be invited to this event and event not in DRAFT
     invite = (
         BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
         .filter(event=event, vendor=vendor)
@@ -511,7 +534,16 @@ def vendor_sourcing_detail_view(request, event_id):
         )
 
     now = timezone.now()
-    is_open = event.status == SourcingEvent.STATUS_BID_WINDOW and event.bid_end_date >= now
+    try:
+        sync_event_window_status(event=event, now=now)
+    except Exception:
+        pass
+
+    is_open = (
+        event.status == SourcingEvent.STATUS_BID_WINDOW
+        and event.bid_start_date <= now <= event.bid_end_date
+    )
+    is_future_start = event.bid_start_date > now
 
     # Existing bid by this vendor
     existing_bid = VendorBid.objects.filter(event=event, vendor=vendor).first()
@@ -521,19 +553,45 @@ def vendor_sourcing_detail_view(request, event_id):
         "-created_at"
     )
 
-    # If requisition linked, fetch PR lines as reference specifications
+    # If requisition linked, fetch PR lines as reference specifications and PR attachments
     reference_lines = []
+    reference_attachments = []
     if event.requisition:
         reference_lines = event.requisition.lines.all()
+        reference_attachments = event.requisition.attachments.all()
+
+    # Award and PO resolution for this vendor
+    award_decision = getattr(event, "award_decision", None)
+    if not award_decision:
+        award_decision = (
+            event.award_decisions.filter(status=AwardDecision.STATUS_APPROVED)
+            .select_related("winning_bid__vendor")
+            .first()
+        )
+    is_winner = bool(
+        award_decision
+        and award_decision.winning_bid
+        and award_decision.winning_bid.vendor_id == vendor.id
+    )
+    resulting_po = (
+        PurchaseOrder.objects.filter(sourcing_event=event, vendor=vendor).first()
+        if is_winner
+        else None
+    )
 
     context = {
         "vendor": vendor,
         "event": event,
         "invite": invite,
         "is_open": is_open,
+        "is_future_start": is_future_start,
         "existing_bid": existing_bid,
         "clarifications": clarifications,
         "reference_lines": reference_lines,
+        "reference_attachments": reference_attachments,
+        "award_decision": award_decision,
+        "is_winner": is_winner,
+        "resulting_po": resulting_po,
         "active_nav": "sourcing",
     }
     return render(request, "pages/vendor/sourcing_detail.html", context)
@@ -555,6 +613,11 @@ def vendor_sourcing_participate_view(request, event_id):
     )
     if not invite and not request.user.is_superuser:
         raise PermissionDenied("Access Denied: You do not hold an invitation for this event.")
+
+    try:
+        sync_event_window_status(event=event)
+    except Exception:
+        pass
 
     invite.is_responded = True
     invite.save(update_fields=["is_responded", "updated_at"])
@@ -664,17 +727,29 @@ def vendor_bid_create_view(request, event_id):  # noqa: C901
         )
 
     now = timezone.now()
-    if event.status != SourcingEvent.STATUS_BID_WINDOW:
+    try:
+        sync_event_window_status(event=event, now=now)
+    except Exception:
+        pass
+
+    if event.status == SourcingEvent.STATUS_CANCELLED:
         messages.error(
             request,
-            f"Bidding is closed for event '{event.event_number}'. Event status is '{event.status}'.",
+            f"Event '{event.event_number}' has been cancelled.",
         )
         return redirect("vendor_sourcing_detail", event_id=event.id)
 
-    if now > event.bid_end_date:
+    if now < event.bid_start_date or event.status == SourcingEvent.STATUS_PUBLISHED:
+        messages.warning(
+            request,
+            f"The bid submission window for '{event.event_number}' opens on {event.bid_start_date.strftime('%Y-%m-%d %H:%M')}.",
+        )
+        return redirect("vendor_sourcing_detail", event_id=event.id)
+
+    if event.status != SourcingEvent.STATUS_BID_WINDOW or now > event.bid_end_date:
         messages.error(
             request,
-            f"The bid submission deadline passed on {event.bid_end_date.strftime('%Y-%m-%d %H:%M')}.",
+            f"Bidding is closed for event '{event.event_number}'. Event status is '{event.status}'.",
         )
         return redirect("vendor_sourcing_detail", event_id=event.id)
 
@@ -860,6 +935,15 @@ def vendor_bid_detail_view(request, bid_id):
     versions = bid.versions.all().order_by("-version_number")
     validation_result = validate_bid_service(bid=bid)
 
+    # Award and PO status check
+    award_decision = bid.awards.filter(status=AwardDecision.STATUS_APPROVED).first()
+    is_winner = bool(award_decision)
+    resulting_po = (
+        PurchaseOrder.objects.filter(sourcing_event=bid.event, vendor=vendor).first()
+        if is_winner
+        else None
+    )
+
     context = {
         "vendor": vendor,
         "bid": bid,
@@ -869,6 +953,9 @@ def vendor_bid_detail_view(request, bid_id):
         "can_amend": can_amend,
         "can_withdraw": can_withdraw,
         "validation_result": validation_result,
+        "award_decision": award_decision,
+        "is_winner": is_winner,
+        "resulting_po": resulting_po,
         "active_nav": "bids",
     }
     return render(request, "pages/vendor/bid_detail.html", context)
@@ -1328,15 +1415,28 @@ def vendor_performance_view(request):
 # ==============================================================================
 
 
+ELIGIBLE_INVOICE_STATUSES = [
+    PurchaseOrder.STATUS_ISSUED,
+    PurchaseOrder.STATUS_ACKNOWLEDGED,
+    PurchaseOrder.STATUS_PARTIAL_RECEIPT,
+    PurchaseOrder.STATUS_COMPLETED,
+]
+
+
 @vendor_required
 def vendor_invoices_view(request):
     vendor = request.vendor
     invoices = SupplierInvoice.objects.filter(vendor=vendor).order_by("-created_at")
+    eligible_pos = PurchaseOrder.objects.filter(
+        vendor=vendor,
+        status__in=ELIGIBLE_INVOICE_STATUSES,
+    ).order_by("-created_at")
 
     context = {
         "vendor": vendor,
         "active_nav": "invoices",
         "invoices": invoices,
+        "eligible_pos": eligible_pos,
     }
     return render(request, "pages/vendor/invoices.html", context)
 
@@ -1350,32 +1450,32 @@ def vendor_invoice_submit_view(request, po_id=None):
     if po and po.vendor != vendor and not request.user.is_superuser:
         raise PermissionDenied("Access Denied: Unauthorized invoice submission attempt.")
 
+    if po and po.status not in ELIGIBLE_INVOICE_STATUSES:
+        messages.error(
+            request,
+            f"Purchase order {po.po_number} is in '{po.get_status_display()}' status and is not eligible for invoicing.",
+        )
+        return redirect("vendor_purchase_order_detail", po_id=po.id)
+
+    eligible_pos = PurchaseOrder.objects.filter(
+        vendor=vendor,
+        status__in=ELIGIBLE_INVOICE_STATUSES,
+    ).order_by("-created_at")
+
     if request.method == "GET":
-        from django.utils import timezone
-        import datetime
-        eligible_pos = PurchaseOrder.objects.filter(
-            vendor=vendor,
-            status__in=[
-                PurchaseOrder.STATUS_ISSUED,
-                PurchaseOrder.STATUS_ACKNOWLEDGED,
-                PurchaseOrder.STATUS_PARTIAL_RECEIPT,
-                PurchaseOrder.STATUS_COMPLETED,
-            ],
-        ).order_by("-created_at")
         if not po and eligible_pos.exists():
             po = eligible_pos.first()
         today = timezone.now().date()
-        return render(
-            request,
-            "pages/vendor/invoice_submit.html",
-            {
-                "selected_po": po,
-                "eligible_pos": eligible_pos,
-                "today": today.isoformat(),
-                "default_due_date": (today + datetime.timedelta(days=30)).isoformat(),
-                "active_nav": "invoices",
-            },
-        )
+        context = {
+            "vendor": vendor,
+            "active_nav": "invoices",
+            "po": po,
+            "selected_po": po,
+            "eligible_pos": eligible_pos,
+            "today": today.isoformat(),
+            "default_due_date": (today + timedelta(days=30)).isoformat(),
+        }
+        return render(request, "pages/vendor/invoice_submit.html", context)
 
     if not po:
         messages.error(request, "Purchase Order reference is required.")
@@ -1397,8 +1497,8 @@ def vendor_invoice_submit_view(request, po_id=None):
 
         if qty_str and price_str:
             try:
-                qty = Decimal(qty_str)
-                price = Decimal(price_str)
+                qty = Decimal(str(qty_str))
+                price = Decimal(str(price_str))
                 if qty > 0:
                     line_items.append({
                         "po_line": po_line,
@@ -1427,10 +1527,20 @@ def vendor_invoice_submit_view(request, po_id=None):
         )
         try:
             from apps.invoices.services import run_3_way_match_service
+
             run_3_way_match_service(invoice=invoice, user=request.user)
         except Exception:
             pass
         messages.success(request, f"Invoice {invoice.invoice_number} submitted successfully.")
+    except ValidationError as e:
+        err_msg = (
+            e.message
+            if hasattr(e, "message")
+            else "; ".join(e.messages)
+            if hasattr(e, "messages")
+            else str(e)
+        )
+        messages.error(request, f"Invoice validation error: {err_msg}")
     except Exception as e:
         messages.error(request, f"Failed to submit invoice: {str(e)}")
 
@@ -1517,6 +1627,21 @@ def vendor_document_download_view(request, doc_type, doc_id):
             raise PermissionDenied("Access Denied: You do not own this bid attachment.")
         file_handle = att.file
 
+    elif doc_type == "event":
+        att = get_object_or_404(PRAttachment.objects.select_related("requisition"), id=doc_id)
+        # BACKEND AUTHORIZATION: Vendor must have an invitation to a non-draft sourcing event linked to this requisition
+        is_invited = (
+            request.user.is_superuser
+            or BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
+            .filter(event__requisition=att.requisition, vendor=vendor)
+            .exists()
+        )
+        if not is_invited:
+            raise PermissionDenied(
+                "Access Denied: You do not hold an invitation to view attachments for this sourcing event."
+            )
+        file_handle = att.file
+
     else:
         raise Http404("Document type not found.")
 
@@ -1525,6 +1650,21 @@ def vendor_document_download_view(request, doc_type, doc_id):
 
     filename = os.path.basename(file_handle.name) or "document"
     ext = os.path.splitext(filename)[1].lower()
+
+    # Record secure audit log for document download
+    AuditLog.objects.create(
+        actor=request.user,
+        action=AuditLog.ACTION_EXPORT,
+        target_model="PRAttachment"
+        if doc_type == "event"
+        else ("BidAttachment" if doc_type == "bid" else "VendorDocument"),
+        target_object_id=str(doc_id),
+        new_state={
+            "document_type": doc_type,
+            "filename": filename,
+            "vendor_id": str(vendor.id) if vendor else None,
+        },
+    )
 
     try:
         # If the physical file does not exist in storage (e.g. demo/seed records),
@@ -1546,7 +1686,12 @@ def vendor_document_download_view(request, doc_type, doc_id):
                         )
 
                         doc_title = getattr(
-                            att if doc_type == "bid" else doc, "title", filename
+                            att if doc_type in ["bid", "event"] else doc, "title", filename
+                        )
+                        vendor_display_name = (
+                            getattr(vendor, "legal_name", getattr(vendor, "name", "Vendor Entity"))
+                            if vendor
+                            else "ProcureSphere Vendor"
                         )
                         doc_rep = SimpleDocTemplate(
                             target_path,
@@ -1582,7 +1727,7 @@ def vendor_document_download_view(request, doc_type, doc_id):
                         doc_elems = [
                             Paragraph(f"<b>ProcureSphere 360</b> &mdash; {doc_title}", h_style),
                             Paragraph(
-                                f"Document Archive | File: {filename} | Vendor: {vendor.name}",
+                                f"Document Archive | File: {filename} | Vendor: {vendor_display_name}",
                                 sub_style,
                             ),
                             Spacer(1, 8),
@@ -1594,7 +1739,7 @@ def vendor_document_download_view(request, doc_type, doc_id):
                             ),
                             Paragraph(
                                 f"<b>Document Title:</b> {doc_title}<br/>"
-                                f"<b>Vendor Entity:</b> {vendor.name}<br/>"
+                                f"<b>Vendor Entity:</b> {vendor_display_name}<br/>"
                                 "<b>Verified Status:</b> Active &bull; Attached to Official Procurement Record",
                                 b_style,
                             ),

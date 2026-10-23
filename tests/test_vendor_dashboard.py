@@ -1127,3 +1127,501 @@ def test_vendor_submit_partial_invoice(client, vendor_setup):
     assert inv_line.quantity == Decimal("1")
     assert inv_line.unit_price == Decimal("105.00")
     assert inv_line.line_total == Decimal("105.00")
+
+
+# ==============================================================================
+# 11b. VENDOR INVOICE INTEGRATION & ERROR HANDLING TESTS
+# ==============================================================================
+
+
+@pytest.mark.django_db
+def test_get_invoice_form_returns_200_for_eligible_po(client, vendor_setup):
+    """1. GET request on the invoice submission form returns HTTP 200 for eligible PO."""
+    v1 = vendor_setup["vendor_a"]
+    u1 = vendor_setup["user_vendor_a"]
+    po = PurchaseOrder.objects.create(
+        vendor=v1,
+        cost_center=vendor_setup["cost_center"],
+        status=PurchaseOrder.STATUS_ACKNOWLEDGED,
+        total_amount=Decimal("1000.00"),
+    )
+    POLine.objects.create(
+        po=po,
+        item_description="Test Item",
+        quantity=Decimal("2"),
+        unit_price=Decimal("500.00"),
+        line_total=Decimal("1000.00"),
+    )
+
+    client.force_login(u1)
+    res = client.get(f"/vendor/purchase-orders/{po.id}/submit-invoice/")
+    assert res.status_code == 200
+    assert "Submit Invoice" in res.content.decode()
+
+
+@pytest.mark.django_db
+def test_post_with_valid_data_creates_invoice_successfully(client, vendor_setup):
+    """2. Valid POST creates an invoice and lines successfully."""
+    v1 = vendor_setup["vendor_a"]
+    u1 = vendor_setup["user_vendor_a"]
+    po = PurchaseOrder.objects.create(
+        vendor=v1,
+        cost_center=vendor_setup["cost_center"],
+        status=PurchaseOrder.STATUS_ACKNOWLEDGED,
+        total_amount=Decimal("1000.00"),
+    )
+    line = POLine.objects.create(
+        po=po,
+        item_description="Hardware Module",
+        quantity=Decimal("2"),
+        unit_price=Decimal("500.00"),
+        line_total=Decimal("1000.00"),
+    )
+
+    client.force_login(u1)
+    res = client.post(
+        f"/vendor/purchase-orders/{po.id}/submit-invoice/",
+        data={
+            "invoice_number": "INV-VALID-001",
+            "invoice_date": timezone.now().date().isoformat(),
+            "due_date": (timezone.now().date() + timedelta(days=30)).isoformat(),
+            "notes": "Full order delivery",
+            f"qty_{line.id}": "2",
+            f"price_{line.id}": "500.00",
+        },
+    )
+    assert res.status_code == 302
+    from apps.invoices.models import SupplierInvoice
+    inv = SupplierInvoice.objects.get(invoice_number="INV-VALID-001")
+    assert inv.vendor == v1
+    assert inv.po == po
+    assert inv.subtotal == Decimal("1000.00")
+    assert inv.total_amount == Decimal("1100.00")
+    assert inv.lines.count() == 1
+
+
+@pytest.mark.django_db
+def test_invalid_form_data_returns_validation_errors(client, vendor_setup):
+    """3. Invalid form data returns validation errors and redirects back or preserves."""
+    v1 = vendor_setup["vendor_a"]
+    u1 = vendor_setup["user_vendor_a"]
+    po = PurchaseOrder.objects.create(
+        vendor=v1,
+        cost_center=vendor_setup["cost_center"],
+        status=PurchaseOrder.STATUS_ACKNOWLEDGED,
+        total_amount=Decimal("1000.00"),
+    )
+    line = POLine.objects.create(
+        po=po,
+        item_description="Hardware Module",
+        quantity=Decimal("2"),
+        unit_price=Decimal("500.00"),
+        line_total=Decimal("1000.00"),
+    )
+
+    client.force_login(u1)
+    # Missing invoice number
+    res = client.post(
+        f"/vendor/purchase-orders/{po.id}/submit-invoice/",
+        data={
+            "invoice_number": "",
+            "invoice_date": timezone.now().date().isoformat(),
+            "due_date": (timezone.now().date() + timedelta(days=30)).isoformat(),
+            f"qty_{line.id}": "2",
+            f"price_{line.id}": "500.00",
+        },
+        follow=True,
+    )
+    assert res.status_code == 200
+    assert "Invoice number, date, and due date are required" in res.content.decode()
+
+    # Zero or negative quantity
+    res2 = client.post(
+        f"/vendor/purchase-orders/{po.id}/submit-invoice/",
+        data={
+            "invoice_number": "INV-ZERO-QTY",
+            "invoice_date": timezone.now().date().isoformat(),
+            "due_date": (timezone.now().date() + timedelta(days=30)).isoformat(),
+            f"qty_{line.id}": "0",
+            f"price_{line.id}": "500.00",
+        },
+        follow=True,
+    )
+    assert res2.status_code == 200
+    assert "greater than 0" in res2.content.decode()
+
+
+@pytest.mark.django_db
+def test_unauthenticated_user_cannot_submit_invoice(client, vendor_setup):
+    """4. An unauthenticated user cannot submit an invoice."""
+    v1 = vendor_setup["vendor_a"]
+    po = PurchaseOrder.objects.create(
+        vendor=v1,
+        cost_center=vendor_setup["cost_center"],
+        status=PurchaseOrder.STATUS_ACKNOWLEDGED,
+        total_amount=Decimal("1000.00"),
+    )
+
+    # Anonymous GET
+    res_get = client.get(f"/vendor/purchase-orders/{po.id}/submit-invoice/")
+    assert res_get.status_code == 302
+    assert "/login" in res_get.url
+
+    # Anonymous POST
+    res_post = client.post(
+        f"/vendor/purchase-orders/{po.id}/submit-invoice/",
+        data={"invoice_number": "INV-ANON-001"},
+    )
+    assert res_post.status_code == 302
+    assert "/login" in res_post.url
+
+
+@pytest.mark.django_db
+def test_cross_vendor_cannot_access_or_submit_invoice(client, vendor_setup):
+    """5. A different vendor cannot access or submit an invoice against another vendor's PO."""
+    v1 = vendor_setup["vendor_a"]
+    u2 = vendor_setup["user_vendor_b"]
+    po = PurchaseOrder.objects.create(
+        vendor=v1,
+        cost_center=vendor_setup["cost_center"],
+        status=PurchaseOrder.STATUS_ACKNOWLEDGED,
+        total_amount=Decimal("1000.00"),
+    )
+
+    client.force_login(u2)
+    # Vendor B cannot GET Vendor A's invoice submission page
+    res_get = client.get(f"/vendor/purchase-orders/{po.id}/submit-invoice/")
+    assert res_get.status_code == 403
+
+    # Vendor B cannot POST invoice against Vendor A's PO
+    res_post = client.post(
+        f"/vendor/purchase-orders/{po.id}/submit-invoice/",
+        data={"invoice_number": "INV-ATTACK-001"},
+    )
+    assert res_post.status_code == 403
+
+
+@pytest.mark.django_db
+def test_invalid_or_nonexistent_po_uuid_returns_404(client, vendor_setup):
+    """6. An invalid or nonexistent PO UUID is handled correctly."""
+    import uuid
+
+    client.force_login(vendor_setup["user_vendor_a"])
+    random_id = uuid.uuid4()
+
+    res_get = client.get(f"/vendor/purchase-orders/{random_id}/submit-invoice/")
+    assert res_get.status_code == 404
+
+    res_post = client.post(f"/vendor/purchase-orders/{random_id}/submit-invoice/", data={})
+    assert res_post.status_code == 404
+
+
+@pytest.mark.django_db
+def test_ineligible_po_status_prevents_submission(client, vendor_setup):
+    """7. An ineligible PO status prevents submission."""
+    v1 = vendor_setup["vendor_a"]
+    u1 = vendor_setup["user_vendor_a"]
+    po_draft = PurchaseOrder.objects.create(
+        vendor=v1,
+        cost_center=vendor_setup["cost_center"],
+        status=PurchaseOrder.STATUS_DRAFT,
+        total_amount=Decimal("1000.00"),
+    )
+
+    client.force_login(u1)
+    # GET on DRAFT PO redirects back with error
+    res_get = client.get(f"/vendor/purchase-orders/{po_draft.id}/submit-invoice/", follow=True)
+    assert res_get.status_code == 200
+    assert "not eligible for invoicing" in res_get.content.decode()
+
+    # POST on DRAFT PO redirects back with error and creates nothing
+    res_post = client.post(
+        f"/vendor/purchase-orders/{po_draft.id}/submit-invoice/",
+        data={"invoice_number": "INV-DRAFT-001"},
+        follow=True,
+    )
+    assert res_post.status_code == 200
+    assert "not eligible for invoicing" in res_post.content.decode()
+
+
+@pytest.mark.django_db
+def test_duplicate_invoice_submission_handled(client, vendor_setup):
+    """8. Duplicate invoice submissions are handled according to existing rules."""
+    v1 = vendor_setup["vendor_a"]
+    u1 = vendor_setup["user_vendor_a"]
+    po = PurchaseOrder.objects.create(
+        vendor=v1,
+        cost_center=vendor_setup["cost_center"],
+        status=PurchaseOrder.STATUS_ACKNOWLEDGED,
+        total_amount=Decimal("1000.00"),
+    )
+    line = POLine.objects.create(
+        po=po,
+        item_description="Server Fan",
+        quantity=Decimal("2"),
+        unit_price=Decimal("50.00"),
+        line_total=Decimal("100.00"),
+    )
+
+    client.force_login(u1)
+    # 1st submission
+    res1 = client.post(
+        f"/vendor/purchase-orders/{po.id}/submit-invoice/",
+        data={
+            "invoice_number": "INV-DUP-TEST-001",
+            "invoice_date": timezone.now().date().isoformat(),
+            "due_date": (timezone.now().date() + timedelta(days=30)).isoformat(),
+            f"qty_{line.id}": "1",
+            f"price_{line.id}": "50.00",
+        },
+    )
+    assert res1.status_code == 302
+
+    # 2nd submission with duplicate number
+    res2 = client.post(
+        f"/vendor/purchase-orders/{po.id}/submit-invoice/",
+        data={
+            "invoice_number": "INV-DUP-TEST-001",
+            "invoice_date": timezone.now().date().isoformat(),
+            "due_date": (timezone.now().date() + timedelta(days=30)).isoformat(),
+            f"qty_{line.id}": "1",
+            f"price_{line.id}": "50.00",
+        },
+        follow=True,
+    )
+    assert res2.status_code == 200
+    assert "Duplicate invoice detected" in res2.content.decode()
+
+
+@pytest.mark.django_db
+def test_invoice_listing_page_renders_without_url_errors(client, vendor_setup):
+    """9. The invoice listing page renders without URL reversal errors."""
+    v1 = vendor_setup["vendor_a"]
+    u1 = vendor_setup["user_vendor_a"]
+    PurchaseOrder.objects.create(
+        vendor=v1,
+        cost_center=vendor_setup["cost_center"],
+        status=PurchaseOrder.STATUS_ACKNOWLEDGED,
+        total_amount=Decimal("1000.00"),
+    )
+
+    client.force_login(u1)
+    res = client.get("/vendor/invoices/")
+    assert res.status_code == 200
+    assert "Invoices" in res.content.decode()
+    assert "Submit Invoice" in res.content.decode()
+
+
+@pytest.mark.django_db
+def test_purchase_order_detail_page_renders_without_url_errors(client, vendor_setup):
+    """10. The Purchase Order detail page renders without URL reversal errors."""
+    v1 = vendor_setup["vendor_a"]
+    u1 = vendor_setup["user_vendor_a"]
+    po = PurchaseOrder.objects.create(
+        po_number="PO-DETAIL-2026",
+        vendor=v1,
+        cost_center=vendor_setup["cost_center"],
+        status=PurchaseOrder.STATUS_ACKNOWLEDGED,
+        total_amount=Decimal("3500.00"),
+    )
+
+    client.force_login(u1)
+    res = client.get(f"/vendor/purchase-orders/{po.id}/")
+    assert res.status_code == 200
+    content = res.content.decode()
+    assert "PO-DETAIL-2026" in content
+    assert f"/vendor/purchase-orders/{po.id}/submit-invoice/" in content
+
+
+@pytest.mark.django_db
+def test_invoice_appears_in_vendor_invoice_list_after_submission(client, vendor_setup):
+    """11. The invoice appears in the correct vendor's invoice list after submission."""
+    v1 = vendor_setup["vendor_a"]
+    u1 = vendor_setup["user_vendor_a"]
+    po = PurchaseOrder.objects.create(
+        vendor=v1,
+        cost_center=vendor_setup["cost_center"],
+        status=PurchaseOrder.STATUS_ACKNOWLEDGED,
+        total_amount=Decimal("1000.00"),
+    )
+    line = POLine.objects.create(
+        po=po,
+        item_description="Optical Transceiver",
+        quantity=Decimal("4"),
+        unit_price=Decimal("250.00"),
+        line_total=Decimal("1000.00"),
+    )
+
+    client.force_login(u1)
+    client.post(
+        f"/vendor/purchase-orders/{po.id}/submit-invoice/",
+        data={
+            "invoice_number": "INV-LISTING-99",
+            "invoice_date": timezone.now().date().isoformat(),
+            "due_date": (timezone.now().date() + timedelta(days=30)).isoformat(),
+            f"qty_{line.id}": "4",
+            f"price_{line.id}": "250.00",
+        },
+    )
+
+    res_invoices = client.get("/vendor/invoices/")
+    assert res_invoices.status_code == 200
+    assert "INV-LISTING-99" in res_invoices.content.decode()
+
+    # Vendor B cannot see Vendor A's invoice
+    client.force_login(vendor_setup["user_vendor_b"])
+    res_b = client.get("/vendor/invoices/")
+    assert res_b.status_code == 200
+    assert "INV-LISTING-99" not in res_b.content.decode()
+
+
+# ==============================================================================
+# 12. REGRESSION AUDIT: SESSION STABILITY & CACHE ISOLATION TESTS
+# ==============================================================================
+
+
+@pytest.mark.django_db
+def test_vendor_session_stability_post_invoice_submission(client, vendor_setup):
+    """
+    Regression check: Submitting an invoice must NEVER invalidate or terminate
+    the vendor's authenticated session.
+    """
+    v1 = vendor_setup["vendor_a"]
+    u1 = vendor_setup["user_vendor_a"]
+    po = PurchaseOrder.objects.create(
+        vendor=v1,
+        cost_center=vendor_setup["cost_center"],
+        status=PurchaseOrder.STATUS_ACKNOWLEDGED,
+        total_amount=Decimal("1000.00"),
+    )
+    po_line = POLine.objects.create(
+        po=po,
+        item_description="Optical Transceiver",
+        quantity=Decimal("5"),
+        unit_price=Decimal("200.00"),
+        line_total=Decimal("1000.00"),
+    )
+
+    client.force_login(u1)
+
+    # Submit invoice
+    post_res = client.post(
+        f"/vendor/purchase-orders/{po.id}/submit-invoice/",
+        data={
+            "invoice_number": "INV-SESS-STABLE-001",
+            "invoice_date": timezone.now().date().isoformat(),
+            "due_date": (timezone.now().date() + timedelta(days=30)).isoformat(),
+            f"qty_{po_line.id}": "2",
+            f"price_{po_line.id}": "200.00",
+        },
+    )
+    # Redirects back to PO detail or invoices list without login redirect
+    assert post_res.status_code == 302
+    assert "/login" not in post_res.url
+
+    # Check vendor remains authenticated on subsequent requests
+    dash_res = client.get("/vendor/")
+    assert dash_res.status_code == 200
+    assert dash_res.context["vendor"] == v1
+
+    inv_res = client.get("/vendor/invoices/")
+    assert inv_res.status_code == 200
+    assert "INV-SESS-STABLE-001" in inv_res.content.decode()
+
+
+@pytest.mark.django_db
+def test_vendor_session_stability_post_bid_lifecycle(client, vendor_setup):
+    """
+    Regression check: Full bid lifecycle actions (draft, submit, amend, withdraw)
+    must preserve the vendor's authenticated session throughout.
+    """
+    from apps.sourcing.models import BidInvite
+
+    w = vendor_setup
+    client.force_login(w["user_vendor_a"])
+
+    event = SourcingEvent.objects.create(
+        event_number="RFQ-SESS-2026",
+        title="Session Test Event",
+        event_type=SourcingEvent.TYPE_RFQ,
+        status=SourcingEvent.STATUS_BID_WINDOW,
+        bid_start_date=timezone.now() - timedelta(days=1),
+        bid_end_date=timezone.now() + timedelta(days=5),
+        created_by=w["proc_exec"],
+    )
+    BidInvite.objects.create(event=event, vendor=w["vendor_a"])
+
+    # 1. Draft
+    draft_res = client.post(
+        f"/vendor/sourcing/{event.id}/bid/",
+        data={"action": "save_draft", "total_price": "5000.00"},
+    )
+    assert draft_res.status_code == 302
+    assert "/login" not in draft_res.url
+
+    # 2. Submit
+    sub_res = client.post(
+        f"/vendor/sourcing/{event.id}/bid/",
+        data={"action": "submit_bid", "total_price": "5000.00", "terms_agreed": "on"},
+    )
+    assert sub_res.status_code == 302
+    assert "/login" not in sub_res.url
+
+    # 3. Withdraw
+    bid = VendorBid.objects.get(event=event, vendor=w["vendor_a"])
+    with_res = client.post(
+        f"/vendor/bids/{bid.id}/withdraw/",
+        data={"reason": "Testing session persistence during withdrawal."},
+    )
+    assert with_res.status_code == 302
+    assert "/login" not in with_res.url
+
+    # Verify session remains intact
+    dash_res = client.get("/vendor/")
+    assert dash_res.status_code == 200
+    assert dash_res.context["vendor"] == w["vendor_a"]
+
+
+@pytest.mark.django_db
+def test_vendor_dashboard_metrics_isolation_and_live_freshness(client, vendor_setup):
+    """
+    Regression check: Vendor dashboard metrics must be strictly isolated per vendor
+    and immediately reflect state changes without stale or leaking counts.
+    """
+    from apps.vendors.selectors import get_vendor_dashboard_metrics
+
+    w = vendor_setup
+    v_a = w["vendor_a"]
+    v_b = w["vendor_b"]
+
+    # Initial metrics for Vendor A and B
+    m_a_initial = get_vendor_dashboard_metrics(v_a, w["user_vendor_a"])
+    m_b_initial = get_vendor_dashboard_metrics(v_b, w["user_vendor_b"])
+
+    # Issue PO for Vendor A
+    po_a = PurchaseOrder.objects.create(
+        vendor=v_a,
+        cost_center=w["cost_center"],
+        status=PurchaseOrder.STATUS_ISSUED,
+        total_amount=Decimal("2500.00"),
+    )
+
+    # Vendor A's pos_requiring_ack must increment immediately
+    m_a_after_po = get_vendor_dashboard_metrics(v_a, w["user_vendor_a"])
+    assert m_a_after_po["pos_requiring_ack"] == m_a_initial["pos_requiring_ack"] + 1
+
+    # Vendor B's pos_requiring_ack must remain unchanged (strict isolation)
+    m_b_after_po = get_vendor_dashboard_metrics(v_b, w["user_vendor_b"])
+    assert m_b_after_po["pos_requiring_ack"] == m_b_initial["pos_requiring_ack"]
+
+    # Acknowledge PO via POST
+    client.force_login(w["user_vendor_a"])
+    ack_res = client.post(f"/vendor/purchase-orders/{po_a.id}/acknowledge/")
+    assert ack_res.status_code == 302
+    assert "/login" not in ack_res.url
+
+    # Now pos_requiring_ack returns to initial, active_pos reflects the acknowledged PO
+    m_a_after_ack = get_vendor_dashboard_metrics(v_a, w["user_vendor_a"])
+    assert m_a_after_ack["pos_requiring_ack"] == m_a_initial["pos_requiring_ack"]
+    assert m_a_after_ack["active_pos"] >= 1
+

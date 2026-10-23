@@ -48,6 +48,7 @@ def get_vendor_dashboard_metrics(vendor, user=None):
     from apps.notifications.models import Notification
     from apps.orders.models import PurchaseOrder
     from apps.sourcing.models import BidInvite, Clarification, SourcingEvent, VendorBid
+    from apps.sourcing.services import sync_all_event_windows
 
     if not vendor:
         return {
@@ -63,12 +64,21 @@ def get_vendor_dashboard_metrics(vendor, user=None):
         }
 
     now = timezone.now()
+    try:
+        sync_all_event_windows(now=now)
+    except Exception:
+        pass
 
-    # Active RFQ/RFP Invitations: Invited and currently in BID_WINDOW
-    active_invitations_count = BidInvite.objects.filter(
-        vendor=vendor,
-        event__status=SourcingEvent.STATUS_BID_WINDOW,
-    ).count()
+    # Active RFQ/RFP Invitations: Invited and currently in published or bid window with end date >= now
+    active_invitations_count = (
+        BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
+        .filter(
+            vendor=vendor,
+            event__status__in=[SourcingEvent.STATUS_BID_WINDOW, SourcingEvent.STATUS_PUBLISHED],
+            event__bid_end_date__gte=now,
+        )
+        .count()
+    )
 
     # Bids in Draft
     bids_in_draft_count = VendorBid.objects.filter(
@@ -82,13 +92,17 @@ def get_vendor_dashboard_metrics(vendor, user=None):
         status__in=[VendorBid.STATUS_SUBMITTED, VendorBid.STATUS_AMENDED],
     ).count()
 
-    # Upcoming Deadlines: Open events closing in next 7 days
-    upcoming_deadlines_count = BidInvite.objects.filter(
-        vendor=vendor,
-        event__status=SourcingEvent.STATUS_BID_WINDOW,
-        event__bid_end_date__gte=now,
-        event__bid_end_date__lte=now + timedelta(days=7),
-    ).count()
+    # Upcoming Deadlines: Active/Published events closing in next 7 days
+    upcoming_deadlines_count = (
+        BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
+        .filter(
+            vendor=vendor,
+            event__status__in=[SourcingEvent.STATUS_BID_WINDOW, SourcingEvent.STATUS_PUBLISHED],
+            event__bid_end_date__gte=now,
+            event__bid_end_date__lte=now + timedelta(days=7),
+        )
+        .count()
+    )
 
     # Pending Clarifications
     pending_clarifications_count = Clarification.objects.filter(
