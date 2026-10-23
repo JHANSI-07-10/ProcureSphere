@@ -12,65 +12,49 @@
     </div>
 </div>
 
-<div class="row g-4 mb-5">
-    <!-- Key Metric Cards -->
-    <div class="col-xl-3 col-md-6">
-        <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
-            <div class="card-body p-4 d-flex align-items-center gap-3">
-                <div class="flex-shrink-0 bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
-                    <i class="fa-solid fa-users-gear text-info fs-4"></i>
-                </div>
-                <div class="flex-grow-1 min-width-0">
-                    <h6 class="text-muted fw-bold text-uppercase small mb-1">Total Users</h6>
-                    <h3 class="fw-bold text-dark mb-0">{{ metrics.total_users }}</h3>
-                    <div class="mt-1 small text-success fw-semibold"><i class="fa-solid fa-arrow-up me-1"></i> Active sessions</div>
-                </div>
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card h-100 border-start border-4 border-info">
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                <span class="text-muted small fw-semibold text-uppercase">Total Users</span>
+                <i class="fa-solid fa-users-gear text-info"></i>
+            </div>
+            <div class="metric-value text-dark">{{ metrics.total_users }}</div>
+            <div class="mt-2 pt-2 border-top small text-success fw-semibold">
+                <i class="fa-solid fa-arrow-up me-1"></i> Active sessions
             </div>
         </div>
     </div>
-
-    <div class="col-xl-3 col-md-6">
-        <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
-            <div class="card-body p-4 d-flex align-items-center gap-3">
-                <div class="flex-shrink-0 bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
-                    <i class="fa-solid fa-sack-dollar text-warning fs-4"></i>
-                </div>
-                <div class="flex-grow-1 min-width-0">
-                    <h6 class="text-muted fw-bold text-uppercase small mb-1">Total Budget Allocated</h6>
-                    <h3 class="fw-bold text-dark mb-0" style="font-size:1.4rem;">${{ metrics.allocated_budget|floatformat:2 }}</h3>
-                    <div class="mt-1 small text-secondary">Across all cost centers</div>
-                </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card h-100 border-start border-4 border-warning">
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                <span class="text-muted small fw-semibold text-uppercase">Total Budget Allocated</span>
+                <i class="fa-solid fa-sack-dollar text-warning"></i>
+            </div>
+            <div class="metric-value text-dark">${{ metrics.allocated_budget|floatformat:2 }}</div>
+            <div class="mt-2 pt-2 border-top small text-secondary">Across all cost centers</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card h-100 border-start border-4 border-success">
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                <span class="text-muted small fw-semibold text-uppercase">Pending Transactions</span>
+                <i class="fa-solid fa-code-branch text-success"></i>
+            </div>
+            <div class="metric-value text-dark">{{ metrics.pending_pr_count }} PRs</div>
+            <div class="mt-2 pt-2 border-top small text-danger">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i>{{ metrics.pending_exceptions }} Match Exceptions
             </div>
         </div>
     </div>
-
-    <div class="col-xl-3 col-md-6">
-        <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
-            <div class="card-body p-4 d-flex align-items-center gap-3">
-                <div class="flex-shrink-0 bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
-                    <i class="fa-solid fa-code-branch text-success fs-4"></i>
-                </div>
-                <div class="flex-grow-1 min-width-0">
-                    <h6 class="text-muted fw-bold text-uppercase small mb-1">Pending Transactions</h6>
-                    <h3 class="fw-bold text-dark mb-0">{{ metrics.pending_pr_count }} PRs</h3>
-                    <div class="mt-1 small text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>{{ metrics.pending_exceptions }} Match Exceptions</div>
-                </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card h-100 border-start border-4 border-danger">
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                <span class="text-muted small fw-semibold text-uppercase">Audit Logs Today</span>
+                <i class="fa-solid fa-clock-rotate-left text-danger"></i>
             </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-md-6">
-        <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
-            <div class="card-body p-4 d-flex align-items-center gap-3">
-                <div class="flex-shrink-0 bg-danger bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
-                    <i class="fa-solid fa-clock-rotate-left text-danger fs-4"></i>
-                </div>
-                <div class="flex-grow-1 min-width-0">
-                    <h6 class="text-muted fw-bold text-uppercase small mb-1">Audit Logs Today</h6>
-                    <h3 class="fw-bold text-dark mb-0">{{ metrics.audits_today|default:"0" }}</h3>
-                    <div class="mt-1 small text-secondary">All actions recorded</div>
-                </div>
-            </div>
+            <div class="metric-value text-dark">{{ metrics.audits_today|default:"0" }}</div>
+            <div class="mt-2 pt-2 border-top small text-secondary">All actions recorded</div>
         </div>
     </div>
 </div>
@@ -147,13 +131,15 @@
             <div class="card-header bg-white pt-4 pb-0 px-4 border-bottom-0">
                 <h5 class="fw-bold mb-0">Security & Audit</h5>
             </div>
-            <div class="card-body p-4 d-flex flex-column justify-content-center align-items-center text-center">
-                <div class="bg-danger bg-opacity-10 text-danger p-4 rounded-circle mb-3">
-                    <i class="fa-solid fa-shield-halved fa-3x"></i>
+            <div class="card-body p-4 d-flex align-items-start gap-3">
+                <div class="bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:56px;height:56px;">
+                    <i class="fa-solid fa-shield-halved fs-4"></i>
                 </div>
-                <h5 class="fw-bold text-dark">Immutable Audit Logs</h5>
-                <p class="text-muted small">Every state change, creation, and approval across the ERP is logged with actor, timestamp, and IP reference.</p>
-                <a href="/superadmin/audit/" class="btn btn-outline-danger fw-bold rounded-pill px-4 mt-2">View Audit History</a>
+                <div class="min-width-0">
+                    <h5 class="fw-bold text-dark mb-1">Immutable Audit Logs</h5>
+                    <p class="text-muted small mb-3">Every state change, creation, and approval across the ERP is logged with actor, timestamp, and IP reference.</p>
+                    <a href="/superadmin/audit/" class="btn btn-outline-danger fw-bold rounded-pill px-4">View Audit History</a>
+                </div>
             </div>
         </div>
     </div>
