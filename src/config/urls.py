@@ -1,17 +1,4 @@
-from django.conf import settings
-from django.conf.urls.static import static
-from django.contrib import admin
-from django.http import JsonResponse
-from django.urls import include, path, re_path
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-
-from apps.accounts.api_views import SessionLoginView, SessionLogoutView
-from apps.accounts.views import change_password_view, password_change_view, portal_login_view, portal_logout_view
-from apps.core.views import custom_404_view
-
-from .healthchecks import health, readyz
-
-urlpatterns = [
+from django.conf import settingsfrom django.conf.urls.static import staticfrom django.contrib import adminfrom django.http import JsonResponsefrom django.urls import include, path, re_pathfrom drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerViewfrom apps.accounts.api_views import SessionLoginView, SessionLogoutViewfrom apps.accounts.views import (    change_password_view,    password_change_view,    portal_login_view,    portal_logout_view,)from apps.core.views import custom_404_viewfrom .healthchecks import health, readyzurlpatterns = [
     path("health", health, name="health"),
     path("readyz", readyz, name="readyz"),
     re_path(r"^.*prompts\.json$", lambda request: JsonResponse({})),

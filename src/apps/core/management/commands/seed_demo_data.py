@@ -331,6 +331,27 @@ class Command(BaseCommand):
                 created_by_user=proc_exec,
             )
 
+        # 5b. Approval Policies
+        from apps.approvals.models import ApprovalPolicy
+        from apps.approvals.services import (
+            add_approval_step_service,
+            create_approval_policy_service,
+        )
+
+        if not ApprovalPolicy.objects.filter(module=ApprovalPolicy.MODULE_PR, is_active=True).exists():
+            default_pr_policy = create_approval_policy_service(
+                name="Default Standard PR Approval Policy",
+                module=ApprovalPolicy.MODULE_PR,
+                min_amount=Decimal("0.00"),
+                department=None,
+            )
+            add_approval_step_service(
+                policy=default_pr_policy,
+                step_number=1,
+                approver_role=roles[Role.DEPT_APPROVER],
+                description="Department Manager Approval",
+            )
+
         # 6. Requisition & Budget Reservation
         pr = create_purchase_requisition_service(
             title="Enterprise Core Routers Upgrade",

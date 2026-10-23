@@ -342,8 +342,15 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
             else:
                 return qs.none()
 
+        # Department scoping for Requesters
+        if not user.is_superuser and getattr(user, "role_code", None) == Role.REQUESTER:
+            if getattr(user, "department_id", None):
+                qs = qs.filter(cost_center__department_id=user.department_id)
+            else:
+                return qs.none()
+
         # Tenant/Organization scoping for internal non-superusers
-        if (
+        elif (
             not user.is_superuser
             and getattr(user, "department_id", None)
             and getattr(user.department, "organization_id", None)

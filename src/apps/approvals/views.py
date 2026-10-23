@@ -86,6 +86,9 @@ def approvals_inbox_view(request):
     role_code = getattr(user, "role_code", None) or (
         user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
     )
+    if not user.is_superuser and (getattr(user, "is_vendor", False) or role_code in [Role.VENDOR_USER, "VENDOR_USER"]):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("External vendors are not authorized to view the internal approval inbox.")
 
     if request.method == "POST":
         res = _handle_approval_post(request, role_code)

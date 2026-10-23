@@ -81,6 +81,22 @@ def test_supporting_document_workflow_and_approver_access(db_roles):
         allocated_amount=Decimal("100000.00"),
     )
 
+    from apps.approvals.models import ApprovalPolicy
+    from apps.approvals.services import add_approval_step_service, create_approval_policy_service
+
+    policy = create_approval_policy_service(
+        name="IT Ops PR Approval Policy",
+        module=ApprovalPolicy.MODULE_PR,
+        min_amount=Decimal("0.00"),
+        department=dept,
+    )
+    add_approval_step_service(
+        policy=policy,
+        step_number=1,
+        approver_role=db_roles[Role.DEPT_APPROVER],
+        specific_approver=approver_user,
+    )
+
     # 2. Upload supporting documents
     pdf_content = b"%PDF-1.4 sample content for Aurexion TRD Document"
     pdf_file = SimpleUploadedFile(

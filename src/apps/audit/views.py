@@ -39,6 +39,7 @@ def auditor_dashboard_view(request):
     Supplies core executive KPIs, activity trend charts, action distribution,
     open anomalies, and recent audit activity feed.
     """
+    _enforce_auditor_access(request)
     try:
         period_days = int(request.GET.get("period_days", 30))
         if period_days <= 0:

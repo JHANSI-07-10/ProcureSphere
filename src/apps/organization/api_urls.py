@@ -59,6 +59,25 @@ class CostCenterViewSet(viewsets.ModelViewSet):
     serializer_class = CostCenterSerializer
     permission_classes = [IsAdminOrReadOnly]
 
+    def get_queryset(self):
+        user = self.request.user
+        qs = CostCenter.objects.all()
+        if not user or not user.is_authenticated:
+            return qs.none()
+        if user.is_superuser or getattr(user, "role_code", None) in [
+            Role.SUPER_ADMIN,
+            Role.FINANCE_AP,
+            Role.AUDITOR,
+            Role.PROC_MGR,
+            Role.PROC_EXEC,
+        ]:
+            return qs
+        if getattr(user, "role_code", None) == Role.REQUESTER:
+            if getattr(user, "department_id", None):
+                return qs.filter(department_id=user.department_id)
+            return qs.none()
+        return qs
+
 
 router = DefaultRouter()
 router.register(r"entities", OrganizationViewSet, basename="organization")

@@ -238,6 +238,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.sourcing.tasks.sync_sourcing_bid_windows_task",
         "schedule": 300.0,  # every 5 minutes; views/services also sync on access
     },
+    "scan-contract-expirations-and-milestones": {
+        "task": "contracts.tasks.scan_contract_expirations_and_milestones",
+        "schedule": 86400.0,  # daily scan for upcoming renewal/milestones
+    },
+    "scan-overdue-approvals-and-escalate": {
+        "task": "notifications.tasks.scan_overdue_approvals_and_escalate",
+        "schedule": 3600.0,  # hourly scan for approvals exceeding SLA turnaround
+    },
 }
 
 # Login Throttling (django-axes) & Redirects

@@ -207,7 +207,7 @@
 <script>
 function handlePoChange(poId) {
     if (poId) {
-        window.location.href = "{% url 'vendor_invoice_submit' %}?po_id=" + poId;
+        window.location.href = "/vendor/purchase-orders/" + poId + "/submit-invoice/";
     }
 }
 

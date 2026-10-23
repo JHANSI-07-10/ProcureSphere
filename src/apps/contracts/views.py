@@ -41,11 +41,27 @@ from .services import (
 )
 
 
+def _enforce_internal_contracts_access(request):
+    user = request.user
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if getattr(user, "role", None) else None
+    )
+    if not user.is_authenticated:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("Authentication required.")
+    if user.is_superuser:
+        return
+    if getattr(user, "is_vendor", False) or role_code in [Role.VENDOR_USER, "VENDOR_USER"]:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("External vendors are not authorized to access internal contract management.")
+
+
 @login_required(login_url="/login/")
 def list_view(request):
     """
     Contract Register List View with filtering by status, search query, and metrics.
     """
+    _enforce_internal_contracts_access(request)
     status_filter = request.GET.get("status", "").strip()
     search_query = request.GET.get("q", "").strip()
 
@@ -67,13 +83,15 @@ def create_view(request):
     """
     Creates a new Contract in DRAFT state.
     """
+    _enforce_internal_contracts_access(request)
     role_code = getattr(request.user, "role_code", None) or (
         request.user.role.code if getattr(request.user, "role", None) else None
     )
-    if role_code == Role.AUDITOR:
+    allowed_roles = [Role.LEGAL_MGR, Role.PROC_MGR, Role.PROC_EXEC, Role.SUPER_ADMIN, "LEGAL_MGR", "PROC_MGR", "PROC_EXEC", "SUPER_ADMIN"]
+    if not (request.user.is_superuser or role_code in allowed_roles):
         messages.error(
             request,
-            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot draft contracts.",
+            "Permission Denied: Contract drafting is restricted to Legal and Procurement Managers.",
         )
         return redirect("contracts_list")
 
@@ -111,6 +129,7 @@ def detail_view(request, contract_id):
     """
     Contract Lifecycle & SLA Workspace Detail View.
     """
+    _enforce_internal_contracts_access(request)
     contract = get_contract_by_id(contract_id)
     if not contract:
         messages.error(request, "Contract record not found.")

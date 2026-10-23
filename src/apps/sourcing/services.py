@@ -184,6 +184,15 @@ def create_sourcing_event_service(
         weights=(tech_w, comm_w),
     )
 
+    if requisition:
+        from apps.requisitions.models import PurchaseRequisition
+
+        if requisition.status != PurchaseRequisition.STATUS_APPROVED:
+            raise ValidationError(
+                f"Cannot link Purchase Requisition '{requisition.pr_number}' in status '{requisition.status}'. "
+                "Only APPROVED requisitions may be sourced."
+            )
+
     prefix = "RFQ" if event_type == SourcingEvent.TYPE_RFQ else "RFP"
     event_number = _next_document_number(SourcingEvent, "event_number", prefix)
 
@@ -266,6 +275,14 @@ def update_draft_sourcing_event_service(*, event: SourcingEvent, user: User, dat
         weights=(event.technical_weight, event.commercial_weight),
     )
     event.title = event.title.strip()
+    if event.requisition:
+        from apps.requisitions.models import PurchaseRequisition
+
+        if event.requisition.status != PurchaseRequisition.STATUS_APPROVED:
+            raise ValidationError(
+                f"Cannot link Purchase Requisition '{event.requisition.pr_number}' in status '{event.requisition.status}'. "
+                "Only APPROVED requisitions may be sourced."
+            )
     event.save()
 
     create_audit_log_service(

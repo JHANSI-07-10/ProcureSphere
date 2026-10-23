@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db import connection
@@ -9,7 +11,7 @@ from redis import Redis
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
-from apps.accounts.models import Role
+from apps.accounts.models import Role, User
 from apps.orders.models import PurchaseOrder
 from apps.requisitions.models import PurchaseRequisition
 from apps.scorecards.models import VendorScorecard
@@ -350,7 +352,40 @@ def home_view(request):  # noqa: C901
 
     # 10. SUPER ADMIN DASHBOARD
     elif role_code == Role.SUPER_ADMIN:
-        return render(request, "pages/dashboards/superadmin_dashboard.html")
+        from apps.audit.models import AuditLog
+        from apps.budgets.models import Budget
+        from apps.invoices.models import MatchException
+
+        today = timezone.now().date()
+        total_users = User.objects.count()
+        budget_agg = Budget.objects.aggregate(total=Sum("allocated_amount"))["total"]
+        allocated_budget = budget_agg if budget_agg is not None else Decimal("0.00")
+        pending_pr_count = PurchaseRequisition.objects.filter(
+            status__in=[
+                PurchaseRequisition.STATUS_SUBMITTED,
+                PurchaseRequisition.STATUS_MANAGER_REVIEW,
+                PurchaseRequisition.STATUS_BUDGET_REVIEW,
+            ]
+        ).count()
+        pending_exceptions = MatchException.objects.filter(
+            status=MatchException.STATUS_OPEN
+        ).count()
+        audits_today = AuditLog.objects.filter(timestamp__date=today).count()
+
+        context = {
+            "metrics": {
+                "total_users": total_users,
+                "allocated_budget": allocated_budget,
+                "pending_pr_count": pending_pr_count,
+                "pending_exceptions": pending_exceptions,
+                "audits_today": audits_today,
+            },
+            "kpi_total_users": total_users,
+            "kpi_total_budget": allocated_budget,
+            "kpi_pending_transactions": pending_pr_count + pending_exceptions,
+            "kpi_audit_logs_today": audits_today,
+        }
+        return render(request, "pages/dashboards/superadmin_dashboard.html", context)
 
     # 11. COMPLIANCE AUDITOR DASHBOARD
     elif role_code == Role.AUDITOR:
