@@ -1,0 +1,39 @@
+<!-- Contact Form Success Response (HTMX partial) -->
+<div class="contact-success animate-in" style="background:#f0fdf4;border:2px solid #bbf7d0;border-radius:20px;padding:48px 36px;text-align:center;animation:fadeIn 0.5s ease;">
+  <div style="width:64px;height:64px;border-radius:50%;background:#22c55e;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
+  </div>
+  <h3 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:#15803d;margin:0 0 12px;">Thank you, {{ name }}!</h3>
+  <p style="font-size:17px;color:#166534;line-height:1.6;margin:0 0 8px;">Your demo request has been received.</p>
+  <p style="font-size:15px;color:#4ade80;font-family:'DM Mono',monospace;">{{ email }}</p>
+  <p style="font-size:15px;color:#374151;margin-top:16px;">Our team will reach out to you within 1–2 business days.</p>
+  <button type="button" onclick="resetContactForm()" style="margin-top:28px;padding:12px 28px;border-radius:10px;background:#16a34a;color:#fff;font-weight:700;font-size:16px;border:none;cursor:pointer;transition:background 0.2s;">
+    Submit Another Request
+  </button>
+</div>
+<style>@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}</style>
+<script>
+function resetContactForm() {
+  fetch(window.location.href).then(() => {
+    document.getElementById('contact-form-wrapper').innerHTML = `
+      <form class="rfp-form" id="contact-form" hx-post="/htmx/contact/" hx-target="#contact-form-wrapper" hx-swap="innerHTML" hx-on::after-request="onContactFormResponse(event)">
+        <input type="hidden" name="csrfmiddlewaretoken" value="${document.cookie.match(/csrftoken=([^;]+)/)?.[1]||''}">
+        <div class="form-grid">
+          <label><span>Name</span><input required name="name" placeholder="Your name" /></label>
+          <label><span>Email</span><input required type="email" name="email" placeholder="yourname@gmail.com" /></label>
+          <label><span>Company</span><input required name="company" placeholder="Company name" /></label>
+          <label><span>Procurement scope</span>
+            <select required name="scope"><option value="" disabled selected>Select a scope</option><option>Source-to-pay</option><option>Supplier management</option><option>Invoice and financial control</option><option>Contract lifecycle</option><option>Vendor participation</option></select>
+          </label>
+        </div>
+        <label><span>Message</span><textarea required name="message" rows="5" placeholder="Tell us what you want to connect..."></textarea></label>
+        <div class="form-actions">
+          <button class="button button-primary" type="submit">Request a Demo
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg>
+          </button>
+        </div>
+      </form>`;
+    htmx.process(document.getElementById('contact-form'));
+  });
+}
+</script>

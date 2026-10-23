@@ -1,0 +1,46 @@
+<!-- Benefits Comparison Table Section -->
+<section style="background:#ffffff;padding:clamp(60px,8vh,100px) 0 clamp(60px,8vh,100px);" id="benefits-comparison">
+  <div style="max-width:1240px;margin:0 auto;padding:0 16px;">
+    <div style="text-align:center;margin-bottom:40px;" class="animate-on-scroll">
+      <span style="font-size:14px;font-weight:800;color:#2456D6;letter-spacing:0.14em;text-transform:uppercase;display:block;margin-bottom:12px;">
+        PROVEN ARCHITECTURAL DIFFERENCE
+      </span>
+      <h2 style="font-family:'Playfair Display',serif;font-size:clamp(30px,3.8vw,42px);color:#0f172a;font-weight:700;margin:0 0 14px 0;">
+        Legacy Procurement vs. ProcureSphere 360
+      </h2>
+      <p style="color:#1e293b;font-size:19px;max-width:780px;margin:0 auto;line-height:1.7;font-weight:500;">
+        Why disconnected ERP modules and spreadsheet trackers fail modern global enterprises.
+      </p>
+    </div>
+
+    <div class="benefits-table-wrapper animate-on-scroll" style="background:#ffffff;border:2px solid #cbd5e1;border-radius:24px;overflow:hidden;box-shadow:0 20px 48px rgba(15,27,45,0.16),0 6px 16px rgba(15,27,45,0.08);">
+      <div class="benefits-table-card">
+        <!-- Table Header -->
+        <div class="benefits-table-head" style="display:grid;grid-template-columns:1.2fr 1.6fr 1.8fr 1.2fr;gap:18px;padding:24px 32px;background:#0f172a;color:#ffffff;font-weight:800;font-size:15px;letter-spacing:0.06em;text-transform:uppercase;">
+          <div>Process Domain</div>
+          <div>Traditional / Legacy Mode</div>
+          <div style="color:#60a5fa;">ProcureSphere 360 Approach</div>
+          <div>Strategic Outcome</div>
+        </div>
+
+        <!-- Table Rows -->
+        {% for row in comparison_rows %}
+        <div class="benefits-table-row" style="display:grid;grid-template-columns:1.2fr 1.6fr 1.8fr 1.2fr;gap:18px;padding:24px 32px;border-bottom:{% if not forloop.last %}2px solid #e2e8f0{% else %}none{% endif %};background:{% cycle '#ffffff' '#f8fafc' %};align-items:start;">
+          <div style="font-weight:800;color:#0f172a;font-size:17px;line-height:1.55;">{{ row.dimension }}</div>
+          <div style="display:flex;align-items:flex-start;gap:10px;color:#334155;font-size:15.5px;line-height:1.55;font-weight:500;">
+            <span style="color:#dc2626;font-weight:800;font-size:17px;line-height:1.55;flex-shrink:0;width:16px;text-align:center;">✕</span>
+            <span style="flex:1;">{{ row.legacy }}</span>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;color:#0f172a;font-size:15.5px;font-weight:650;line-height:1.55;">
+            <span style="color:#16a34a;font-weight:800;font-size:17px;line-height:1.55;flex-shrink:0;width:16px;text-align:center;">✓</span>
+            <span style="flex:1;">{{ row.procuresphere }}</span>
+          </div>
+          <div style="display:flex;align-items:flex-start;padding-top:2px;">
+            <span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:800;font-size:13.5px;padding:7px 14px;border-radius:999px;display:inline-block;font-family:'DM Mono',monospace;letter-spacing:0.02em;white-space:nowrap;">{{ row.advantage }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>

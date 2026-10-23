@@ -1,0 +1,108 @@
+{% load static %}
+<!-- Login Modal -->
+<div id="login-modal" class="login-fullscreen-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Login to ProcureSphere 360">
+
+  <!-- Close Button -->
+  <button type="button" id="login-close-btn" class="login-close-btn" aria-label="Close Login">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+  </button>
+
+  <div class="login-content-wrapper">
+
+    <!-- Character / Mascot -->
+    <div class="login-character-section">
+      <div class="login-char-container">
+        <img
+          id="login-char-img"
+          src="{% static 'landing/login-states/normal.webp' %}"
+          alt="ProcureSphere Assistant Ready"
+          class="login-char-img"
+        />
+      </div>
+    </div>
+
+    <!-- Form Section -->
+    <div class="login-form-section">
+      <div class="login-form-inner">
+
+        <!-- Brand Header -->
+        <div class="login-brand-header">
+          <span class="login-brand-mark">
+            <svg viewBox="0 0 32 32" width="28" height="28" fill="none" stroke="#2456D6" stroke-width="2"><circle cx="16" cy="16" r="12"/><ellipse cx="16" cy="16" rx="12" ry="5.5"/><path d="M4.5 16h23"/><path d="M16 4v24"/><circle cx="24.8" cy="11" r="2.1" fill="#2456D6"/><circle cx="9.5" cy="21.5" r="2.1" fill="#2456D6"/></svg>
+          </span>
+          <div>
+            <h1 class="login-title">ProcureSphere <em>360</em></h1>
+            <p class="login-subtitle">Enterprise Procurement Platform</p>
+          </div>
+        </div>
+
+        <p class="login-welcome-text">Sign in to your workspace</p>
+
+        <!-- Error Message -->
+        <div id="login-error-msg" class="login-error-msg" aria-live="polite" style="display:none;"></div>
+
+        <!-- Login Form -->
+        <form id="login-form" class="login-form-fields" action="/login/" method="post" novalidate>
+          {% csrf_token %}
+          <div class="login-field-group">
+            <label for="login-userid" class="login-field-label">User ID / Email</label>
+            <div class="login-input-wrapper">
+              <span class="login-input-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </span>
+              <input
+                type="email"
+                id="login-userid"
+                name="email"
+                class="login-input"
+                placeholder="Enter your email address"
+                autocomplete="email"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="login-field-group">
+            <label for="login-password" class="login-field-label">Password</label>
+            <div class="login-input-wrapper">
+              <span class="login-input-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </span>
+              <input
+                type="password"
+                id="login-password"
+                name="password"
+                class="login-input"
+                placeholder="Enter your password"
+                autocomplete="current-password"
+                required
+              />
+              <button type="button" id="toggle-password" class="login-pw-toggle" aria-label="Toggle password visibility">
+                <svg class="pw-eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="login-options-row">
+            <label class="login-remember">
+              <input type="checkbox" id="login-remember" name="rememberMe" />
+              <span>Remember me</span>
+            </label>
+            <a href="#" class="login-forgot-link">Forgot password?</a>
+          </div>
+
+          <button type="submit" id="login-submit-btn" class="login-submit-btn">
+            <span id="login-btn-text">Sign In</span>
+            <span id="login-btn-spinner" class="login-btn-spinner" style="display:none;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10" opacity="0.25"/><path d="M22 12a10 10 0 0 0-10-10" class="spinner-arc"/></svg>
+            </span>
+          </button>
+        </form>
+
+        <!-- Security note: form posts to /login/ via standard Django authentication -->
+
+      </div>
+    </div>
+
+  </div>
+</div>
