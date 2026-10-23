@@ -125,7 +125,7 @@
                                         </div>
                                     </td>
                                     <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-light text-danger" onclick="this.closest('tr').remove(); calculateTotalAmount();"><i class="fa-solid fa-trash"></i></button>
+                                        <button type="button" class="btn btn-sm btn-light text-danger" onclick="removeLineItem(this);" title="Delete or clear item"><i class="fa-solid fa-trash"></i></button>
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -151,7 +151,7 @@
                                         </div>
                                     </td>
                                     <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-light text-danger" onclick="this.closest('tr').remove(); calculateTotalAmount();"><i class="fa-solid fa-trash"></i></button>
+                                        <button type="button" class="btn btn-sm btn-light text-danger" onclick="removeLineItem(this);" title="Delete or clear item"><i class="fa-solid fa-trash"></i></button>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -288,6 +288,32 @@
     }
 
     function validateBudgetOnSubmit(e) {
+        const rows = document.querySelectorAll('#line-items-body tr');
+        let hasValidItem = false;
+        rows.forEach(tr => {
+            const desc = tr.querySelector('input[name="item_description[]"]');
+            if (desc && desc.value.trim() !== '') {
+                hasValidItem = true;
+            }
+        });
+        if (!hasValidItem || rows.length === 0) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            alert('A purchase requisition must have at least one line item with a description and quantity.');
+            const form = document.getElementById('pr_edit_form');
+            if (form) {
+                delete form.dataset.submitting;
+                const saveBtn = form.querySelector('button[type="submit"]');
+                if (saveBtn) window.resetButtonLoading(saveBtn);
+            }
+            if (rows.length === 0) {
+                addLineItem();
+            }
+            const firstDesc = document.querySelector('input[name="item_description[]"]');
+            if (firstDesc) firstDesc.focus();
+            return;
+        }
+
         const total = calculateTotalAmount(false);
         const select = document.getElementById('cost_center_select');
         const selectedOpt = select ? select.options[select.selectedIndex] : null;
@@ -344,10 +370,34 @@
                 </div>
             </td>
             <td class="text-center">
-                <button type="button" class="btn btn-sm btn-light text-danger" onclick="this.closest('tr').remove(); calculateTotalAmount();"><i class="fa-solid fa-trash"></i></button>
+                <button type="button" class="btn btn-sm btn-light text-danger" onclick="removeLineItem(this);" title="Delete or clear item"><i class="fa-solid fa-trash"></i></button>
             </td>
         `;
         tbody.appendChild(tr);
+        calculateTotalAmount();
+    }
+
+    function removeLineItem(btn) {
+        const tbody = document.getElementById('line-items-body');
+        if (!tbody) return;
+        const rows = tbody.querySelectorAll('tr');
+        if (rows.length <= 1) {
+            // Cannot remove the only row: clear its inputs instead to maintain at least one row
+            const tr = btn.closest('tr');
+            if (tr) {
+                const desc = tr.querySelector('input[name="item_description[]"]');
+                const qty = tr.querySelector('input[name="quantity[]"]');
+                const price = tr.querySelector('input[name="estimated_unit_price[]"]');
+                const uom = tr.querySelector('select[name="unit_of_measure[]"]');
+                if (desc) desc.value = '';
+                if (qty) qty.value = '1';
+                if (price) price.value = '';
+                if (uom) uom.value = 'EA';
+                calculateTotalAmount();
+            }
+            return;
+        }
+        btn.closest('tr').remove();
         calculateTotalAmount();
     }
 
