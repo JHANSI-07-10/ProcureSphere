@@ -1342,13 +1342,44 @@ def vendor_invoices_view(request):
 
 
 @vendor_required
-@require_POST
-def vendor_invoice_submit_view(request, po_id):
+def vendor_invoice_submit_view(request, po_id=None):
     vendor = request.vendor
-    po = get_object_or_404(PurchaseOrder, id=po_id)
+    target_po_id = po_id or request.GET.get("po_id") or request.POST.get("po_id")
+    po = get_object_or_404(PurchaseOrder, id=target_po_id) if target_po_id else None
 
-    if po.vendor != vendor and not request.user.is_superuser:
+    if po and po.vendor != vendor and not request.user.is_superuser:
         raise PermissionDenied("Access Denied: Unauthorized invoice submission attempt.")
+
+    if request.method == "GET":
+        from django.utils import timezone
+        import datetime
+        eligible_pos = PurchaseOrder.objects.filter(
+            vendor=vendor,
+            status__in=[
+                PurchaseOrder.STATUS_ISSUED,
+                PurchaseOrder.STATUS_ACKNOWLEDGED,
+                PurchaseOrder.STATUS_PARTIAL_RECEIPT,
+                PurchaseOrder.STATUS_COMPLETED,
+            ],
+        ).order_by("-created_at")
+        if not po and eligible_pos.exists():
+            po = eligible_pos.first()
+        today = timezone.now().date()
+        return render(
+            request,
+            "pages/vendor/invoice_submit.html",
+            {
+                "selected_po": po,
+                "eligible_pos": eligible_pos,
+                "today": today.isoformat(),
+                "default_due_date": (today + datetime.timedelta(days=30)).isoformat(),
+                "active_nav": "invoices",
+            },
+        )
+
+    if not po:
+        messages.error(request, "Purchase Order reference is required.")
+        return redirect("vendor_invoices")
 
     invoice_number = request.POST.get("invoice_number", "").strip()
     invoice_date = request.POST.get("invoice_date")
@@ -1394,6 +1425,11 @@ def vendor_invoice_submit_view(request, po_id):
             notes=notes,
             created_by_user=request.user
         )
+        try:
+            from apps.invoices.services import run_3_way_match_service
+            run_3_way_match_service(invoice=invoice, user=request.user)
+        except Exception:
+            pass
         messages.success(request, f"Invoice {invoice.invoice_number} submitted successfully.")
     except Exception as e:
         messages.error(request, f"Failed to submit invoice: {str(e)}")
