@@ -318,3 +318,32 @@ html, body {
     border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
 }
 
+/* Responsive Width Utilities */
+@media (min-width: 576px) {
+    .w-sm-auto {
+        width: auto !important;
+    }
+    .w-sm-100 {
+        width: 100% !important;
+    }
+}
+
+@media (min-width: 768px) {
+    .w-md-auto {
+        width: auto !important;
+    }
+    .w-md-100 {
+        width: 100% !important;
+    }
+}
+
+@media (min-width: 992px) {
+    .w-lg-auto {
+        width: auto !important;
+    }
+    .w-lg-100 {
+        width: 100% !important;
+    }
+}
+
+
