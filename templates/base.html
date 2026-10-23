@@ -29,12 +29,12 @@
     {% else %}
     <!-- Top Navigation Bar for other roles -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-2">
-        <div class="container-fluid px-4">
-            <a href="/" class="navbar-brand d-flex align-items-center text-white me-4">
-                <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
-                <span class="fs-5 fw-bold">ProcureSphere 360</span>
+        <div class="container-fluid px-2 px-sm-3 px-lg-4">
+            <a href="/" class="navbar-brand d-flex align-items-center text-white me-2 me-lg-4 text-truncate">
+                <i class="fa-solid fa-layer-group text-primary fa-lg me-2 flex-shrink-0"></i>
+                <span class="fs-6 fs-sm-5 fw-bold text-truncate">ProcureSphere <span class="text-primary fw-light">360</span></span>
             </a>
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler border-0 p-1" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -129,7 +129,7 @@
         {% endif %}
 
         <!-- Main Page Content Area -->
-        <main class="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}flex-grow-1 p-3 p-md-4 p-xl-4 overflow-auto bg-light{% else %}container-fluid p-4 overflow-auto{% endif %}" style="min-width: 0;">
+        <main class="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}flex-grow-1 p-3 p-md-4 p-xl-4 overflow-auto bg-light{% else %}container-fluid p-3 p-md-4 overflow-auto{% endif %}" style="min-width: 0;">
             {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}
             <button class="btn btn-outline-dark btn-sm d-lg-none mb-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#procExecSidebar" aria-controls="procExecSidebar">
                 <i class="fa-solid fa-bars me-1"></i> Menu

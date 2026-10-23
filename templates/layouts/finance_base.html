@@ -3,32 +3,32 @@
 {% block navbar %}
 <!-- Top Navigation for Finance -->
 <nav class="navbar navbar-dark bg-dark shadow-sm py-2 sticky-top border-bottom border-secondary border-opacity-25">
-    <div class="container-fluid px-3 px-lg-4">
-        <div class="d-flex align-items-center">
+    <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
+        <div class="d-flex align-items-center overflow-hidden me-2">
             <!-- Mobile / Tablet Hamburger Button -->
-            <button class="btn btn-outline-light btn-sm d-lg-none me-2 rounded-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#financeSidebar" aria-controls="financeSidebar" title="Toggle Navigation">
+            <button class="btn btn-outline-light btn-sm d-lg-none me-2 rounded-2 flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#financeSidebar" aria-controls="financeSidebar" title="Toggle Navigation">
                 <i class="fa-solid fa-bars-staggered"></i>
             </button>
-            <a href="/" class="navbar-brand d-flex align-items-center text-white me-2 mb-0">
-                <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
-                <span class="fs-5 fw-bold">ProcureSphere <span class="text-primary fw-light">360</span></span>
+            <a href="/" class="navbar-brand d-flex align-items-center text-white me-2 mb-0 text-truncate">
+                <i class="fa-solid fa-layer-group text-primary fa-lg me-2 flex-shrink-0"></i>
+                <span class="fs-6 fs-sm-5 fw-bold text-truncate">ProcureSphere <span class="text-primary fw-light">360</span></span>
             </a>
-            <span class="badge bg-secondary bg-opacity-25 text-white border border-secondary border-opacity-50 px-2 py-1 rounded-pill d-none d-md-inline-flex align-items-center ms-2" style="font-size: 0.75rem;">
+            <span class="badge bg-secondary bg-opacity-25 text-white border border-secondary border-opacity-50 px-2 py-1 rounded-pill d-none d-md-inline-flex align-items-center ms-2 flex-shrink-0" style="font-size: 0.75rem;">
                 <i class="fa-solid fa-building-columns text-danger me-1"></i> Finance & AP
             </span>
         </div>
 
-        <div class="ms-auto d-flex align-items-center gap-2">
+        <div class="ms-auto d-flex align-items-center gap-1.5 gap-sm-2 flex-shrink-0">
             {% if user.is_authenticated %}
-                <div class="d-flex align-items-center px-2 px-sm-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary border-opacity-50 text-white">
+                <div class="d-none d-md-flex align-items-center px-2 px-sm-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary border-opacity-50 text-white">
                     <i class="fa-solid fa-circle-user text-info me-1 me-sm-2 fs-5"></i>
-                    <div class="text-start leading-tight me-1 d-none d-sm-block">
+                    <div class="text-start leading-tight me-1">
                         <div class="fw-semibold text-white small text-truncate" style="max-width: 140px;">{{ user.email }}</div>
                         <div class="badge bg-danger text-white rounded-pill" style="font-size: 0.65rem;">{{ user.role_code|default:"FINANCE_AP" }}</div>
                     </div>
                 </div>
-                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-3" title="Sign Out">
-                    <i class="fa-solid fa-arrow-right-from-bracket me-sm-1"></i> <span class="d-none d-sm-inline">Sign Out</span>
+                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-2.5 px-sm-3 text-nowrap d-inline-flex align-items-center" title="Sign Out">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> <span class="d-none d-sm-inline ms-1">Sign Out</span>
                 </a>
             {% endif %}
         </div>

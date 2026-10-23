@@ -307,6 +307,9 @@ def home_view(request):  # noqa: C901
                 .order_by("-updated_at")
                 .prefetch_related("attachments")
             )
+            budget_overrun_qs = pending_prs_qs.filter(status=PurchaseRequisition.STATUS_BUDGET_REVIEW)
+            has_budget_overrun = budget_overrun_qs.exists()
+            budget_overrun_count = budget_overrun_qs.count()
 
             from apps.budgets.models import Budget
             from apps.organization.models import CostCenter, FiscalPeriod
@@ -329,22 +332,28 @@ def home_view(request):  # noqa: C901
 
             context = {
                 "user_department": user_department,
+                "has_budget_overrun": has_budget_overrun,
+                "budget_overrun_count": budget_overrun_count,
                 "metrics": {
                     "total_prs_count": dept_prs.count(),
                     "pending_count": pending_prs_qs.count(),
                     "approved_count": dept_prs.filter(status="APPROVED").count(),
                     "available_budget": float(available_budget),
+                    "budget_overrun_count": budget_overrun_count,
                 },
                 "pending_prs": pending_prs_qs[:10],
             }
         else:
             context = {
                 "user_department": None,
+                "has_budget_overrun": False,
+                "budget_overrun_count": 0,
                 "metrics": {
                     "total_prs_count": 0,
                     "pending_count": 0,
                     "approved_count": 0,
                     "available_budget": 0.0,
+                    "budget_overrun_count": 0,
                 },
                 "pending_prs": [],
             }

@@ -3,8 +3,8 @@
 {% block title %}PR {{ pr.pr_number }} — ProcureSphere 360{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <div style="min-width: 0;">
         {% if role_code == 'PROC_MGR' %}
         <a href="/manager/pipeline/" class="text-decoration-none text-muted mb-2 d-inline-block">
             <i class="fa-solid fa-arrow-left me-1"></i> Back to Procurement Pipeline
@@ -26,25 +26,25 @@
             <i class="fa-solid fa-arrow-left me-1"></i> Back to Requisitions
         </a>
         {% endif %}
-        <h2 class="fw-bold text-dark mb-1">{{ pr.pr_number }}</h2>
-        <p class="text-muted mb-0">{{ pr.title }}</p>
+        <h2 class="fw-bold text-dark mb-1 fs-3">{{ pr.pr_number }}</h2>
+        <p class="text-muted mb-0 small text-truncate">{{ pr.title }}</p>
     </div>
 
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap gap-2 w-100 w-md-auto">
         {% if pr.requester == request.user and role_code in 'REQUESTER,SUPER_ADMIN' %}
             {% if pr.status == 'DRAFT' %}
-            <a href="{% url 'requisition_edit' pr.pk %}" class="btn btn-outline-secondary rounded-pill px-4 fw-semibold">
+            <a href="{% url 'requisition_edit' pr.pk %}" class="btn btn-outline-secondary rounded-pill px-4 fw-semibold flex-grow-1 flex-md-grow-0 text-center">
                 <i class="fa-solid fa-pen me-2"></i>Edit
             </a>
-            <form method="POST" action="{% url 'requisition_submit' pr.pk %}">
+            <form method="POST" action="{% url 'requisition_submit' pr.pk %}" class="flex-grow-1 flex-md-grow-0">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-success rounded-pill shadow-sm px-4 fw-semibold">
+                <button type="submit" class="btn btn-success rounded-pill shadow-sm px-4 fw-semibold w-100">
                     <i class="fa-solid fa-paper-plane me-2"></i>Submit for Approval
                 </button>
             </form>
             {% endif %}
             {% if pr.status in 'DRAFT,SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' %}
-            <button type="button" class="btn btn-outline-danger rounded-pill px-4 fw-semibold" data-bs-toggle="modal" data-bs-target="#cancelConfirmModal">
+            <button type="button" class="btn btn-outline-danger rounded-pill px-4 fw-semibold flex-grow-1 flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#cancelConfirmModal">
                 <i class="fa-solid fa-ban me-2"></i>Cancel PR
             </button>
             {% endif %}
@@ -52,30 +52,30 @@
 
         {% if pr.status == 'SUBMITTED' or pr.status == 'MANAGER_REVIEW' %}
         {% if role_code in 'DEPT_APPROVER,PROC_MGR,SUPER_ADMIN' %}
-        <form method="POST" action="{% url 'requisition_approve' pr.pk %}" class="d-inline-flex gap-2">
+        <form method="POST" action="{% url 'requisition_approve' pr.pk %}" class="d-inline-flex gap-2 flex-grow-1 flex-md-grow-0">
             {% csrf_token %}
-            <button type="submit" class="btn btn-success rounded-pill shadow-sm px-4 fw-bold">
+            <button type="submit" class="btn btn-success rounded-pill shadow-sm px-4 fw-bold w-100">
                 <i class="fa-solid fa-check me-2"></i>Approve PR
             </button>
         </form>
-        <form method="POST" action="{% url 'requisition_reject' pr.pk %}" class="d-inline-flex gap-2">
+        <form method="POST" action="{% url 'requisition_reject' pr.pk %}" class="d-inline-flex gap-2 flex-grow-1 flex-md-grow-0">
             {% csrf_token %}
-            <button type="submit" class="btn btn-outline-danger rounded-pill shadow-sm px-4 fw-bold">
+            <button type="submit" class="btn btn-outline-danger rounded-pill shadow-sm px-4 fw-bold w-100">
                 <i class="fa-solid fa-times me-2"></i>Reject PR
             </button>
         </form>
         {% endif %}
         {% elif pr.status == 'BUDGET_REVIEW' %}
         {% if role_code in 'FINANCE_AP,SUPER_ADMIN' %}
-        <form method="POST" action="{% url 'requisition_approve' pr.pk %}" class="d-inline-flex gap-2">
+        <form method="POST" action="{% url 'requisition_approve' pr.pk %}" class="d-inline-flex gap-2 flex-grow-1 flex-md-grow-0">
             {% csrf_token %}
-            <button type="submit" class="btn btn-warning rounded-pill shadow-sm px-4 fw-bold text-dark">
+            <button type="submit" class="btn btn-warning rounded-pill shadow-sm px-4 fw-bold text-dark w-100">
                 <i class="fa-solid fa-check-double me-2"></i>Approve Budget Exception
             </button>
         </form>
-        <form method="POST" action="{% url 'requisition_reject' pr.pk %}" class="d-inline-flex gap-2">
+        <form method="POST" action="{% url 'requisition_reject' pr.pk %}" class="d-inline-flex gap-2 flex-grow-1 flex-md-grow-0">
             {% csrf_token %}
-            <button type="submit" class="btn btn-outline-danger rounded-pill shadow-sm px-4 fw-bold">
+            <button type="submit" class="btn btn-outline-danger rounded-pill shadow-sm px-4 fw-bold w-100">
                 <i class="fa-solid fa-times me-2"></i>Reject Exception
             </button>
         </form>
