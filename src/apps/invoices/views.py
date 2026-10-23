@@ -11,18 +11,41 @@ from apps.invoices.services import (
     resolve_match_exception_service,
     run_3_way_match_service,
 )
+from apps.accounts.models import Role
 from apps.orders.models import PurchaseOrder
 from apps.vendors.models import Vendor
 
 
+def _enforce_internal_invoice_access(request, allowed_roles=None):
+    user = request.user
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if hasattr(user, "role") and user.role else None
+    )
+    if not user.is_authenticated:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("Authentication required.")
+    if user.is_superuser:
+        return
+    if getattr(user, "is_vendor", False) or role_code in [Role.VENDOR_USER, "VENDOR_USER"]:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("External vendors are not authorized to access internal invoice workflows.")
+    if allowed_roles and role_code not in allowed_roles:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("Permission denied: insufficient role privileges for this invoice operation.")
+
+
 @login_required(login_url="/login/")
 def list_view(request):
+    _enforce_internal_invoice_access(request)
     items = SupplierInvoice.objects.all().order_by("-created_at")
     return render(request, "pages/invoices/list.html", {"items": items})
 
 
 @login_required(login_url="/login/")
 def tolerance_settings_view(request):
+    _enforce_internal_invoice_access(
+        request, allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, "FINANCE_AP", "SUPER_ADMIN"]
+    )
     policy = MatchTolerancePolicy.get_current()
     if request.method == "POST":
         price_raw = request.POST.get("price_tolerance_pct", "").strip()
@@ -60,6 +83,7 @@ def tolerance_settings_view(request):
 
 @login_required(login_url="/login/")
 def invoice_detail_view(request, invoice_id):
+    _enforce_internal_invoice_access(request)
     invoice = get_object_or_404(
         SupplierInvoice.objects.select_related("vendor", "po").prefetch_related(
             "lines__po_line",
@@ -75,6 +99,7 @@ def invoice_detail_view(request, invoice_id):
 
 @login_required(login_url="/login/")
 def exceptions_list_view(request):
+    _enforce_internal_invoice_access(request)
     exceptions = MatchException.objects.filter(status=MatchException.STATUS_OPEN).order_by(
         "-created_at"
     )
@@ -83,12 +108,16 @@ def exceptions_list_view(request):
 
 @login_required(login_url="/login/")
 def exception_detail_view(request, exception_id):
+    _enforce_internal_invoice_access(request)
     exception = get_object_or_404(MatchException, id=exception_id)
     return render(request, "pages/invoices/exception_detail.html", {"exception": exception})
 
 
 @login_required(login_url="/login/")
 def resolve_exception_view(request, exception_id):
+    _enforce_internal_invoice_access(
+        request, allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, "FINANCE_AP", "SUPER_ADMIN"]
+    )
     from apps.accounts.models import Role
 
     role_code = getattr(request.user, "role_code", None) or (
@@ -128,6 +157,7 @@ def resolve_exception_view(request, exception_id):
 
 @login_required(login_url="/login/")
 def ready_for_payment_view(request):
+    _enforce_internal_invoice_access(request)
     invoices = SupplierInvoice.objects.filter(
         status=SupplierInvoice.STATUS_READY_FOR_PAYMENT
     ).order_by("-created_at")
@@ -136,6 +166,9 @@ def ready_for_payment_view(request):
 
 @login_required(login_url="/login/")
 def pay_invoice_view(request, invoice_id):
+    _enforce_internal_invoice_access(
+        request, allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, "FINANCE_AP", "SUPER_ADMIN"]
+    )
     if request.method == "POST":
         invoice = get_object_or_404(SupplierInvoice, id=invoice_id)
         try:
@@ -151,6 +184,10 @@ def pay_invoice_view(request, invoice_id):
 
 @login_required(login_url="/login/")
 def create_invoice_view(request):
+    _enforce_internal_invoice_access(
+        request,
+        allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, Role.PROC_MGR, Role.PROC_EXEC, "FINANCE_AP", "SUPER_ADMIN", "PROC_MGR", "PROC_EXEC"],
+    )
     vendors = Vendor.objects.filter(status="ACTIVE").order_by("legal_name")
     pos = PurchaseOrder.objects.filter(
         status__in=["ISSUED", "PARTIAL_RECEIPT", "ACKNOWLEDGED"]

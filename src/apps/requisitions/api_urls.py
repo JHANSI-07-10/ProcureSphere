@@ -92,6 +92,19 @@ class PurchaseRequisitionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Requested delivery date cannot be in the past.")
         return value
 
+    def validate_department(self, value):
+        request = self.context.get("request")
+        if request and request.user and request.user.is_authenticated and not request.user.is_superuser:
+            role_code = getattr(request.user, "role_code", None) or (
+                request.user.role.code if hasattr(request.user, "role") and request.user.role else None
+            )
+            if role_code == Role.REQUESTER and getattr(request.user, "department_id", None):
+                if value.id != request.user.department_id:
+                    raise serializers.ValidationError(
+                        "Requesters can only raise purchase requisitions for their assigned department."
+                    )
+        return value
+
     def create(self, validated_data):
         lines_data = self.initial_data.get("line_items", self.initial_data.get("lines", []))
         validated_data.pop("lines", None)

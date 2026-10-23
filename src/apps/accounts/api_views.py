@@ -198,13 +198,17 @@ class UserViewSet(viewsets.ModelViewSet):
 
         if self.action == "me":
             return [IsAuthenticated()]
-        if self.action in ["create", "update", "partial_update", "destroy"]:
+        if self.action in ["list", "create", "update", "partial_update", "destroy"]:
             return [IsAuthenticated(), IsSuperAdmin()]
-        # Listing or retrieving users is restricted to internal users (vendors blocked)
         return [IsAuthenticated(), IsNotVendorUser()]
 
     def get_queryset(self):
-        return get_all_users()
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return User.objects.none()
+        if user.is_superuser or getattr(user, "role_code", None) == Role.SUPER_ADMIN:
+            return get_all_users()
+        return User.objects.filter(id=user.id)
 
     def get_serializer_class(self):
         if self.action == "create":
