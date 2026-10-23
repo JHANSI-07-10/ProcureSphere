@@ -1346,24 +1346,24 @@ def vendor_invoices_view(request):
 def vendor_invoice_submit_view(request, po_id):
     vendor = request.vendor
     po = get_object_or_404(PurchaseOrder, id=po_id)
-    
+
     if po.vendor != vendor and not request.user.is_superuser:
         raise PermissionDenied("Access Denied: Unauthorized invoice submission attempt.")
-        
+
     invoice_number = request.POST.get("invoice_number", "").strip()
     invoice_date = request.POST.get("invoice_date")
     due_date = request.POST.get("due_date")
     notes = request.POST.get("notes", "").strip()
-    
+
     if not invoice_number or not invoice_date or not due_date:
         messages.error(request, "Invoice number, date, and due date are required.")
         return redirect("vendor_purchase_order_detail", po_id=po.id)
-        
+
     line_items = []
     for po_line in po.lines.all():
         qty_str = request.POST.get(f"qty_{po_line.id}")
         price_str = request.POST.get(f"price_{po_line.id}")
-        
+
         if qty_str and price_str:
             try:
                 qty = Decimal(qty_str)
@@ -1382,7 +1382,7 @@ def vendor_invoice_submit_view(request, po_id):
     if not line_items:
         messages.error(request, "You must include at least one line item with a quantity greater than 0.")
         return redirect("vendor_purchase_order_detail", po_id=po.id)
-        
+
     try:
         invoice = create_supplier_invoice_service(
             vendor=vendor,
@@ -1397,7 +1397,7 @@ def vendor_invoice_submit_view(request, po_id):
         messages.success(request, f"Invoice {invoice.invoice_number} submitted successfully.")
     except Exception as e:
         messages.error(request, f"Failed to submit invoice: {str(e)}")
-        
+
     return redirect("vendor_purchase_order_detail", po_id=po.id)
 
 
@@ -1502,7 +1502,12 @@ def vendor_document_download_view(request, doc_type, doc_id):
                         from reportlab.lib import colors
                         from reportlab.lib.pagesizes import letter
                         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-                        from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer
+                        from reportlab.platypus import (
+                            HRFlowable,
+                            Paragraph,
+                            SimpleDocTemplate,
+                            Spacer,
+                        )
 
                         doc_title = getattr(
                             att if doc_type == "bid" else doc, "title", filename
@@ -1596,7 +1601,7 @@ def vendor_document_download_view(request, doc_type, doc_id):
                 pass
 
         return FileResponse(file_handle.open("rb"), as_attachment=True, filename=filename)
-    except Exception as e:
+    except Exception:
         # Fallback to direct in-memory download response so the client never encounters a 404
         content_type = "application/pdf" if ext == ".pdf" else "application/octet-stream"
         fallback_data = f"ProcureSphere 360 Document Archive: {filename}\n".encode("utf-8")

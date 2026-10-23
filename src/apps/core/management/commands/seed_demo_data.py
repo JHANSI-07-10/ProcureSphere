@@ -333,7 +333,10 @@ class Command(BaseCommand):
 
         # 5b. Approval Policies
         from apps.approvals.models import ApprovalPolicy
-        from apps.approvals.services import add_approval_step_service, create_approval_policy_service
+        from apps.approvals.services import (
+            add_approval_step_service,
+            create_approval_policy_service,
+        )
 
         if not ApprovalPolicy.objects.filter(module=ApprovalPolicy.MODULE_PR, is_active=True).exists():
             default_pr_policy = create_approval_policy_service(
@@ -345,7 +348,7 @@ class Command(BaseCommand):
             add_approval_step_service(
                 policy=default_pr_policy,
                 step_number=1,
-                approver_role=role_dept_mgr,
+                approver_role=roles[Role.DEPT_APPROVER],
                 description="Department Manager Approval",
             )
 

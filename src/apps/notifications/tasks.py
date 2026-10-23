@@ -48,3 +48,16 @@ def send_user_welcome_email_task(self, user_id: str, temporary_password: str, lo
         logger.error("Unexpected error in send_user_welcome_email_task: %s", exc)
         raise self.retry(exc=exc)
 
+
+@shared_task(name="notifications.tasks.scan_overdue_approvals_and_escalate")
+def scan_overdue_approvals_and_escalate():
+    """
+    Celery Beat periodic task to check for pending approvals exceeding reminder
+    and escalation SLA thresholds (48h and 72h).
+    """
+    from apps.notifications.services import scan_overdue_approvals_and_escalate_service
+
+    result = scan_overdue_approvals_and_escalate_service()
+    logger.info("Scan overdue approvals completed: %s", result)
+    return result
+

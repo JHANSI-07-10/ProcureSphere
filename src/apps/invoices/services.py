@@ -206,6 +206,22 @@ def run_3_way_match_service(
 
     if exceptions:
         invoice.status = SupplierInvoice.STATUS_EXCEPTION
+
+        from apps.accounts.models import Role, User
+        from apps.notifications.models import Notification
+
+        finance_users = User.objects.filter(role__code=Role.FINANCE_AP, is_active=True)
+        for fin_user in finance_users:
+            Notification.objects.create(
+                recipient=fin_user,
+                notification_type=Notification.TYPE_EXCEPTION_RAISED,
+                title=f"3-Way Match Exception: Invoice {invoice.invoice_number}",
+                message=(
+                    f"Invoice {invoice.invoice_number} from {invoice.vendor.legal_name} "
+                    f"has {len(exceptions)} match exception(s) requiring Finance resolution."
+                ),
+                target_url=f"/invoices/{invoice.id}/",
+            )
     else:
         invoice.status = SupplierInvoice.STATUS_READY_FOR_PAYMENT
 

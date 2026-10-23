@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
+from apps.accounts.models import Role
 from apps.invoices.models import MatchException, MatchTolerancePolicy, SupplierInvoice
 from apps.invoices.services import (
     create_supplier_invoice_service,
@@ -11,7 +12,6 @@ from apps.invoices.services import (
     resolve_match_exception_service,
     run_3_way_match_service,
 )
-from apps.accounts.models import Role
 from apps.orders.models import PurchaseOrder
 from apps.vendors.models import Vendor
 
@@ -118,7 +118,6 @@ def resolve_exception_view(request, exception_id):
     _enforce_internal_invoice_access(
         request, allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, "FINANCE_AP", "SUPER_ADMIN"]
     )
-    from apps.accounts.models import Role
 
     role_code = getattr(request.user, "role_code", None) or (
         request.user.role.code

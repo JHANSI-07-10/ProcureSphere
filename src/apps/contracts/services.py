@@ -50,8 +50,9 @@ def create_contract_service(
     if renewal_notice_days is not None and renewal_notice_days <= 0:
         raise ValidationError("Renewal notice period must be a positive number of days.")
 
-    contract_count = Contract.objects.count() + 1
-    contract_number = f"CON-{timezone.now().strftime('%Y')}-{contract_count:05d}"
+    from apps.core.services import generate_document_number
+
+    contract_number = generate_document_number(Contract, "contract_number", "CON")
 
     contract = Contract.objects.create(
         contract_number=contract_number,
