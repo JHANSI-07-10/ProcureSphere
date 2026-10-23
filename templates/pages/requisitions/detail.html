@@ -99,7 +99,7 @@
 {% endif %}
 
 <!-- Budget Alert Banner -->
-{% if is_budget_exceeded or pr.status == 'BUDGET_REVIEW' %}
+{% if is_budget_exceeded %}
 <div class="alert alert-danger border border-danger shadow-sm rounded-4 mb-4 p-4 d-flex align-items-start gap-3">
     <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center p-3 fs-3 flex-shrink-0 shadow-sm"
         style="width: 52px; height: 52px;">
@@ -138,19 +138,22 @@
             {% if pr.status == 'DRAFT' %}
             <div class="position-absolute bg-primary"
                 style="height: 4px; top: 20px; left: 10%; right: 90%; z-index: 2;"></div>
-            {% elif pr.status in 'SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' %}
+            {% elif pr.status in 'SUBMITTED,MANAGER_REVIEW' %}
             <div class="position-absolute bg-primary"
-                style="height: 4px; top: 20px; left: 10%; right: 63%; z-index: 2;"></div>
+                style="height: 4px; top: 20px; left: 10%; right: 70%; z-index: 2;"></div>
+            {% elif pr.status == 'BUDGET_REVIEW' %}
+            <div class="position-absolute bg-primary"
+                style="height: 4px; top: 20px; left: 10%; right: 50%; z-index: 2;"></div>
             {% elif pr.status == 'APPROVED' %}
             <div class="position-absolute bg-primary"
-                style="height: 4px; top: 20px; left: 10%; right: 37%; z-index: 2;"></div>
+                style="height: 4px; top: 20px; left: 10%; right: 30%; z-index: 2;"></div>
             {% elif pr.status in 'SOURCING,PO_ISSUED' %}
             <div class="position-absolute bg-primary"
                 style="height: 4px; top: 20px; left: 10%; right: 10%; z-index: 2;"></div>
             {% endif %}
 
             <!-- Step 1: Draft -->
-            <div class="position-relative text-center" style="z-index: 3; width: 140px;">
+            <div class="position-relative text-center" style="z-index: 3; min-width: 100px; max-width: 130px;">
                 <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm"
                     style="width: 44px; height: 44px;">
                     <i class="fa-solid fa-pen-ruler"></i>
@@ -158,25 +161,58 @@
                 <span class="fw-bold small text-dark d-block">Draft</span>
             </div>
 
-            <!-- Step 2: Pending Review -->
-            <div class="position-relative text-center" style="z-index: 3; width: 140px;">
+            <!-- Step 2: Manager Review -->
+            <div class="position-relative text-center" style="z-index: 3; min-width: 100px; max-width: 130px;">
                 {% if pr.status == 'DRAFT' %}
                 <div class="bg-light text-muted rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 border border-2 border-white shadow-sm"
                     style="width: 44px; height: 44px;">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <i class="fa-solid fa-user-check"></i>
                 </div>
-                <span class="small text-muted d-block fw-semibold">Pending Review</span>
+                <span class="small text-muted d-block fw-semibold">Manager Review</span>
+                {% elif pr.status in 'SUBMITTED,MANAGER_REVIEW' %}
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm"
+                    style="width: 44px; height: 44px;">
+                    <i class="fa-solid fa-user-check"></i>
+                </div>
+                <span class="fw-bold small text-dark d-block">Manager Review</span>
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill" style="font-size: 0.65rem;">In Review</span>
                 {% else %}
                 <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm"
                     style="width: 44px; height: 44px;">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <i class="fa-solid fa-check"></i>
                 </div>
-                <span class="fw-bold small text-dark d-block">Pending Review</span>
+                <span class="fw-bold small text-dark d-block">Manager Review</span>
                 {% endif %}
             </div>
 
-            <!-- Step 3: Approved -->
-            <div class="position-relative text-center" style="z-index: 3; width: 140px;">
+            <!-- Step 3: Budget Review -->
+            <div class="position-relative text-center" style="z-index: 3; min-width: 100px; max-width: 130px;">
+                {% if pr.status in 'DRAFT,SUBMITTED,MANAGER_REVIEW' %}
+                <div class="bg-light text-muted rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 border border-2 border-white shadow-sm"
+                    style="width: 44px; height: 44px;">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <span class="small text-muted d-block fw-semibold">Budget Review</span>
+                <span class="text-muted" style="font-size: 0.65rem;">Pre-checked</span>
+                {% elif pr.status == 'BUDGET_REVIEW' %}
+                <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm"
+                    style="width: 44px; height: 44px;">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <span class="fw-bold small text-dark d-block">Budget Review</span>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill" style="font-size: 0.65rem;">Exception</span>
+                {% else %}
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm"
+                    style="width: 44px; height: 44px;">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <span class="fw-bold small text-dark d-block">Budget Review</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 0.65rem;">Reserved</span>
+                {% endif %}
+            </div>
+
+            <!-- Step 4: Approved -->
+            <div class="position-relative text-center" style="z-index: 3; min-width: 100px; max-width: 130px;">
                 {% if pr.status in 'DRAFT,SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' %}
                 <div class="bg-light text-muted rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 border border-2 border-white shadow-sm"
                     style="width: 44px; height: 44px;">
@@ -192,27 +228,27 @@
                 {% endif %}
             </div>
 
-            <!-- Step 4: Procure Executive -->
-            <div class="position-relative text-center" style="z-index: 3; width: 140px;">
+            <!-- Step 5: Sourcing / PO -->
+            <div class="position-relative text-center" style="z-index: 3; min-width: 100px; max-width: 130px;">
                 {% if pr.status in 'DRAFT,SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' %}
                 <div class="bg-light text-muted rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 border border-2 border-white shadow-sm"
                     style="width: 44px; height: 44px;">
                     <i class="fa-solid fa-user-tie"></i>
                 </div>
-                <span class="small text-muted d-block fw-semibold">Procure Executive</span>
+                <span class="small text-muted d-block fw-semibold">Sourcing / PO</span>
                 {% elif pr.status == 'APPROVED' %}
                 <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm"
                     style="width: 44px; height: 44px;">
                     <i class="fa-solid fa-user-tie"></i>
                 </div>
-                <span class="fw-bold small text-dark d-block">Procure Executive</span>
+                <span class="fw-bold small text-dark d-block">Sourcing / PO</span>
                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill" style="font-size: 0.65rem;">Ready for Sourcing</span>
                 {% else %}
                 <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm"
                     style="width: 44px; height: 44px;">
                     <i class="fa-solid fa-check"></i>
                 </div>
-                <span class="fw-bold small text-dark d-block">Procure Executive</span>
+                <span class="fw-bold small text-dark d-block">Sourcing / PO</span>
                 <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 0.65rem;">Sourced / PO</span>
                 {% endif %}
             </div>
@@ -378,14 +414,23 @@
                         <h5 class="mb-0 fw-bold">Draft</h5>
                         <span class="text-muted small">Not yet submitted</span>
                     </div>
-                    {% elif pr.status == 'SUBMITTED' or pr.status == 'MANAGER_REVIEW' or pr.status == 'BUDGET_REVIEW' %}
+                    {% elif pr.status == 'SUBMITTED' or pr.status == 'MANAGER_REVIEW' %}
                     <div class="bg-warning rounded-circle text-dark d-flex align-items-center justify-content-center me-3"
                         style="width: 48px; height: 48px;">
-                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <i class="fa-solid fa-user-check"></i>
                     </div>
                     <div>
-                        <h5 class="mb-0 fw-bold">Pending Review</h5>
-                        <span class="text-muted small">{{ pr.get_status_display }}</span>
+                        <h5 class="mb-0 fw-bold">Manager Review</h5>
+                        <span class="text-muted small">Awaiting Department / Manager Approval</span>
+                    </div>
+                    {% elif pr.status == 'BUDGET_REVIEW' %}
+                    <div class="bg-warning rounded-circle text-dark d-flex align-items-center justify-content-center me-3"
+                        style="width: 48px; height: 48px;">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0 fw-bold">Budget Review</h5>
+                        <span class="text-muted small">Budget Overrun - Finance Approval Required</span>
                     </div>
                     {% elif pr.status == 'APPROVED' %}
                     <div class="bg-success rounded-circle text-white d-flex align-items-center justify-content-center me-3"
