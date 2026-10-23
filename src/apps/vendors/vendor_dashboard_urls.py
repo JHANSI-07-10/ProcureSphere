@@ -23,6 +23,11 @@ urlpatterns = [
     # My Bids & Preparation
     path("bids/", views.vendor_bids_list_view, name="vendor_bids_list"),
     path("bids/create/<uuid:event_id>/", views.vendor_bid_create_view, name="vendor_bid_create"),
+    path(
+        "sourcing/<uuid:event_id>/bid/",
+        views.vendor_bid_create_view,
+        name="vendor_sourcing_bid",
+    ),
     path("bids/<uuid:bid_id>/", views.vendor_bid_detail_view, name="vendor_bid_detail"),
     path(
         "bids/<uuid:bid_id>/validate/", views.vendor_bid_validate_view, name="vendor_bid_validate"

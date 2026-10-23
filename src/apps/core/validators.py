@@ -167,25 +167,25 @@ def validate_file_upload(file):
     content_type = getattr(file, "content_type", None)
     if content_type:
         raw_mime = content_type.split(";")[0].strip().lower()
+        generic_fallbacks = {"application/octet-stream", "text/plain"}
         allowed_mimes = {
             "pdf": {"application/pdf"},
             "png": {"image/png"},
             "jpg": {"image/jpeg", "image/pjpeg"},
             "jpeg": {"image/jpeg", "image/pjpeg"},
-            "doc": {"application/msword", "application/x-msword", "application/octet-stream"},
+            "doc": {"application/msword", "application/x-msword"},
             "docx": {
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 "application/zip",
-                "application/octet-stream",
             },
             "xlsx": {
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "application/zip",
-                "application/octet-stream",
             },
-            "csv": {"text/csv", "application/csv", "text/plain", "application/vnd.ms-excel"},
+            "csv": {"text/csv", "application/csv", "application/vnd.ms-excel"},
         }.get(ext, set())
-        if allowed_mimes and raw_mime not in allowed_mimes:
+        valid_mimes = allowed_mimes | generic_fallbacks
+        if allowed_mimes and raw_mime not in valid_mimes:
             raise ValidationError(
                 _(f"Invalid MIME type '{content_type}' for .{ext} file.")
             )
@@ -201,7 +201,7 @@ def validate_file_upload(file):
     try:
         if ext == "pdf":
             header = file.read(8)
-            if not header.startswith(b"%PDF-"):
+            if not header.startswith(b"%PDF"):
                 raise ValidationError(
                     _("Invalid file content for .pdf. The file is not a valid PDF document.")
                 )

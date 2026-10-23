@@ -236,7 +236,11 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sync-sourcing-bid-windows": {
         "task": "apps.sourcing.tasks.sync_sourcing_bid_windows_task",
-        "schedule": 300.0,  # every 5 minutes; views/services also sync on access
+        "schedule": 60.0,  # every 60 seconds; views/services also sync on access
+    },
+    "scan-contract-milestones-and-expirations": {
+        "task": "contracts.tasks.scan_contract_expirations_and_milestones",
+        "schedule": 3600.0,  # every hour
     },
     "scan-contract-expirations-and-milestones": {
         "task": "contracts.tasks.scan_contract_expirations_and_milestones",
@@ -292,3 +296,54 @@ VENDOR_PORTAL_LOGIN_URLS = env.list(
 BREVO_API_KEY = env("BREVO_API_KEY", default="")
 BREVO_SENDER_EMAIL = env("BREVO_SENDER_EMAIL", default="no-reply@procuresphere.com")
 BREVO_SENDER_NAME = env("BREVO_SENDER_NAME", default="ProcureSphere 360")
+
+# ---------------------------------------------------------------------------
+# Logging Configuration
+# ---------------------------------------------------------------------------
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{asctime}] {levelname} {name}: {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "apps": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "celery": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}

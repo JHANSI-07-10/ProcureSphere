@@ -274,8 +274,8 @@
                                     </td>
                                     <td class="small text-muted">{{ inv.event.bid_end_date|date:"M d, Y H:i" }}</td>
                                     <td>
-                                        <span class="badge {% if inv.event.status == 'BID_WINDOW' %}bg-success{% else %}bg-secondary{% endif %}">
-                                            {{ inv.event.status }}
+                                        <span class="badge {% if inv.event.status == 'BID_WINDOW' %}bg-success{% elif inv.event.status == 'PUBLISHED' %}bg-info text-dark{% elif inv.event.status == 'CANCELLED' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                            {{ inv.event.get_status_display|default:inv.event.status }}
                                         </span>
                                     </td>
                                     <td class="text-end pe-3">

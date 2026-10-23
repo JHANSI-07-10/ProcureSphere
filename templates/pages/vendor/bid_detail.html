@@ -22,6 +22,11 @@
                     {{ bid.get_status_display }}
                 </span>
                 <span class="badge bg-secondary rounded-pill">Version {{ bid.version }}</span>
+                {% if is_winner %}
+                <span class="badge bg-success">
+                    <i class="fa-solid fa-trophy me-1"></i> Awarded
+                </span>
+                {% endif %}
                 {% if event.is_sealed %}
                 <span class="badge bg-secondary bg-opacity-25 text-dark border">
                     <i class="fa-solid fa-lock me-1"></i> Sealed Proposal
@@ -33,6 +38,11 @@
         </div>
 
         <div class="d-flex flex-wrap gap-2 w-100 w-md-auto">
+            {% if is_winner and resulting_po %}
+            <a href="{% url 'vendor_purchase_order_detail' po_id=resulting_po.id %}" class="btn btn-success btn-sm rounded-pill px-3 px-sm-4 shadow-sm flex-fill flex-md-grow-0 text-center">
+                <i class="fa-solid fa-file-invoice me-1"></i> View Issued PO
+            </a>
+            {% endif %}
             {% if can_amend %}
             <a href="{% url 'vendor_bid_amend' bid_id=bid.id %}" class="btn btn-primary btn-sm rounded-pill px-3 px-sm-4 shadow-sm flex-fill flex-md-grow-0 text-center">
                 <i class="fa-solid fa-code-compare me-1"></i> Amend Submitted Bid
@@ -70,6 +80,29 @@
             <h6 class="fw-bold mb-1 text-danger">Bid Formally Withdrawn</h6>
             <p class="small mb-0 text-dark">This bid was withdrawn prior to the event closure deadline. Current versions have been immutably archived for audit compliance. This bid will be excluded from technical and commercial evaluations and cannot be reopened.</p>
         </div>
+    </div>
+    {% endif %}
+
+    {% if is_winner %}
+    <div class="alert alert-success d-flex flex-wrap align-items-center justify-content-between mb-4 rounded-3 shadow-sm bg-success bg-opacity-10 border-start border-success border-4 p-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-success text-white p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                <i class="fa-solid fa-trophy fs-5"></i>
+            </div>
+            <div>
+                <h6 class="fw-bold mb-1 text-success">Winning Proposal Selected & Awarded</h6>
+                <p class="small mb-0 text-dark">This bid was officially evaluated and approved by the Procurement Board as the winning award for <strong>{{ event.event_number }}</strong>.
+                {% if resulting_po %}
+                Purchase Order <strong>{{ resulting_po.po_number }}</strong> has been generated and issued.
+                {% endif %}
+                </p>
+            </div>
+        </div>
+        {% if resulting_po %}
+        <a href="{% url 'vendor_purchase_order_detail' po_id=resulting_po.id %}" class="btn btn-success btn-sm rounded-pill px-4 shadow-sm mt-2 mt-md-0">
+            <i class="fa-solid fa-file-signature me-1"></i> Review & Acknowledge PO &rarr;
+        </a>
+        {% endif %}
     </div>
     {% endif %}
 
