@@ -110,10 +110,11 @@ class PurchaseRequisitionSerializer(serializers.ModelSerializer):
         validated_data.pop("lines", None)
 
         if not validated_data.get("pr_number"):
-            from django.utils import timezone
+            from apps.core.services import generate_document_number
 
-            count = PurchaseRequisition.objects.count() + 1
-            validated_data["pr_number"] = f"PR-{timezone.now().strftime('%Y')}-{count:05d}"
+            validated_data["pr_number"] = generate_document_number(
+                PurchaseRequisition, "pr_number", "PR"
+            )
 
         pr = super().create(validated_data)
 
@@ -150,6 +151,25 @@ class PurchaseRequisitionSerializer(serializers.ModelSerializer):
         if total > Decimal("0.00"):
             pr.total_amount = total
             pr.save(update_fields=["total_amount"])
+
+        from apps.audit.models import AuditLog
+
+        req_user = (
+            self.context.get("request").user
+            if self.context.get("request")
+            else getattr(pr, "requester", None)
+        )
+        AuditLog.objects.create(
+            actor=req_user if req_user and req_user.is_authenticated else None,
+            action=AuditLog.ACTION_CREATE,
+            target_model="PurchaseRequisition",
+            target_object_id=str(pr.id),
+            new_state={
+                "pr_number": pr.pr_number,
+                "status": pr.status,
+                "total_amount": str(pr.total_amount),
+            },
+        )
 
         return pr
 
@@ -387,9 +407,21 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
             )
         from apps.requisitions.services import release_budget_reservation_service
 
+        previous_status = pr.status
         pr.status = PurchaseRequisition.STATUS_CANCELLED
         pr.save(update_fields=["status", "updated_at"])
         release_budget_reservation_service(requisition=pr, user=user, reason="PR cancelled by user")
+
+        from apps.audit.models import AuditLog
+
+        AuditLog.objects.create(
+            actor=user if user and user.is_authenticated else None,
+            action=AuditLog.ACTION_UPDATE,
+            target_model="PurchaseRequisition",
+            target_object_id=str(pr.id),
+            previous_state={"status": previous_status},
+            new_state={"status": PurchaseRequisition.STATUS_CANCELLED},
+        )
         return Response(self.get_serializer(pr).data, status=status.HTTP_200_OK)
 
     def destroy(self, request, *args, **kwargs):
@@ -405,7 +437,22 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
             raise permissions.exceptions.PermissionDenied(
                 "You do not have permission to delete this requisition."
             )
-        return super().destroy(request, *args, **kwargs)
+        # Soft-cancel instead of hard delete to preserve audit history (PR-02)
+        previous_status = pr.status
+        pr.status = PurchaseRequisition.STATUS_CANCELLED
+        pr.save(update_fields=["status", "updated_at"])
+
+        from apps.audit.models import AuditLog
+
+        AuditLog.objects.create(
+            actor=user if user and user.is_authenticated else None,
+            action=AuditLog.ACTION_DELETE,
+            target_model="PurchaseRequisition",
+            target_object_id=str(pr.id),
+            previous_state={"status": previous_status},
+            new_state={"status": PurchaseRequisition.STATUS_CANCELLED},
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 router = DefaultRouter()

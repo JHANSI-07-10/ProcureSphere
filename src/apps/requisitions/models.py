@@ -52,6 +52,15 @@ class PurchaseRequisition(TimeStampedModel):
     def __str__(self):
         return f"{self.pr_number} - {self.title} (${self.total_amount})"
 
+    def delete(self, using=None, keep_parents=False):
+        """
+        Hard deletion of PurchaseRequisitions is strictly prohibited (PR-02).
+        Transitions status to CANCELLED instead of destroying the record and audit trail.
+        """
+        self.status = self.STATUS_CANCELLED
+        self.save(update_fields=["status", "updated_at"])
+        return (1, {self._meta.label: 1})
+
 
 class PRLine(TimeStampedModel):
     requisition = models.ForeignKey(

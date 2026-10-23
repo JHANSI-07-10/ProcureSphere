@@ -279,11 +279,11 @@ class VendorSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         if not validated_data.get("vendor_number"):
-            from django.utils import timezone
+            from apps.core.services import generate_document_number
 
-            count = Vendor.objects.count() + 1
-            year = timezone.now().strftime("%Y")
-            validated_data["vendor_number"] = f"VND-{year}-{count:05d}"
+            validated_data["vendor_number"] = generate_document_number(
+                Vendor, "vendor_number", "VND"
+            )
         return super().create(validated_data)
 
 
