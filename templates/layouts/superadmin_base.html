@@ -3,100 +3,211 @@
 {% block navbar %}{% endblock %}
 
 {% block layout %}
-<div class="container-fluid min-vh-100 d-flex flex-column bg-light p-0">
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold d-flex align-items-center" href="/">
-                <i class="fa-solid fa-shield-halved text-warning me-2"></i> 
-                ProcureSphere <span class="fw-light ms-1">360</span> <span class="badge bg-danger ms-2" style="font-size: 0.6rem;">SUPER ADMIN</span>
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <div class="collapse navbar-collapse" id="navbarContent">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle px-3 d-flex align-items-center text-white" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fa-solid fa-cubes me-2 text-warning"></i> ERP Modules
-                        </a>
-                        <ul class="dropdown-menu shadow-lg border-0">
-                            <li><a class="dropdown-item py-2" href="/requisitions/"><i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i> Requisitions (PR)</a></li>
-                            <li><a class="dropdown-item py-2" href="/approvals/inbox/"><i class="fa-solid fa-square-check text-warning me-2"></i> Approvals Inbox</a></li>
-                            <li><a class="dropdown-item py-2" href="/sourcing-events/"><i class="fa-solid fa-gavel text-info me-2"></i> Sourcing (RFQ/RFP)</a></li>
-                            <li><a class="dropdown-item py-2" href="/vendors/"><i class="fa-solid fa-building-user text-success me-2"></i> Vendor Governance</a></li>
-                            <li><a class="dropdown-item py-2" href="/purchase-orders/"><i class="fa-solid fa-cart-shopping text-cyan me-2"></i> Purchase Orders (PO)</a></li>
-                            <li><a class="dropdown-item py-2" href="/invoices/"><i class="fa-solid fa-receipt text-danger me-2"></i> Invoices & 3-Way Match</a></li>
-                            <li><a class="dropdown-item py-2" href="/contracts/"><i class="fa-solid fa-file-contract text-secondary me-2"></i> Contracts & SLA</a></li>
-                            <li><a class="dropdown-item py-2" href="/scorecards/"><i class="fa-solid fa-award text-success me-2"></i> Vendor Scorecards</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item py-2" href="/reports/hub/"><i class="fa-solid fa-chart-line text-primary me-2"></i> Reports & Analytics</a></li>
-                            <li><a class="dropdown-item py-2" href="/audit/logs/"><i class="fa-solid fa-shield-halved text-dark me-2"></i> Audit Trail Log</a></li>
-                        </ul>
-                    </li>
-                </ul>
-                <div class="d-flex align-items-center">
-                    <div class="dropdown">
-                        <button class="btn btn-dark dropdown-toggle border-0" type="button" data-bs-toggle="dropdown">
-                            <i class="fa-solid fa-user-shield me-2"></i>{{ request.user.email|default:"Super Admin" }}
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-gear me-2"></i>System Settings</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="/logout/"><i class="fa-solid fa-right-from-bracket me-2"></i>Sign Out</a></li>
-                        </ul>
-                    </div>
+<div id="saSidebarBackdrop" class="sa-backdrop d-lg-none" onclick="toggleSaSidebar()"></div>
+
+<div class="sa-app d-flex min-vh-100 bg-light">
+    <aside id="saSidebar" class="sa-sidebar bg-dark text-white d-flex flex-column flex-shrink-0">
+        <div class="px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
+            <a href="/" class="d-flex align-items-center text-white text-decoration-none min-width-0">
+                <i class="fa-solid fa-shield-halved text-warning fa-lg me-2"></i>
+                <div class="min-width-0">
+                    <div class="fw-bold lh-1 text-white" style="font-size: 0.95rem;">ProcureSphere <span class="fw-light">360</span></div>
+                    <span class="badge bg-danger rounded-pill fw-bold mt-1" style="font-size: 0.62rem; letter-spacing: 0.04em;">SUPER ADMIN</span>
                 </div>
-            </div>
+            </a>
+            <button class="btn btn-link text-white-50 p-1 d-lg-none" type="button" aria-label="Close navigation" onclick="toggleSaSidebar()">
+                <i class="fa-solid fa-xmark fs-5"></i>
+            </button>
         </div>
-    </nav>
 
-    <div class="row flex-grow-1 g-0">
-        <!-- Sidebar -->
-        <div class="col-auto col-md-3 col-xl-2 px-sm-2 px-0 bg-dark border-top border-secondary" style="min-width: 250px;">
-            <div class="d-flex flex-column align-items-center align-items-sm-start px-3 pt-4 text-white min-vh-100">
-                <ul class="nav nav-pills flex-column mb-sm-auto mb-0 align-items-center align-items-sm-start w-100 gap-2" id="menu">
-                    <li class="nav-item w-100">
-                        <a href="/" class="nav-link rounded sidebar-link {% if request.path == '/' %}active bg-warning fw-bold text-dark border-start border-3 border-light{% else %}text-light{% endif %}">
-                            <i class="fa-solid fa-gauge-high me-2 w-20px text-center {% if request.path == '/' %}text-dark{% else %}text-secondary{% endif %}"></i> Dashboard
-                        </a>
-                    </li>
+        <div class="flex-grow-1 overflow-y-auto px-2 py-3">
+            <ul class="nav nav-pills flex-column gap-1" id="menu">
+                <li class="nav-item">
+                    <a href="/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if request.path == '/' %}active{% endif %}">
+                        <i class="fa-solid fa-gauge-high me-2"></i><span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="sa-nav-label">Access Control</li>
+                <li class="nav-item">
+                    <a href="/superadmin/users/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/users/' in request.path %}active{% endif %}">
+                        <i class="fa-solid fa-users-gear me-2"></i><span>Users &amp; Roles</span>
+                    </a>
+                </li>
+                <li class="sa-nav-label">Master Data</li>
+                <li class="nav-item">
+                    <a href="/superadmin/organizations/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/organizations/' in request.path or '/superadmin/cost-centers/' in request.path or '/superadmin/departments/' in request.path %}active{% endif %}">
+                        <i class="fa-solid fa-sitemap me-2"></i><span>Org &amp; Cost Centers</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/superadmin/policies/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/policies/' in request.path %}active{% endif %}">
+                        <i class="fa-solid fa-code-branch me-2"></i><span>Approval Policies</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/superadmin/budgets/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/budgets/' in request.path %}active{% endif %}">
+                        <i class="fa-solid fa-sack-dollar me-2"></i><span>Budget Allocation</span>
+                    </a>
+                </li>
+                <li class="sa-nav-label">System Logs</li>
+                <li class="nav-item">
+                    <a href="/superadmin/audit/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/audit/' in request.path %}active{% endif %}">
+                        <i class="fa-solid fa-clock-rotate-left me-2"></i><span>Audit History</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </aside>
 
-                    <li class="nav-item mt-3 w-100">
-                        <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Access Control</div>
-                        <a href="/superadmin/users/" class="nav-link rounded sidebar-link text-light">
-                            <i class="fa-solid fa-users-gear me-2 text-info w-20px text-center"></i> Users & Roles
-                        </a>
-                    </li>
-
-                    <li class="nav-item mt-3 w-100">
-                        <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Master Data</div>
-                        <a href="/superadmin/organizations/" class="nav-link rounded sidebar-link text-light">
-                            <i class="fa-solid fa-sitemap me-2 text-primary w-20px text-center"></i> Org & Cost Centers
-                        </a>
-                        <a href="/superadmin/policies/" class="nav-link rounded sidebar-link text-light">
-                            <i class="fa-solid fa-code-branch me-2 text-success w-20px text-center"></i> Approval Policies
-                        </a>
-                        <a href="/superadmin/budgets/" class="nav-link rounded sidebar-link text-light">
-                            <i class="fa-solid fa-sack-dollar me-2 text-warning w-20px text-center"></i> Budget Allocation
-                        </a>
-                    </li>
-
-                    <li class="nav-item mt-3 w-100">
-                        <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">System Logs</div>
-                        <a href="/superadmin/audit/" class="nav-link rounded sidebar-link text-light">
-                            <i class="fa-solid fa-clock-rotate-left me-2 text-danger w-20px text-center"></i> Audit History
-                        </a>
-                    </li>
+    <div class="sa-main flex-grow-1 d-flex flex-column min-vh-100">
+        <header class="sa-topbar sticky-top bg-white border-bottom px-3 px-md-4 py-2 d-flex align-items-center gap-2">
+            <button class="btn btn-light border d-lg-none" type="button" aria-label="Open navigation" onclick="toggleSaSidebar()">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div class="dropdown">
+                <button class="btn btn-light border dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fa-solid fa-cubes me-2 text-warning"></i><span class="d-none d-sm-inline">ERP Modules</span>
+                </button>
+                <ul class="dropdown-menu shadow border-0">
+                    <li><a class="dropdown-item py-2" href="/requisitions/"><i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i> Requisitions (PR)</a></li>
+                    <li><a class="dropdown-item py-2" href="/approvals/inbox/"><i class="fa-solid fa-square-check text-warning me-2"></i> Approvals Inbox</a></li>
+                    <li><a class="dropdown-item py-2" href="/sourcing-events/"><i class="fa-solid fa-gavel text-info me-2"></i> Sourcing (RFQ/RFP)</a></li>
+                    <li><a class="dropdown-item py-2" href="/vendors/"><i class="fa-solid fa-building-user text-success me-2"></i> Vendor Governance</a></li>
+                    <li><a class="dropdown-item py-2" href="/purchase-orders/"><i class="fa-solid fa-cart-shopping text-primary me-2"></i> Purchase Orders (PO)</a></li>
+                    <li><a class="dropdown-item py-2" href="/invoices/"><i class="fa-solid fa-receipt text-danger me-2"></i> Invoices &amp; 3-Way Match</a></li>
+                    <li><a class="dropdown-item py-2" href="/contracts/"><i class="fa-solid fa-file-contract text-secondary me-2"></i> Contracts &amp; SLA</a></li>
+                    <li><a class="dropdown-item py-2" href="/scorecards/"><i class="fa-solid fa-award text-success me-2"></i> Vendor Scorecards</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item py-2" href="/reports/hub/"><i class="fa-solid fa-chart-line text-primary me-2"></i> Reports &amp; Analytics</a></li>
+                    <li><a class="dropdown-item py-2" href="/audit/logs/"><i class="fa-solid fa-shield-halved text-dark me-2"></i> Audit Trail Log</a></li>
                 </ul>
             </div>
-        </div>
+            <div class="dropdown ms-auto">
+                <button class="btn btn-light border dropdown-toggle text-truncate sa-user-btn" type="button" data-bs-toggle="dropdown">
+                    <i class="fa-solid fa-user-shield me-1"></i>{{ request.user.email|default:"Super Admin" }}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                    <li><a class="dropdown-item" href="#"><i class="fa-solid fa-gear me-2"></i>System Settings</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="/logout/"><i class="fa-solid fa-right-from-bracket me-2"></i>Sign Out</a></li>
+                </ul>
+            </div>
+        </header>
 
-        <!-- Main Content -->
-        <div class="col p-4 p-md-5 overflow-auto bg-light">
+        <main class="sa-page flex-grow-1 p-3 p-md-4">
             {% block content %}{% endblock %}
-        </div>
+        </main>
     </div>
 </div>
+
+<style>
+    .sa-main { min-width: 0; overflow-x: clip; }
+    .sa-topbar { z-index: 1030; }
+    .sa-user-btn { max-width: min(280px, 46vw); }
+    .sa-nav-label {
+        font-size: 0.68rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.45);
+        font-weight: 700;
+        padding: 0.85rem 0.75rem 0.25rem;
+    }
+    .sa-nav-link {
+        font-size: 0.875rem;
+        color: rgba(255, 255, 255, 0.78) !important;
+    }
+    .sa-nav-link:hover { background: rgba(255, 255, 255, 0.08); color: #fff !important; }
+    .sa-nav-link.active {
+        background: #ffc107 !important;
+        color: #1a1a1a !important;
+        font-weight: 700;
+    }
+    .sa-page .metric-value {
+        font-size: clamp(1.15rem, 1.7vw, 1.75rem);
+        overflow-wrap: anywhere;
+        line-height: 1.15;
+    }
+    .sa-page h2 { font-size: clamp(1.35rem, 2vw, 1.75rem); }
+    .sa-page h3 { font-size: clamp(1.15rem, 1.6vw, 1.45rem); }
+    .sa-page .table { font-size: 0.9rem; }
+    .sa-page .table th {
+        font-size: 0.75rem;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        color: #64748b;
+    }
+    .sa-page .row.mb-4 > .col-12.d-flex,
+    .sa-page .card-header.d-flex {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+    @media (min-width: 992px) {
+        .sa-sidebar {
+            width: 268px;
+            min-width: 268px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+        }
+        .sa-backdrop { display: none !important; }
+    }
+    @media (max-width: 991.98px) {
+        .sa-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 280px;
+            max-width: 85vw;
+            height: 100vh;
+            z-index: 1050;
+            transform: translateX(-105%);
+            transition: transform 0.25s ease;
+        }
+        .sa-sidebar.show { transform: translateX(0); box-shadow: 0 0 30px rgba(0, 0, 0, 0.45); }
+        .sa-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            z-index: 1040;
+            opacity: 0;
+            visibility: hidden;
+        }
+        .sa-backdrop.show { opacity: 1; visibility: visible; }
+    }
+    @media (max-width: 767.98px) {
+        .sa-page { padding: 0.85rem !important; }
+        .sa-page h2 { font-size: 1.25rem; }
+        .sa-page h3 { font-size: 1.1rem; }
+        .sa-page .table { font-size: 0.8125rem; }
+        .sa-page .metric-value { font-size: 1.25rem !important; }
+        .sa-page .row.mb-4 > .col-12.d-flex,
+        .sa-page .card-header.d-flex {
+            flex-direction: column;
+            align-items: stretch !important;
+        }
+        .sa-page .card-header .d-flex {
+            flex-direction: column;
+            align-items: stretch !important;
+            width: 100%;
+        }
+        .sa-page .card-header .form-select { min-width: 0 !important; width: 100%; }
+        .sa-page .row.mb-4 > .col-12.d-flex > .btn,
+        .sa-page .card-header .btn { width: 100%; }
+    }
+</style>
+<script>
+    function toggleSaSidebar() {
+        document.getElementById("saSidebar").classList.toggle("show");
+        document.getElementById("saSidebarBackdrop").classList.toggle("show");
+    }
+    document.querySelectorAll("#saSidebar a.nav-link").forEach(function (link) {
+        link.addEventListener("click", function () {
+            if (window.innerWidth < 992 && document.getElementById("saSidebar").classList.contains("show")) {
+                toggleSaSidebar();
+            }
+        });
+    });
+</script>
 {% endblock %}
