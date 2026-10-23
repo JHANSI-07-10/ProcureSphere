@@ -388,6 +388,11 @@ def edit_view(request, pk):
             unit_prices = request.POST.getlist("estimated_unit_price[]")
             uoms = request.POST.getlist("unit_of_measure[]")
 
+            valid_items = [d.strip() for d in item_descriptions if d and d.strip()]
+            if not valid_items:
+                messages.error(request, "Please add at least one line item.")
+                return redirect("requisition_edit", pk=pr.pk)
+
             with transaction.atomic():
                 if item_descriptions:
                     # Delete existing lines and recreate if new line items provided

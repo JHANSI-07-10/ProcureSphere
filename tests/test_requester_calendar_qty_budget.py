@@ -147,3 +147,84 @@ def test_serializer_validates_whole_quantity_and_future_date():
     )
     assert not line_ser.is_valid()
     assert "quantity" in line_ser.errors
+
+
+@pytest.mark.django_db
+def test_empty_line_items_rejected_in_service(pr_setup):
+    future_date = timezone.now().date() + timezone.timedelta(days=15)
+    with pytest.raises(ValidationError, match="must contain at least one line item"):
+        create_purchase_requisition_service(
+            title="Empty Items PR",
+            justification="Testing empty items",
+            requester=pr_setup["requester"],
+            department=pr_setup["dept"],
+            cost_center=pr_setup["cc"],
+            requested_delivery_date=future_date,
+            line_items=[],
+        )
+
+
+@pytest.mark.django_db
+def test_pr_create_and_edit_rejects_empty_line_items(client, pr_setup):
+    client.force_login(pr_setup["requester"])
+    future_date = (timezone.now().date() + timezone.timedelta(days=15)).isoformat()
+
+    # 1. Create with empty line items
+    create_resp = client.post(
+        "/requisitions/create/",
+        {
+            "title": "PR with No Lines",
+            "justification": "Test justification",
+            "department": pr_setup["dept"].id,
+            "cost_center": pr_setup["cc"].id,
+            "requested_delivery_date": future_date,
+            "item_description[]": [""],
+            "quantity[]": ["1"],
+            "unit_of_measure[]": ["EA"],
+            "estimated_unit_price[]": ["100.00"],
+            "submit_action": "draft",
+        },
+        follow=True,
+    )
+    assert any("Please add at least one line item" in str(m) for m in create_resp.context["messages"])
+    assert PurchaseRequisition.objects.filter(title="PR with No Lines").count() == 0
+
+    # 2. Create valid PR first
+    valid_pr = create_purchase_requisition_service(
+        title="Valid Draft PR",
+        justification="Valid justification",
+        requester=pr_setup["requester"],
+        department=pr_setup["dept"],
+        cost_center=pr_setup["cc"],
+        requested_delivery_date=future_date,
+        line_items=[
+            {
+                "item_description": "Initial Item",
+                "quantity": 1,
+                "estimated_unit_price": Decimal("50.00"),
+            }
+        ],
+    )
+    assert valid_pr.lines.count() == 1
+
+    # 3. Edit attempt with empty items
+    edit_resp = client.post(
+        f"/requisitions/{valid_pr.pk}/edit/",
+        {
+            "title": "Valid Draft PR - Updated",
+            "justification": "Valid justification updated",
+            "department": pr_setup["dept"].id,
+            "cost_center": pr_setup["cc"].id,
+            "requested_delivery_date": future_date,
+            "item_description[]": ["   "],
+            "quantity[]": ["1"],
+            "unit_of_measure[]": ["EA"],
+            "estimated_unit_price[]": ["50.00"],
+        },
+        follow=True,
+    )
+    assert any("Please add at least one line item" in str(m) for m in edit_resp.context["messages"])
+    valid_pr.refresh_from_db()
+    assert valid_pr.lines.count() == 1
+    assert valid_pr.lines.first().item_description == "Initial Item"
+
