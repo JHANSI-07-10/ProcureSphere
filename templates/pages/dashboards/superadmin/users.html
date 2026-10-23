@@ -28,7 +28,7 @@
                         <th>Department / Cost Center</th>
                         <th class="text-center">Status</th>
                         <th class="text-end pe-4">Joined Date</th>
-                        <th class="text-end pe-4">Actions</th>
+                        <th class="text-end pe-4" style="width: 240px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -58,10 +58,12 @@
                         </td>
                         <td class="text-end pe-4 text-muted small">{{ u.date_joined|date:"M d, Y" }}</td>
                         <td class="pe-4 text-end">
-                            <button hx-post="/superadmin/users/{{ u.pk }}/resend-welcome/" hx-confirm="Generate a new temporary password and resend the welcome email to {{ u.email }}?" class="btn btn-sm btn-outline-info rounded-pill px-3 me-1" title="Resend Welcome Email">
-                                <i class="fa-solid fa-paper-plane me-1"></i> Resend Email
-                            </button>
-                            <button hx-get="/superadmin/users/{{ u.pk }}/edit/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Edit</button>
+                            <div class="d-inline-flex align-items-center justify-content-end gap-2 flex-nowrap">
+                                <button hx-post="/superadmin/users/{{ u.pk }}/resend-welcome/" hx-confirm="Generate a new temporary password and resend the welcome email to {{ u.email }}?" class="btn btn-sm btn-outline-info rounded-pill px-3 text-nowrap" title="Resend Welcome Email">
+                                    <i class="fa-solid fa-paper-plane me-1"></i> Resend Email
+                                </button>
+                                <button hx-get="/superadmin/users/{{ u.pk }}/edit/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-outline-secondary rounded-pill px-3 text-nowrap">Edit</button>
+                            </div>
                         </td>
                     </tr>
                     {% empty %}

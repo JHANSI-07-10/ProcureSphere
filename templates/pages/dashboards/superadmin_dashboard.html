@@ -3,59 +3,86 @@
 {% block title %}Super Admin Control Center — ProcureSphere 360{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <div>
-            <h2 class="fw-bold text-dark mb-1">Super Admin Control Center</h2>
-            <p class="text-muted mb-0">System configuration, master data, and global audit oversight.</p>
+<div class="glass-card-dark p-3 p-md-4 mb-4">
+    <div class="row align-items-center g-3">
+        <div class="col-lg-8">
+            <span class="badge bg-info text-dark rounded-pill fw-bold px-3 py-1 mb-2">
+                <i class="fa-solid fa-shield-halved me-1"></i> SUPER ADMIN HUB
+            </span>
+            <h2 class="fw-bold mb-1">Super Admin Control Center</h2>
+            <p class="mb-0 small">System configuration, master data, and global audit oversight across every business unit.</p>
+        </div>
+        <div class="col-lg-4 d-flex flex-wrap gap-2 justify-content-lg-end">
+            <div class="badge bg-success bg-opacity-25 text-white border border-success border-opacity-50 rounded-pill px-3 py-2 fw-semibold d-flex align-items-center">
+                <span class="sa-status-dot me-2"></span> SYSTEM CONFIG ACTIVE
+            </div>
+            <a href="/superadmin/audit/" class="btn btn-warning text-dark rounded-pill fw-bold px-4">
+                <i class="fa-solid fa-clock-rotate-left me-1"></i> Audit History
+            </a>
         </div>
     </div>
 </div>
 
 <div class="row g-3 mb-4">
     <div class="col-sm-6 col-xl-3">
-        <div class="stat-card h-100 border-start border-4 border-info">
-            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                <span class="text-muted small fw-semibold text-uppercase">Total Users</span>
-                <i class="fa-solid fa-users-gear text-info"></i>
+        <a href="/superadmin/users/" class="text-decoration-none">
+            <div class="stat-card h-100 sa-kpi sa-kpi-sky">
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                    <span class="text-muted small fw-semibold text-uppercase">Total Users</span>
+                    <span class="badge rounded-pill text-bg-info">Active</span>
+                </div>
+                <div class="metric-value" style="color:#00B0B9;">{{ metrics.total_users }}</div>
+                <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
+                    <span>Active sessions</span>
+                    <span class="fw-semibold" style="color:#00B0B9;">Users <i class="fa-solid fa-arrow-right ms-1"></i></span>
+                </div>
             </div>
-            <div class="metric-value text-dark">{{ metrics.total_users }}</div>
-            <div class="mt-2 pt-2 border-top small text-success fw-semibold">
-                <i class="fa-solid fa-arrow-up me-1"></i> Active sessions
-            </div>
-        </div>
+        </a>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <div class="stat-card h-100 border-start border-4 border-warning">
-            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                <span class="text-muted small fw-semibold text-uppercase">Total Budget Allocated</span>
-                <i class="fa-solid fa-sack-dollar text-warning"></i>
+        <a href="/superadmin/budgets/" class="text-decoration-none">
+            <div class="stat-card h-100 sa-kpi sa-kpi-green">
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                    <span class="text-muted small fw-semibold text-uppercase">Total Budget Allocated</span>
+                    <span class="badge rounded-pill text-bg-success">Allocated</span>
+                </div>
+                <div class="metric-value" style="color:#10B981;">${{ metrics.allocated_budget|floatformat:2 }}</div>
+                <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
+                    <span>Across all cost centers</span>
+                    <span class="fw-semibold" style="color:#10B981;">Budgets <i class="fa-solid fa-arrow-right ms-1"></i></span>
+                </div>
             </div>
-            <div class="metric-value text-dark">${{ metrics.allocated_budget|floatformat:2 }}</div>
-            <div class="mt-2 pt-2 border-top small text-secondary">Across all cost centers</div>
-        </div>
+        </a>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <div class="stat-card h-100 border-start border-4 border-success">
-            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                <span class="text-muted small fw-semibold text-uppercase">Pending Transactions</span>
-                <i class="fa-solid fa-code-branch text-success"></i>
+        <a href="/requisitions/" class="text-decoration-none">
+            <div class="stat-card h-100 sa-kpi sa-kpi-red">
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                    <span class="text-muted small fw-semibold text-uppercase">Pending Transactions</span>
+                    <span class="badge rounded-pill text-bg-danger">Action Required</span>
+                </div>
+                <div class="metric-value" style="color:#F43F5E;">{{ metrics.pending_pr_count }} PRs</div>
+                <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
+                    <span>{{ metrics.pending_exceptions }} Match Exceptions</span>
+                    <span class="fw-semibold" style="color:#F43F5E;">Review <i class="fa-solid fa-arrow-right ms-1"></i></span>
+                </div>
             </div>
-            <div class="metric-value text-dark">{{ metrics.pending_pr_count }} PRs</div>
-            <div class="mt-2 pt-2 border-top small text-danger">
-                <i class="fa-solid fa-triangle-exclamation me-1"></i>{{ metrics.pending_exceptions }} Match Exceptions
-            </div>
-        </div>
+        </a>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <div class="stat-card h-100 border-start border-4 border-danger">
-            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                <span class="text-muted small fw-semibold text-uppercase">Audit Logs Today</span>
-                <i class="fa-solid fa-clock-rotate-left text-danger"></i>
+        <a href="/superadmin/audit/" class="text-decoration-none">
+            <div class="stat-card h-100 sa-kpi sa-kpi-royal">
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                    <span class="text-muted small fw-semibold text-uppercase">Audit Logs Today</span>
+                    <span class="badge rounded-pill text-bg-primary">Recorded</span>
+                </div>
+                <div class="metric-value" style="color:#2563EB;">{{ metrics.audits_today|default:"0" }}</div>
+                <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
+                    <span>All actions recorded</span>
+                    <span class="fw-semibold" style="color:#2563EB;">Logs <i class="fa-solid fa-arrow-right ms-1"></i></span>
+                </div>
             </div>
-            <div class="metric-value text-dark">{{ metrics.audits_today|default:"0" }}</div>
-            <div class="mt-2 pt-2 border-top small text-secondary">All actions recorded</div>
-        </div>
+        </a>
     </div>
 </div>
 
