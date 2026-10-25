@@ -153,8 +153,8 @@ def landing_home(request):
         'faqs': [
             {'question': 'What does ProcureSphere 360 connect?', 'answer': 'Requests, approvals, suppliers, sourcing, purchase orders, receipts, invoices, contracts, finance and governance in one connected workflow.'},
             {'question': 'Is the interface shown live company data?', 'answer': 'No. The interface is illustrative demo content designed to show how the operating picture could work without revealing sensitive information.'},
-            {'question': 'Can vendors participate in the workflow?', 'answer': 'Yes. The Vendor workspace brings onboarding, bids, and purchase-order acknowledgement into the same connected experience.'},
-            {'question': 'How does the approval policy engine work?', 'answer': 'It routes decisions automatically based on custom rules like department, budget thresholds, or risk categories.'},
+            {'question': 'Can vendors participate in the workflow?', 'answer': 'Yes. The Vendor workspace brings onboarding, bids, and purchase-order acknowledgement into the same connected experience, creating a seamless bridge between you and your suppliers.'},
+            {'question': 'How does the approval policy engine work?', 'answer': 'It routes decisions automatically based on custom rules like department, budget thresholds, or risk categories, ensuring the right owner reviews the request at the exact right time.'},
         ],
         'trust_cards': [
             {'icon': 'badge', 'stat': '500+', 'label': 'Verified Enterprises', 'desc': 'Across global supply chains', 'color': '#3b82f6'},
@@ -321,25 +321,51 @@ def roles(request):
 # ---------------------------------------------------------------------------
 
 def faq(request):
-    """FAQ page."""
+    """FAQ page — matching AnimatedFAQ.tsx (4 accordion) + FAQPage.tsx (4 extra static cards)."""
+    # These 4 match AnimatedFAQ.tsx exactly (displayed as accordion, first open)
     faqs = [
-        {'question': 'What does ProcureSphere 360 connect?', 'answer': 'Requests, approvals, suppliers, sourcing, purchase orders, receipts, invoices, contracts, finance and governance in one connected workflow.'},
-        {'question': 'Is the interface shown live company data?', 'answer': 'No. The interface is illustrative demo content designed to show how the operating picture could work without revealing sensitive information.'},
-        {'question': 'Can vendors participate in the workflow?', 'answer': 'Yes. The Vendor workspace brings onboarding, bids, and purchase-order acknowledgement into the same connected experience, creating a seamless bridge between you and your suppliers.'},
-        {'question': 'How does the approval policy engine work?', 'answer': 'It routes decisions automatically based on custom rules like department, budget thresholds, or risk categories, ensuring the right owner reviews the request at the exact right time.'},
-        {'question': 'What is the 3-way matching process?', 'answer': 'The system cross-verifies the Purchase Order line items, the physical Goods Receipt Note from the warehouse, and the Vendor Invoice charges — within configurable tolerance limits — before releasing payment.'},
-        {'question': 'How does ProcureSphere 360 handle contract renewals?', 'answer': 'The system sends proactive renewal notifications at 90, 60, and 30 days before contract expiry, with milestone obligation tracking and escalation to the responsible contract owner.'},
-        {'question': 'Is ProcureSphere 360 suitable for multi-entity organizations?', 'answer': 'Yes. The platform supports multi-company, multi-currency, and multi-location procurement with shared vendor master records and consolidated audit reporting.'},
-        {'question': 'How is vendor risk managed?', 'answer': 'Vendor onboarding includes KYC verification, tax and banking validation, and continuous compliance monitoring with automated expiry alerts for certifications and licenses.'},
+        {
+            'question': 'What does ProcureSphere 360 connect?',
+            'answer': 'Requests, approvals, suppliers, sourcing, purchase orders, receipts, invoices, contracts, finance and governance in one connected workflow.',
+        },
+        {
+            'question': 'Is the interface shown live company data?',
+            'answer': 'No. The interface is illustrative demo content designed to show how the operating picture could work without revealing sensitive information.',
+        },
+        {
+            'question': 'Can vendors participate in the workflow?',
+            'answer': 'Yes. The Vendor workspace brings onboarding, bids, and purchase-order acknowledgement into the same connected experience, creating a seamless bridge between you and your suppliers.',
+        },
+        {
+            'question': 'How does the approval policy engine work?',
+            'answer': 'It routes decisions automatically based on custom rules like department, budget thresholds, or risk categories, ensuring the right owner reviews the request at the exact right time.',
+        },
+    ]
+    # These 4 match FAQPage.tsx extraFaqs exactly (displayed as static cards below accordion)
+    extra_faqs = [
+        {
+            'q': 'How does the system ensure zero silent overspend?',
+            'a': "Every Purchase Requisition runs a server-side budget check. Funds are placed into 'Reserved' status immediately upon submission, preventing departments from committing spend beyond approved limits.",
+        },
+        {
+            'q': 'How is vendor confidential data protected during bidding?',
+            'a': "Vendor submissions are sealed until the deadline closes. Competing suppliers can never see each other's submissions, and buyers evaluate commercial terms only after technical clearance.",
+        },
+        {
+            'q': 'What is 3-Way Matching and how does it prevent overbilling?',
+            'a': 'The system compares the original Purchase Order line items, the warehouse Goods Receipt (GRN) quantities, and the vendor Invoice amounts within configurable tolerance rules. Any variance triggers an approval workflow.',
+        },
+        {
+            'q': 'How does contract lifecycle management alert against renewal deadlines?',
+            'a': 'The system monitors active agreements, terms, and obligations, triggering proactive renewal notifications and milestone alerts to legal and procurement teams prior to expiry.',
+        },
     ]
     context = {
         'page_title': 'FAQ — ProcureSphere 360 Common Questions',
         'page_description': 'Answers to common questions about ProcureSphere 360 enterprise procurement platform.',
         'active_nav': 'faq',
-        'badge': 'FAQ',
-        'title': 'Clarity before the first conversation.',
-        'subtitle': 'A few practical answers for teams evaluating a connected procurement operating system.',
         'faqs': faqs,
+        'extra_faqs': extra_faqs,
     }
     return render(request, 'landing/faq.html', context)
 

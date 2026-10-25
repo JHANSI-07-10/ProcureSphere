@@ -355,28 +355,41 @@
   })();
 
   /* ─────────────────────────────────────────────
-     7. FAQ ACCORDION
+     7. FAQ ACCORDION (AnimatedFAQ.tsx matching)
   ──────────────────────────────────────────────*/
   window.toggleFAQ = function (index) {
+    const clickedItem = document.getElementById('home-faq-item-' + index);
+    if (clickedItem) {
+      const isCurrentlyOpen = clickedItem.classList.contains('is-open');
+      // Single open rule: close all
+      document.querySelectorAll('.home-faq-item').forEach(el => {
+        el.classList.remove('is-open');
+        const btn = el.querySelector('.home-faq-toggle');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      });
+      // If was closed, open it
+      if (!isCurrentlyOpen) {
+        clickedItem.classList.add('is-open');
+        const btn = clickedItem.querySelector('.home-faq-toggle');
+        if (btn) btn.setAttribute('aria-expanded', 'true');
+      }
+      return;
+    }
+
+    // Fallback for older DOM structure if present
     const answer = document.getElementById('faq-answer-' + index);
     const icon = document.getElementById('faq-icon-' + index);
     const btn = document.getElementById('faq-btn-' + index);
     if (!answer || !icon) return;
 
     const isOpen = answer.style.display !== 'none';
-
-    // Close all others
-    document.querySelectorAll('[id^="faq-answer-"]').forEach(el => {
-      el.style.display = 'none';
-    });
+    document.querySelectorAll('[id^="faq-answer-"]').forEach(el => { el.style.display = 'none'; });
     document.querySelectorAll('[id^="faq-icon-"]').forEach(el => {
       el.style.background = '#f0f4ff';
       el.style.color = '#2962ff';
       el.style.transform = 'rotate(0)';
     });
-    document.querySelectorAll('[id^="faq-btn-"]').forEach(el => {
-      el.setAttribute('aria-expanded', 'false');
-    });
+    document.querySelectorAll('[id^="faq-btn-"]').forEach(el => { el.setAttribute('aria-expanded', 'false'); });
 
     if (!isOpen) {
       answer.style.display = 'block';
