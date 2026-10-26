@@ -584,7 +584,6 @@ img, picture, svg, video, canvas {
     border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
 }
 
-<<<<<<< Updated upstream
 /* Responsive Width Utilities */
 @media (min-width: 576px) {
     .w-sm-auto {
@@ -610,7 +609,8 @@ img, picture, svg, video, canvas {
     }
     .w-lg-100 {
         width: 100% !important;
-=======
+    }
+}
 /* Force Table Action Columns and Forms into a Single Row */
 .table th.text-end,
 .table td.text-end,
@@ -770,13 +770,5 @@ img, picture, svg, video, canvas {
 @media (min-width: 1440px) {
     .approver-page-body {
         padding: 2rem 2.5rem !important;
->>>>>>> Stashed changes
     }
 }
-
-
-<<<<<<< Updated upstream
-=======
-
-
->>>>>>> Stashed changes
