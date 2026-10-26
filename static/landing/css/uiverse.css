@@ -9,6 +9,7 @@
   box-shadow: 0 12px 28px rgba(15, 27, 45, 0.12), 0 4px 10px rgba(15, 27, 45, 0.08);
   transition: all 0.5s ease-in-out;
   border: 1px solid #e2e8f0;
+  cursor: pointer;
 }
 
 .u-card .mail {

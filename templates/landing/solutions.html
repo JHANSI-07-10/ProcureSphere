@@ -801,11 +801,11 @@
         {% for step in s2p_steps %}
         <button
           type="button"
-          class="sol-step-btn {% if step.id == 'pr' %}is-active{% endif %}"
+          class="sol-step-btn {% if forloop.first %}is-active{% endif %}"
           id="sol-step-btn-{{ step.id }}"
           onclick="solSelectStep('{{ step.id }}')"
           data-step="{{ step.id }}"
-          aria-pressed="{% if step.id == 'pr' %}true{% else %}false{% endif %}"
+          aria-pressed="{% if forloop.first %}true{% else %}false{% endif %}"
         >
           <span class="sol-step-num">STAGE {{ step.number }}</span>
           <span class="sol-step-label">{{ step.title|truncatechars:30 }}</span>
@@ -816,7 +816,7 @@
       <!-- STEP DETAIL CARDS -->
       {% for step in s2p_steps %}
       <div
-        class="sol-detail-panel {% if step.id == 'pr' %}is-active{% endif %}"
+        class="sol-detail-panel {% if forloop.first %}is-active{% endif %}"
         id="sol-detail-{{ step.id }}"
         role="region"
         aria-label="{{ step.title }}"
@@ -1010,7 +1010,7 @@
 
   /* Card Deck Animation & Positioning (Exact React AnimatedModulesStack Math) */
   var deckStage = document.getElementById('sol-deck-stage');
-  var animState = 'fanned'; // 'stacked' | 'fanned' | 'messy'
+  var animState = 'stacked'; // starts stacked so it dramatically fans open on page visit!
   var isHovered = false;
   var cardEls = [];
   var animTimer = null;
@@ -1086,7 +1086,7 @@
     clearTimeout(animTimer);
     if (isHovered || overlay.classList.contains('is-open')) return;
 
-    var delay = (animState === 'fanned') ? 3000 : (animState === 'stacked') ? 400 : 600;
+    var delay = (animState === 'fanned') ? 4500 : (animState === 'stacked') ? 500 : 700;
     animTimer = setTimeout(function() {
       if (animState === 'stacked') {
         animState = 'fanned';
@@ -1114,6 +1114,11 @@
       el.setAttribute('role', 'button');
       el.setAttribute('tabindex', '0');
       el.setAttribute('aria-label', 'Explore ' + mod.title);
+
+      // Start stacked without transition so the browser paints the closed deck
+      el.style.transition = 'none';
+      var s = getCardTransform(i, 'stacked');
+      el.style.transform = 'translate3d(' + s.x + 'px, ' + s.y + 'px, 0) rotate(' + s.rot + 'deg) scale(' + s.scale + ')';
 
       el.innerHTML =
         '<div class="sol-card-icon-wrap">' +
@@ -1154,8 +1159,20 @@
       cardEls.push(el);
     });
 
-    applyDeckTransforms();
-    scheduleNextDeckTransition();
+    // Force reflow so the stacked state is painted
+    void deckStage.offsetWidth;
+
+    // Enable smooth fluid spring transition on all cards
+    cardEls.forEach(function(el) {
+      el.style.transition = 'transform 0.95s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, border-color 0.3s ease';
+    });
+
+    // Trigger smooth open fan animation shortly after page load
+    setTimeout(function() {
+      animState = 'fanned';
+      applyDeckTransforms();
+      scheduleNextDeckTransition();
+    }, 150);
   }
 
   /* Mobile Swipeable Carousel */
@@ -1269,20 +1286,59 @@
     var params = new URLSearchParams(window.location.search);
     var stepParam = params.get('step');
     var hash = window.location.hash.replace('#', '');
-    var target = stepParam || hash || 'pr';
 
-    var validIds = ['vendors', 'pr', 'sourcing', 'po', 'grn', 'match', 'clm'];
-    if (validIds.indexOf(target) !== -1) {
-      window.solSelectStep(target);
-      setTimeout(function() {
-        var el = document.getElementById('lifecycle-detail');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 150);
+    // Only scroll to the detail section if a specific ?step= or #hash was explicitly provided in the URL
+    if (stepParam || hash) {
+      var target = stepParam || hash;
+      var validIds = ['vendors', 'pr', 'sourcing', 'po', 'grn', 'match', 'clm'];
+      if (validIds.indexOf(target) !== -1) {
+        window.solSelectStep(target);
+        setTimeout(function() {
+          var el = document.getElementById('lifecycle-detail');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+      }
+    } else {
+      // Normal visit from navbar to /solutions/: start at the very top of the page with Stage 01 selected
+      window.solSelectStep('vendors');
+      if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+      }
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
     }
   }
 
   window.addEventListener('resize', function() {
     applyDeckTransforms();
+  });
+
+  // Handle in-page navigation when already on the solutions page
+  document.addEventListener('click', function(e) {
+    var overviewLink = e.target.closest('a.nav-dropdown-link--overview');
+    if (overviewLink && window.location.pathname.startsWith('/solutions')) {
+      e.preventDefault();
+      history.pushState(null, '', '/solutions/');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.solSelectStep('vendors');
+      return;
+    }
+
+    var link = e.target.closest('a[href*="/solutions/?step="]');
+    if (link && window.location.pathname.startsWith('/solutions')) {
+      var url = new URL(link.href, window.location.origin);
+      var step = url.searchParams.get('step');
+      if (step) {
+        e.preventDefault();
+        history.pushState(null, '', link.href);
+        window.solSelectStep(step);
+        setTimeout(function() {
+          var el = document.getElementById('lifecycle-detail');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+      }
+    }
   });
 
   /* Init */

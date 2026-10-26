@@ -7,6 +7,22 @@
   'use strict';
 
   /* ─────────────────────────────────────────────
+     0. INTRO VIDEO NAVIGATION TRACKER
+     Tracks clicks on "Home" so navigation to "/" skips the intro,
+     while page refresh (F5 / Ctrl+R) always plays the intro.
+  ──────────────────────────────────────────────*/
+  (function introNavTracker() {
+    document.addEventListener('click', function (e) {
+      const link = e.target.closest('a');
+      if (!link) return;
+      const href = link.getAttribute('href');
+      if (href === '/' || href === window.location.origin + '/' || href === window.location.origin) {
+        sessionStorage.setItem('ps360_clicked_home', 'true');
+      }
+    }, true);
+  })();
+
+  /* ─────────────────────────────────────────────
      1. SCROLL PROGRESS BAR
   ──────────────────────────────────────────────*/
   (function scrollProgress() {
@@ -25,10 +41,23 @@
     const nav = document.getElementById('site-navbar');
     if (!nav) return;
 
-    // Scroll shadow
-    window.addEventListener('scroll', () => {
-      nav.classList.toggle('is-scrolled', window.scrollY > 20);
-    }, { passive: true });
+    // Scroll detection: shadow + hide on scroll down / show on scroll up
+    let lastScrollY = window.scrollY || 0;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY || 0;
+
+      // Scrolled shadow toggle
+      nav.classList.toggle('is-scrolled', currentScrollY > 20);
+
+      // Keep navbar always visible across all sections
+      nav.classList.remove('nav-hidden');
+
+      lastScrollY = Math.max(0, currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
 
     // Dropdowns
     document.querySelectorAll('.nav-item.has-dropdown').forEach(item => {
@@ -403,44 +432,76 @@
   /* ─────────────────────────────────────────────
      8. PLATFORM MODULE SELECTION (Home)
   ──────────────────────────────────────────────*/
-  window.selectPlatformModule = function (moduleId) {
-    // Hide all detail panels
-    document.querySelectorAll('.module-detail-content').forEach(el => el.style.display = 'none');
-    // Show selected
-    const detail = document.getElementById('module-detail-' + moduleId);
-    if (detail) detail.style.display = 'flex';
+  let platformModuleHoverTimer = null;
+  let currentPlatformModuleId = 1;
 
-    // Update card states
-    document.querySelectorAll('[data-module]').forEach(card => {
-      const isActive = parseInt(card.dataset.module) === moduleId;
-      card.style.outline = isActive ? '3.5px solid ' + (card.dataset.accent || '#00d2ff') : '1.5px solid rgba(15,27,45,0.12)';
-      card.style.outlineOffset = '2px';
-      card.style.transform = isActive ? 'scale(1.025)' : '';
-      const color = card.dataset.color || '#0052cc';
-      card.style.boxShadow = isActive
-        ? `0 22px 48px -8px ${color}66, 0 8px 22px rgba(15,27,45,0.22)`
-        : '0 12px 30px -6px rgba(15,27,45,0.24), 0 4px 14px rgba(15,27,45,0.12)';
+  window.selectPlatformModule = function (moduleId, immediate) {
+    moduleId = parseInt(moduleId, 10);
+    if (moduleId === currentPlatformModuleId && !immediate) return;
 
-      // Update tap cue text
-      const tapCue = card.querySelector('.card-tap-cue span');
-      if (tapCue) {
-        tapCue.textContent = isActive ? '● Viewing Details →' : 'Hover to view details ↗';
-        tapCue.style.fontWeight = isActive ? '750' : '600';
+    const performSelection = () => {
+      if (moduleId === currentPlatformModuleId) return;
+      const prevId = currentPlatformModuleId;
+      currentPlatformModuleId = moduleId;
+
+      // Smoothly transition old detail out
+      const prevDetail = document.getElementById('module-detail-' + prevId);
+      if (prevDetail) {
+        prevDetail.classList.remove('is-active');
+        prevDetail.classList.add('is-exiting');
+        setTimeout(() => {
+          prevDetail.classList.remove('is-exiting');
+        }, 360);
       }
-    });
 
-    // Update accent stripe
-    const stripe = document.getElementById('module-accent-stripe');
-    if (stripe) {
-      const card = document.querySelector(`[data-module="${moduleId}"]`);
-      if (card) stripe.style.background = `linear-gradient(90deg,${card.dataset.color},${card.dataset.accent})`;
-    }
+      // Smoothly transition new detail in
+      const nextDetail = document.getElementById('module-detail-' + moduleId);
+      if (nextDetail) {
+        nextDetail.classList.remove('is-exiting');
+        void nextDetail.offsetWidth; // Force reflow so transition smoothly plays
+        nextDetail.classList.add('is-active');
+      }
 
-    // Update active label
-    const label = document.getElementById('active-module-label');
-    if (label) {
+      // Update card states
+      document.querySelectorAll('[data-module]').forEach(card => {
+        const isActive = parseInt(card.dataset.module, 10) === moduleId;
+        card.style.outline = isActive ? '3.5px solid ' + (card.dataset.accent || '#00d2ff') : '1.5px solid rgba(15,27,45,0.12)';
+        card.style.outlineOffset = '2px';
+        card.style.transform = isActive ? 'scale(1.025)' : '';
+        const color = card.dataset.color || '#0052cc';
+        card.style.boxShadow = isActive
+          ? `0 22px 48px -8px ${color}66, 0 8px 22px rgba(15,27,45,0.22)`
+          : '0 12px 30px -6px rgba(15,27,45,0.24), 0 4px 14px rgba(15,27,45,0.12)';
+
+        // Update tap cue text
+        const tapCue = card.querySelector('.card-tap-cue span');
+        if (tapCue) {
+          tapCue.textContent = isActive ? '● Viewing Details →' : 'Hover to view details ↗';
+          tapCue.style.fontWeight = isActive ? '750' : '600';
+        }
+      });
+
+      // Update accent stripe
+      const stripe = document.getElementById('module-accent-stripe');
       const card = document.querySelector(`[data-module="${moduleId}"]`);
-      if (card) label.textContent = card.dataset.name + ' selected →';
+      if (stripe && card) {
+        stripe.style.background = `linear-gradient(90deg,${card.dataset.color},${card.dataset.accent})`;
+      }
+
+      // Update active label
+      const label = document.getElementById('active-module-label');
+      if (label && card) {
+        label.textContent = card.dataset.name + ' selected →';
+        label.style.color = card.dataset.color;
+      }
+    };
+
+    if (immediate) {
+      if (platformModuleHoverTimer) clearTimeout(platformModuleHoverTimer);
+      performSelection();
+    } else {
+      if (platformModuleHoverTimer) clearTimeout(platformModuleHoverTimer);
+      platformModuleHoverTimer = setTimeout(performSelection, 85);
     }
   };
 
@@ -509,15 +570,114 @@
   })();
 
   /* ─────────────────────────────────────────────
-     10. TRUST CARDS INTERACTION (Uiverse style)
+     10. TRUST CARDS INTERACTION & SCROLL SEQUENCE (Uiverse style)
   ──────────────────────────────────────────────*/
-  window.toggleTrustCard = function (index) {
-    const card = document.getElementById('trust-card-' + index);
-    if (!card) return;
-    const isExpanded = card.getAttribute('aria-expanded') === 'true';
-    card.setAttribute('aria-expanded', String(!isExpanded));
-    card.classList.toggle('is-expanded', !isExpanded);
-  };
+  (function initTrustCardsSequence() {
+    const container = document.getElementById('trust-cards-container');
+    const cards = document.querySelectorAll('.trust-cards-grid .u-card');
+    if (!cards.length) return;
+
+    let hoveredCardIndex = null;
+    let userOverrides = {};
+    let targetCardsToOpen = 0;
+    let currentCardsToOpen = 0;
+    let staggerTimer = null;
+
+    function updateTrustCards() {
+      cards.forEach((card, index) => {
+        const isHovered = (hoveredCardIndex === index);
+        const isScrollOpened = (index < currentCardsToOpen);
+        const isOpen = isHovered || isScrollOpened;
+        const effectiveOpen = (userOverrides[index] !== undefined) ? userOverrides[index] : isOpen;
+
+        if (effectiveOpen) {
+          card.classList.add('force-open');
+          card.setAttribute('aria-expanded', 'true');
+        } else {
+          card.classList.remove('force-open');
+          card.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
+    function stepStagger() {
+      if (staggerTimer) clearTimeout(staggerTimer);
+      if (currentCardsToOpen === targetCardsToOpen) {
+        updateTrustCards();
+        return;
+      }
+      if (currentCardsToOpen < targetCardsToOpen) {
+        currentCardsToOpen++;
+      } else if (currentCardsToOpen > targetCardsToOpen) {
+        currentCardsToOpen--;
+      }
+      updateTrustCards();
+      if (currentCardsToOpen !== targetCardsToOpen) {
+        staggerTimer = setTimeout(stepStagger, 110);
+      }
+    }
+
+    let ticking = false;
+    function onScroll() {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          if (container) {
+            const rect = container.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+            const scrollDist = rect.height - windowHeight;
+            if (scrollDist > 0) {
+              let progress = -rect.top / scrollDist;
+              progress = Math.max(0, Math.min(1, progress));
+              const target = progress >= 0.70 ? 5 :
+                             progress >= 0.54 ? 4 :
+                             progress >= 0.38 ? 3 :
+                             progress >= 0.22 ? 2 :
+                             progress >= 0.08 ? 1 : 0;
+              if (target !== targetCardsToOpen) {
+                targetCardsToOpen = target;
+                stepStagger();
+              }
+            }
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    // Initial check on page load
+    onScroll();
+
+    // Hover controllers
+    window.onTrustCardHover = function (index) {
+      hoveredCardIndex = index;
+      updateTrustCards();
+    };
+
+    window.onTrustCardLeave = function (index) {
+      if (hoveredCardIndex === index) {
+        hoveredCardIndex = null;
+        updateTrustCards();
+      }
+    };
+
+    // Toggle click controller
+    window.toggleTrustCard = function (index) {
+      const isHovered = (hoveredCardIndex === index);
+      const isScrollOpened = (index < currentCardsToOpen);
+      const isOpen = isHovered || isScrollOpened;
+      const currentEffective = (userOverrides[index] !== undefined) ? userOverrides[index] : isOpen;
+      userOverrides[index] = !currentEffective;
+      updateTrustCards();
+    };
+
+    // Also bind event listeners directly to cards
+    cards.forEach((card, index) => {
+      card.addEventListener('mouseenter', () => window.onTrustCardHover(index));
+      card.addEventListener('mouseleave', () => window.onTrustCardLeave(index));
+    });
+  })();
 
   /* ─────────────────────────────────────────────
      11. ROLE SWITCHER
@@ -595,28 +755,8 @@
 
   /* ─────────────────────────────────────────────
      14. HERO STAT ANIMATED NUMBER
+     Handled synchronously via CSS keyframes with intro-finished
   ──────────────────────────────────────────────*/
-  (function heroStat() {
-    const el = document.getElementById('hero-stat-num');
-    if (!el) return;
-    const spans = el.querySelectorAll('span');
-    if (!spans.length) return;
-
-    spans.forEach((span, i) => {
-      span.style.display = 'inline-block';
-      span.style.opacity = '0';
-      span.style.transform = 'translateY(12px)';
-      span.style.transition = `opacity 0.4s ease ${2.8 + i * 0.06}s, transform 0.4s ease ${2.8 + i * 0.06}s`;
-    });
-
-    // Trigger after a brief delay
-    setTimeout(() => {
-      spans.forEach(span => {
-        span.style.opacity = '1';
-        span.style.transform = 'translateY(0)';
-      });
-    }, 200);
-  })();
 
   /* ─────────────────────────────────────────────
      15. BENEFITS VIDEO AUTOPLAY
@@ -663,16 +803,11 @@
       .highlight-underline {
         position: relative;
         display: inline;
-        color: inherit;
+        color: #2858e8;
+        text-decoration: none;
       }
       .highlight-underline::after {
-        content: '';
-        position: absolute;
-        left: 0; right: 0;
-        bottom: -3px;
-        height: 3px;
-        border-radius: 2px;
-        background: #1d68f6;
+        display: none !important;
       }
       /* Intro screen transitions */
       .intro-screen {

@@ -351,7 +351,7 @@
   <main class="about-page-main">
 
     <!-- ── Hero Section (centred — matches React PageLayout) ── -->
-    <section class="about-page-hero animate-on-scroll" style="transition-delay: 0s;">
+    <section class="about-page-hero animate-on-scroll" id="about-overview" style="transition-delay: 0s; scroll-margin-top: 110px;">
       <!-- Eyebrow: line – badge – line (React: <span className="eyebrow-line"/> {badge} <span className="eyebrow-line"/>) -->
       <div class="about-eyebrow">
         <span class="about-eyebrow-line"></span>
@@ -371,7 +371,7 @@
 
         <!-- ── Mission Pillars Grid ── -->
         <!-- Mirrors React: aboutPillars.map with framer-motion stagger -->
-        <div class="about-pillars-grid">
+        <div class="about-pillars-grid" id="mission-pillars" style="scroll-margin-top: 110px;">
           {% for p in pillars %}
           <div class="about-pillar-card animate-on-scroll">
             <div>
@@ -383,9 +383,8 @@
           {% endfor %}
         </div>
 
-        <!-- ── The Four Connected Pillars ── -->
-        <!-- Mirrors React: "The Four Connected Pillars" with whileInView stagger -->
-        <div class="about-capabilities-section">
+        <!-- ── The Four Connected Pillars (Enterprise Vision) ── -->
+        <div class="about-capabilities-section" id="enterprise-vision" style="scroll-margin-top: 110px;">
           <div class="about-capabilities-heading animate-on-scroll">
             <h2 class="about-capabilities-h2">The Four Connected Pillars</h2>
             <p class="about-capabilities-sub">
@@ -393,7 +392,7 @@
             </p>
           </div>
 
-          <div class="about-capabilities-grid">
+          <div class="about-capabilities-grid" id="core-capabilities" style="scroll-margin-top: 110px;">
             {% for c in capabilities %}
             <div class="about-capability-card animate-on-scroll">
               {# Map capability color to correct static CSS tag class #}
@@ -417,7 +416,7 @@
 
         <!-- ── Core Principles Banner ── -->
         <!-- Matches React: gradient #1e3a8a → #0f172a, centered, exact text -->
-        <div class="about-banner animate-on-scroll">
+        <div class="about-banner animate-on-scroll" id="design-philosophy" style="scroll-margin-top: 110px;">
           <span class="about-banner-eyebrow">CORE DESIGN PHILOSOPHY</span>
           <h2 class="about-banner-title">Built for clarity. Designed for control.</h2>
           <p class="about-banner-text">
@@ -459,11 +458,52 @@
     });
   }
 
+  function handleAboutHash() {
+    var hash = window.location.hash;
+    if (hash) {
+      var target = document.querySelector(hash);
+      if (target) {
+        setTimeout(function() {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 120);
+      }
+    }
+  }
+
+  // Intercept dropdown clicks when already on the about page
+  document.addEventListener('click', function(e) {
+    var overviewLink = e.target.closest('a[href="/about/"], a[href="/about"]');
+    if (overviewLink && window.location.pathname.startsWith('/about') && overviewLink.classList.contains('nav-dropdown-link--overview')) {
+      e.preventDefault();
+      history.pushState(null, '', '/about/');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    var link = e.target.closest('a[href*="/about/#"]');
+    if (link && window.location.pathname.startsWith('/about')) {
+      var hash = link.hash;
+      if (hash) {
+        var target = document.querySelector(hash);
+        if (target) {
+          e.preventDefault();
+          history.pushState(null, '', link.href);
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }
+  });
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initPillarStagger);
+    document.addEventListener('DOMContentLoaded', function() {
+      initPillarStagger();
+      handleAboutHash();
+    });
   } else {
     initPillarStagger();
+    handleAboutHash();
   }
+  window.addEventListener('hashchange', handleAboutHash);
 })();
 </script>
 {% endblock %}
