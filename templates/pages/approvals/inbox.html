@@ -302,9 +302,21 @@
                                     <span class="text-muted small"><i class="fa-solid fa-user-tie me-1"></i> Routing...</span>
                                 {% endif %}
                             </td>
+
+
                             <td class="pe-4 text-end">
                                 <a href="{% url 'requisition_detail' pr.pk %}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm">
                                     <i class="fa-solid fa-eye me-1"></i> View Details
+
+                            <td class="pe-4 text-end" style="white-space: nowrap !important; min-width: 190px;">
+                                <a href="{% url 'requisition_detail' pr.pk %}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm text-nowrap d-inline-flex align-items-center" style="height: 34px;">
+                                    <i class="fa-solid fa-arrow-right me-1.5"></i> Review & Decision
+
+
+                            <td class="pe-4 text-end">
+                                <a href="{% url 'requisition_detail' pr.pk %}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm">
+                                    <i class="fa-solid fa-eye me-1"></i> View Details
+
                                 </a>
                             </td>
                         </tr>
