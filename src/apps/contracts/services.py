@@ -36,6 +36,11 @@ def create_contract_service(
     """
     Creates a new Contract in DRAFT status after strict validation of mandatory fields and term dates.
     """
+    if vendor.status == Vendor.STATUS_SUSPENDED:
+        raise ValidationError(
+            f"Vendor '{vendor.legal_name}' is suspended and cannot enter into contracts."
+        )
+
     if not title or not str(title).strip():
         raise ValidationError("Contract title is required.")
     if end_date and start_date and end_date < start_date:
@@ -212,6 +217,11 @@ def approve_business_service(*, contract: Contract, user: User, notes: str = "")
     """
     Business owner approves contract, moving status from BUSINESS_APPROVAL to ACTIVE.
     """
+    if contract.vendor.status == Vendor.STATUS_SUSPENDED:
+        raise ValidationError(
+            f"Cannot activate contract: Vendor '{contract.vendor.legal_name}' is suspended."
+        )
+
     if contract.status != Contract.STATUS_BUSINESS_APPROVAL:
         raise ValidationError(
             f"Cannot perform business approval on contract in status '{contract.status}'. Mandatory legal review must be completed first."

@@ -1,13 +1,10 @@
 {% with p=request.path st=request.GET.status %}
 <aside class="offcanvas-lg offcanvas-start bg-dark text-white border-end border-secondary border-opacity-25" tabindex="-1" id="procExecSidebar" aria-labelledby="procExecSidebarLabel" style="width: 268px; flex-shrink: 0;">
     <div class="d-flex flex-column h-100 w-100 sticky-lg-top" style="max-height: 100vh;">
-        <!-- Brand -->
-        <div class="d-flex align-items-center justify-content-between px-3 py-3 border-bottom border-secondary border-opacity-25">
-            <a href="/" class="d-flex align-items-center text-white text-decoration-none" id="procExecSidebarLabel">
-                <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
-                <span class="fs-6 fw-bold">ProcureSphere <span class="text-primary fw-light">360</span></span>
-            </a>
-            <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#procExecSidebar" aria-label="Close menu"></button>
+        <!-- Mobile Drawer Header (Hidden on Desktop) -->
+        <div class="d-flex d-lg-none align-items-center justify-content-between px-3 py-2.5 border-bottom border-secondary border-opacity-25">
+            <span class="fw-bold text-white small" id="procExecSidebarLabel"><i class="fa-solid fa-layer-group text-primary me-2"></i>Procurement Desk</span>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#procExecSidebar" aria-label="Close menu"></button>
         </div>
 
         <!-- Navigation -->
@@ -37,17 +34,14 @@
             </ul>
         </nav>
 
-        <!-- User & sign-out -->
+        <!-- User info -->
         <div class="border-top border-secondary border-opacity-25 px-3 py-3">
-            <div class="d-flex align-items-center justify-content-between gap-2">
-                <div class="d-flex align-items-center" style="min-width: 0;">
-                    <i class="fa-solid fa-circle-user text-info fs-4 me-2"></i>
-                    <div style="min-width: 0;">
-                        <div class="small fw-semibold text-white text-truncate" title="{{ user.email }}">{{ user.email }}</div>
-                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Procurement Executive</div>
-                    </div>
+            <div class="d-flex align-items-center gap-2" style="min-width: 0;">
+                <i class="fa-solid fa-circle-user text-info fs-4 me-2"></i>
+                <div style="min-width: 0;">
+                    <div class="small fw-semibold text-white text-truncate" title="{{ user.email }}">{{ user.email }}</div>
+                    <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Procurement Executive</div>
                 </div>
-                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill" title="Sign out"><i class="fa-solid fa-arrow-right-from-bracket"></i><span class="visually-hidden">Sign out</span></a>
             </div>
         </div>
     </div>

@@ -7,6 +7,7 @@ from apps.audit.models import AuditLog
 from apps.budgets.services import convert_commitment_to_actual_service
 from apps.orders.models import PurchaseOrder
 from apps.receipts.models import ReceiptLine
+from apps.vendors.models import Vendor
 
 from .models import InvoiceLine, MatchException, SupplierInvoice
 
@@ -319,6 +320,11 @@ def mark_invoice_paid_service(*, invoice: SupplierInvoice, user) -> SupplierInvo
     """
     Marks invoice as PAID and transitions SpendLedger from COMMITMENT to ACTUAL.
     """
+    if invoice.vendor.status in (Vendor.STATUS_ON_HOLD, Vendor.STATUS_SUSPENDED):
+        raise ValidationError(
+            f"Cannot pay invoice: Vendor '{invoice.vendor.legal_name}' is currently {invoice.vendor.get_status_display().lower()}."
+        )
+
     if invoice.status not in [
         SupplierInvoice.STATUS_READY_FOR_PAYMENT,
         SupplierInvoice.STATUS_APPROVAL,

@@ -1,35 +1,43 @@
 {% extends 'base.html' %}
 
 {% block navbar %}
-<!-- Top Navigation for Requester -->
+<!-- Top Navigation for Requester (Vendor Design Standard) -->
 <nav class="navbar navbar-dark bg-dark shadow-sm py-2 sticky-top border-bottom border-secondary border-opacity-25">
     <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
         <div class="d-flex align-items-center overflow-hidden me-2">
             <!-- Mobile / Tablet Hamburger Button -->
-            <button class="btn btn-outline-light btn-sm d-lg-none me-2 rounded-2 flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#requesterSidebar" aria-controls="requesterSidebar" title="Toggle Navigation">
-                <i class="fa-solid fa-bars-staggered"></i>
+            <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#requesterSidebar" aria-controls="requesterSidebar" aria-label="Toggle navigation">
+                <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
-            <a href="/" class="navbar-brand d-flex align-items-center text-white me-2 mb-0 text-truncate">
-                <i class="fa-solid fa-layer-group text-primary fa-lg me-2 flex-shrink-0"></i>
-                <span class="fs-6 fs-sm-5 fw-bold text-truncate">ProcureSphere <span class="text-primary fw-light">360</span></span>
+            <a href="/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
+                <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 176, 185, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-cart-shopping text-cyan"></i>
+                </div>
+                <span class="fs-6 fs-sm-5 fw-bold tracking-tight text-truncate">ProcureSphere <span class="text-cyan">360</span></span>
+                <span class="badge bg-secondary bg-opacity-50 text-light ms-2 px-2 py-1 small rounded-pill d-none d-sm-inline-block">Requester Desk</span>
             </a>
-            <span class="badge bg-secondary bg-opacity-25 text-white border border-secondary border-opacity-50 px-2 py-1 rounded-pill d-none d-md-inline-flex align-items-center ms-2 flex-shrink-0" style="font-size: 0.75rem;">
-                <i class="fa-solid fa-cart-shopping text-info me-1"></i> Requester Desk
-            </span>
         </div>
 
-        <div class="ms-auto d-flex align-items-center gap-1.5 gap-sm-2 flex-shrink-0">
+        <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
+            <!-- User Profile & Sign Out -->
             {% if user.is_authenticated %}
-                <div class="d-none d-md-flex align-items-center px-2 px-sm-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary border-opacity-50 text-white">
-                    <i class="fa-solid fa-circle-user text-info me-1 me-sm-2 fs-5"></i>
-                    <div class="text-start leading-tight me-1">
-                        <div class="fw-semibold text-white small text-truncate" style="max-width: 140px;">{{ user.email }}</div>
-                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">{{ user.role_code|default:"REQUESTER" }}</div>
-                    </div>
+            <div class="d-flex align-items-center gap-2">
+                <div class="d-none d-lg-block text-end lh-sm me-1">
+                    <div class="fw-semibold text-white small mb-1">{{ user.email }}</div>
+                    <div class="text-muted d-block" style="font-size: 0.7rem; line-height: 1;">Requisition Requester</div>
                 </div>
-                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-2.5 px-sm-3 text-nowrap d-inline-flex align-items-center" title="Sign Out">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i> <span class="d-none d-sm-inline ms-1">Sign Out</span>
-                </a>
+                <div class="dropdown">
+                    <button class="btn btn-dark border border-secondary border-opacity-50 rounded-circle text-white d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fa-solid fa-user-tie text-cyan"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 bg-dark text-white">
+                        <li><a class="dropdown-item text-white py-2" href="/requisitions/create/"><i class="fa-solid fa-plus text-cyan me-2"></i> Create New PR</a></li>
+                        <li><a class="dropdown-item text-white py-2" href="/requisitions/"><i class="fa-solid fa-list text-info me-2"></i> My Requisitions</a></li>
+                        <li><hr class="dropdown-divider border-secondary"></li>
+                        <li><a class="dropdown-item text-danger py-2" href="/logout/"><i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out</a></li>
+                    </ul>
+                </div>
+            </div>
             {% endif %}
         </div>
     </div>
@@ -37,83 +45,89 @@
 {% endblock navbar %}
 
 {% block layout %}
-<div class="d-flex" style="min-height: calc(100vh - 56px);">
+<style>
+    @media (min-width: 992px) {
+        .requester-sidebar-desktop {
+            width: 260px !important;
+            flex-shrink: 0 !important;
+            position: sticky !important;
+            top: 58px !important;
+            height: calc(100vh - 58px) !important;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.15) transparent;
+            z-index: 1000;
+            align-self: flex-start;
+        }
+        .requester-sidebar-desktop::-webkit-scrollbar {
+            width: 4px;
+        }
+        .requester-sidebar-desktop::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 4px;
+        }
+    }
+</style>
+<div class="d-flex align-items-start w-100" style="min-height: calc(100vh - 58px); max-width: 100vw;">
     <!-- Desktop Sidebar (>= 992px) -->
-    <aside class="bg-dark border-end border-secondary border-opacity-25 shadow-sm d-none d-lg-flex flex-column" style="width: 260px; flex-shrink: 0; position: sticky; top: 56px; height: calc(100vh - 56px);">
-        <div class="p-3 d-flex flex-column flex-grow-1 overflow-y-auto">
-            <ul class="nav flex-column gap-2">
-                <li class="nav-item">
-                    <a href="/" class="nav-link rounded sidebar-link {% if request.path == '/' %}active bg-primary fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-chart-pie me-2 {% if request.path == '/' %}text-white{% else %}text-primary{% endif %} w-20px text-center"></i> Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/requisitions/" class="nav-link rounded sidebar-link {% if '/requisitions/' in request.path and 'create' not in request.path %}active bg-primary fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-list me-2 {% if '/requisitions/' in request.path and 'create' not in request.path %}text-white{% else %}text-info{% endif %} w-20px text-center"></i> My PRs
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/requisitions/create/" class="nav-link rounded sidebar-link {% if '/requisitions/create' in request.path %}active bg-primary fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-plus me-2 {% if '/requisitions/create' in request.path %}text-white{% else %}text-success{% endif %} w-20px text-center"></i> Create New PR
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/approvals/inbox/" class="nav-link rounded sidebar-link {% if '/approvals/' in request.path %}active bg-primary fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-timeline me-2 {% if '/approvals/' in request.path %}text-white{% else %}text-warning{% endif %} w-20px text-center"></i> My Approvals
-                    </a>
-                </li>
-            </ul>
+    <aside class="offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white requester-sidebar-desktop" tabindex="-1" id="requesterSidebar" aria-labelledby="requesterSidebarLabel" style="max-width: 85vw;">
+        <div class="offcanvas-header d-lg-none border-bottom border-secondary border-opacity-25">
+            <h5 class="offcanvas-title fw-bold text-white" id="requesterSidebarLabel"><i class="fa-solid fa-cart-shopping text-cyan me-2"></i>Requester Desk</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#requesterSidebar" aria-label="Close"></button>
         </div>
-        <div class="mt-auto p-3 border-top border-secondary border-opacity-25 flex-shrink-0">
-            <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill w-100 d-flex align-items-center justify-content-center py-2 fw-semibold" title="Sign Out">
-                <i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out
-            </a>
+        <div class="offcanvas-body p-0 flex-column d-block">
+            <div class="px-2 py-3">
+
+                <div class="d-flex align-items-center justify-content-between px-2 mb-3 text-secondary text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.06em;">
+                    <span>Requester Menu</span>
+                    <i class="fa-solid fa-shield-check text-cyan" style="font-size:0.75rem;"></i>
+                </div>
+
+                <nav class="d-flex flex-column gap-1">
+                    <a href="/" class="vendor-navlink unified-navlink {% if request.path == '/' or request.path == '/requester/' or request.path == '/requester/dashboard/' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i>Dashboard
+                    </a>
+
+                    <div class="nav-section-label">Requisitions</div>
+                    <a href="/requisitions/" class="vendor-navlink unified-navlink {% if '/requisitions/' in request.path and 'create' not in request.path %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-list nav-icon text-info"></i>My PRs
+                    </a>
+                    <a href="/requisitions/create/" class="vendor-navlink unified-navlink {% if '/requisitions/create' in request.path %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-plus nav-icon text-success"></i>Create New PR
+                    </a>
+
+                    <div class="nav-section-label">Workflow &amp; Approvals</div>
+                    <a href="/approvals/inbox/" class="vendor-navlink unified-navlink {% if '/approvals/' in request.path %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-timeline nav-icon text-warning"></i>My Approvals
+                    </a>
+                </nav>
+
+                <div class="mt-4 pt-3 border-top border-secondary border-opacity-25 px-1">
+                    <div class="d-flex align-items-center text-muted small" style="font-size: 0.68rem;">
+                        <i class="fa-solid fa-lock text-success me-2"></i>
+                        <span>Department Scoped &bull; RBAC Protected</span>
+                    </div>
+                </div>
+
+            </div>
         </div>
     </aside>
 
-    <!-- Mobile Offcanvas Sidebar (< 992px) -->
-    <div class="offcanvas offcanvas-start bg-dark text-white d-lg-none" tabindex="-1" id="requesterSidebar" aria-labelledby="requesterSidebarLabel" style="width: 280px;">
-        <div class="offcanvas-header border-bottom border-secondary border-opacity-25 py-3">
-            <div class="d-flex align-items-center" id="requesterSidebarLabel">
-                <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
-                <span class="fs-6 fw-bold text-white">ProcureSphere <span class="text-primary fw-light">360</span></span>
+    <!-- Main Content Area -->
+    <main class="flex-grow-1 p-2 p-sm-3 p-md-4 bg-light w-100" style="min-width: 0; max-width: 100vw; overflow-x: hidden;">
+        <!-- Alert Messages -->
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm border-0 d-flex align-items-center py-2 px-3" role="alert">
+                <i class="fa-solid {% if message.tags == 'success' %}fa-circle-check text-success{% elif message.tags == 'error' or message.tags == 'danger' %}fa-circle-exclamation text-danger{% else %}fa-circle-info text-primary{% endif %} me-2 fs-5"></i>
+                <div class="flex-grow-1">{{ message }}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            {% endfor %}
         </div>
-        <div class="offcanvas-body p-3 d-flex flex-column">
-            <ul class="nav flex-column gap-2">
-                <li class="nav-item">
-                    <a href="/" class="nav-link rounded sidebar-link {% if request.path == '/' %}active bg-primary fw-bold text-white{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-chart-pie me-2 text-center" style="width: 20px;"></i> Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/requisitions/" class="nav-link rounded sidebar-link {% if '/requisitions/' in request.path and 'create' not in request.path %}active bg-primary fw-bold text-white{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-list me-2 text-center" style="width: 20px;"></i> My PRs
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/requisitions/create/" class="nav-link rounded sidebar-link {% if '/requisitions/create' in request.path %}active bg-primary fw-bold text-white{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-plus me-2 text-center" style="width: 20px;"></i> Create New PR
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/approvals/inbox/" class="nav-link rounded sidebar-link {% if '/approvals/' in request.path %}active bg-primary fw-bold text-white{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-timeline me-2 text-center" style="width: 20px;"></i> My Approvals
-                    </a>
-                </li>
-            </ul>
+        {% endif %}
 
-            <div class="mt-auto pt-3 border-top border-secondary border-opacity-25">
-                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill w-100 d-flex align-items-center justify-content-center py-2 fw-semibold" title="Sign Out">
-                    <i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <main class="flex-grow-1 p-3 p-md-4 bg-light overflow-auto" style="min-width: 0;">
         {% block content %}{% endblock %}
     </main>
 </div>

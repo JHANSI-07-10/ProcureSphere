@@ -49,35 +49,27 @@
     }
 </style>
 
-<div class="container-fluid p-0">
-    <!-- Header Banner -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
-        <div class="card-body p-3 p-md-4">
-            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
-                <div>
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                        <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 text-uppercase fw-bold rounded-pill border border-primary border-opacity-25" style="font-size: 0.72rem;">
-                            <i class="fa-solid fa-warehouse me-1"></i> Warehouse & Receiving Hub
-                        </span>
-                        <span class="badge bg-success bg-opacity-10 text-success px-2 py-1 rounded-pill border border-success border-opacity-25" style="font-size: 0.72rem;">
-                            <i class="fa-solid fa-circle me-1" style="font-size: 0.5rem;"></i> Active Shift
-                        </span>
-                    </div>
-                    <h2 class="h3 fw-bold mb-1 text-dark">Goods Receipt & Warehouse Inspection Desk</h2>
-                    <p class="text-muted mb-0 small">Physical shipment intake, PO line verification, quality inspection gates, and inventory stock handoff.</p>
-                </div>
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                    <a href="{% url 'receipt_delivery_performance_report' %}" class="btn btn-outline-info px-3 py-2 rounded-3 fw-semibold d-flex align-items-center text-dark">
-                        <i class="fa-solid fa-chart-line me-2 text-info"></i> Delivery Report
-                    </a>
-                    <a href="{% url 'orders_list' %}" class="btn btn-outline-secondary px-3 py-2 rounded-3 fw-semibold d-flex align-items-center">
-                        <i class="fa-solid fa-truck-ramp-box me-2"></i> Pending Deliveries
-                    </a>
-                    <a href="{% url 'receipts_list' %}" class="btn btn-outline-primary px-3 py-2 rounded-3 fw-semibold d-flex align-items-center">
-                        <i class="fa-solid fa-boxes-stacked me-2"></i> GRN History
-                    </a>
-                </div>
-            </div>
+<div class="container-fluid px-0">
+    <!-- Welcome Header & Quick Actions (Vendor Design Standard) -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                Goods Receipt &amp; Warehouse Operations
+            </h3>
+            <p class="text-muted mb-0 small">
+                Welcome, <strong>{{ user.email }}</strong> &bull; Physical shipment intake, PO line verification, quality inspection gates, and inventory stock handoff.
+            </p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'receipts_list' %}" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">
+                <i class="fa-solid fa-boxes-stacked me-1"></i> GRN History
+            </a>
+            <a href="{% url 'orders_list' %}" class="btn btn-outline-dark btn-sm rounded-pill px-3">
+                <i class="fa-solid fa-truck-ramp-box me-1"></i> Pending Deliveries
+            </a>
+            <a href="{% url 'receipt_delivery_performance_report' %}" class="btn btn-outline-dark btn-sm rounded-pill px-3">
+                <i class="fa-solid fa-chart-line me-1"></i> Delivery Report
+            </a>
         </div>
     </div>
 

@@ -258,7 +258,7 @@ def get_vendor_open_transactions(vendor) -> dict:
 
 
 def get_vendor_change_history(vendor, limit=100):
-    """AuditLog entries for the vendor and its documents / risk records / scorecards."""
+    """AuditLog entries for the vendor and its documents / risk records / scorecards / contacts."""
     from django.db.models import Q
 
     from apps.audit.models import AuditLog
@@ -266,16 +266,26 @@ def get_vendor_change_history(vendor, limit=100):
     doc_ids = [str(i) for i in vendor.documents.values_list("id", flat=True)]
     risk_ids = [str(i) for i in vendor.risk_records.values_list("id", flat=True)]
     score_ids = [str(i) for i in vendor.scorecards.values_list("id", flat=True)]
+    contact_ids = [str(i) for i in vendor.contacts.values_list("id", flat=True)]
     return (
         AuditLog.objects.filter(
             Q(target_model="Vendor", target_object_id=str(vendor.id))
             | Q(target_model="VendorDocument", target_object_id__in=doc_ids)
             | Q(target_model="VendorRiskRecord", target_object_id__in=risk_ids)
             | Q(target_model="VendorScorecard", target_object_id__in=score_ids)
+            | Q(target_model="VendorContact", target_object_id__in=contact_ids)
         )
         .select_related("actor", "actor__role")
         .order_by("-timestamp")[:limit]
     )
+
+
+def get_vendor_risk_history(vendor, limit=None):
+    """Chronological risk assessment history for a vendor (newest first)."""
+    qs = vendor.risk_records.select_related("assessed_by").order_by("-created_at")
+    if limit:
+        qs = qs[:limit]
+    return qs
 
 
 def get_vendor_sourcing_history(vendor, limit=20):

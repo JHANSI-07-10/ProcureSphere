@@ -78,16 +78,18 @@
             position: sticky !important;
             top: 58px !important;
             height: calc(100vh - 58px) !important;
-            overflow-y: auto;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
             scrollbar-width: thin;
             scrollbar-color: rgba(255,255,255,0.15) transparent;
             z-index: 1000;
             align-self: flex-start;
         }
-        .vendor-sidebar-desktop::-webkit-scrollbar {
+        .vendor-sidebar-desktop nav::-webkit-scrollbar {
             width: 4px;
         }
-        .vendor-sidebar-desktop::-webkit-scrollbar-thumb {
+        .vendor-sidebar-desktop nav::-webkit-scrollbar-thumb {
             background: rgba(255,255,255,0.15);
             border-radius: 4px;
         }
@@ -169,105 +171,128 @@
 </style>
 <div class="d-flex align-items-start w-100" style="min-height: calc(100vh - 58px); max-width: 100vw;">
     <!-- Sidebar Navigation -->
-    <aside class="offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white vendor-sidebar-desktop" tabindex="-1" id="vendorSidebar" aria-labelledby="vendorSidebarLabel" style="max-width: 85vw;">
-        <div class="offcanvas-header d-lg-none border-bottom border-secondary border-opacity-25">
-            <h5 class="offcanvas-title fw-bold text-white" id="vendorSidebarLabel"><i class="fa-solid fa-handshake text-cyan me-2"></i>Vendor Portal</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#vendorSidebar" aria-label="Close"></button>
-        </div>
-        <div class="offcanvas-body p-0 flex-column d-block">
-            <div class="px-2 py-3">
-
-                <div class="d-flex align-items-center justify-content-between px-2 mb-3 text-secondary text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.06em;">
-                    <span>Vendor Navigation</span>
-                    <i class="fa-solid fa-shield-check text-cyan" style="font-size:0.75rem;"></i>
+    <aside class="offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white vendor-sidebar-desktop" tabindex="-1" id="vendorSidebar" aria-labelledby="vendorSidebarLabel" style="width: 260px; min-width: 260px; height: calc(100vh - 58px); position: sticky; top: 58px; z-index: 1000; overflow: hidden; display: flex; flex-direction: column;">
+        
+        <!-- 1. Sidebar Brand Header (Mobile & Desktop consistent) -->
+        <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 flex-shrink-0 d-flex align-items-center justify-content-between">
+            <a href="/vendor/" class="d-flex align-items-center text-white text-decoration-none" id="vendorSidebarLabel">
+                <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 176, 185, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-handshake text-cyan"></i>
                 </div>
+                <div class="overflow-hidden">
+                    <div class="fs-6 fw-bold tracking-tight text-white d-block text-truncate">ProcureSphere <span class="text-cyan">360</span></div>
+                    <span class="badge bg-secondary bg-opacity-50 text-light px-2 py-0.5 rounded-pill" style="font-size: 0.62rem; letter-spacing: 0.04em;">VENDOR PORTAL</span>
+                </div>
+            </a>
+            <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#vendorSidebar" aria-label="Close menu"></button>
+        </div>
 
-                <nav class="d-flex flex-column gap-1">
+        <!-- 2. Scrollable Navigation (flex: 1, min-height: 0, overflow-y: auto) -->
+        <nav class="flex-grow-1 overflow-y-auto px-2 py-3 d-flex flex-column gap-1" style="flex: 1 1 0%; min-height: 0; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent;" aria-label="Vendor Navigation">
+            <div class="d-flex align-items-center justify-content-between px-2 mb-2 text-secondary text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.06em;">
+                <span>Vendor Navigation</span>
+                <i class="fa-solid fa-shield-check text-cyan" style="font-size:0.75rem;"></i>
+            </div>
 
-                    <a href="/vendor/"
-                       class="vendor-navlink {% if active_nav == 'dashboard' %}active-nav-item{% endif %}">
-                        <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i>Dashboard
-                    </a>
+            <a href="/vendor/"
+               class="vendor-navlink {% if active_nav == 'dashboard' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i>Dashboard
+            </a>
 
-                    <a href="/vendor/profile/"
-                       class="vendor-navlink {% if active_nav == 'profile' %}active-nav-item{% endif %}">
-                        <i class="fa-solid fa-id-card nav-icon text-info"></i>Company Profile
-                    </a>
+            <a href="/vendor/profile/"
+               class="vendor-navlink {% if active_nav == 'profile' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-id-card nav-icon text-info"></i>Company Profile
+            </a>
 
-                    <a href="/vendor/sourcing/"
-                       class="vendor-navlink {% if active_nav == 'sourcing' %}active-nav-item{% endif %}">
-                        <i class="fa-solid fa-gavel nav-icon text-warning"></i>Sourcing Events
-                    </a>
+            <a href="/vendor/sourcing/"
+               class="vendor-navlink {% if active_nav == 'sourcing' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-gavel nav-icon text-warning"></i>Sourcing Events
+            </a>
 
-                    <a href="/vendor/bids/"
-                       class="vendor-navlink {% if active_nav == 'bids' %}active-nav-item{% endif %}">
-                        <i class="fa-solid fa-file-invoice-dollar nav-icon text-success"></i>My Bids
-                    </a>
+            <a href="/vendor/bids/"
+               class="vendor-navlink {% if active_nav == 'bids' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-file-invoice-dollar nav-icon text-success"></i>My Bids
+            </a>
 
-                    <a href="/vendor/clarifications/"
-                       class="vendor-navlink {% if active_nav == 'clarifications' %}active-nav-item{% endif %}">
-                        <i class="fa-solid fa-circle-question nav-icon text-info"></i>Clarifications
-                    </a>
+            <a href="/vendor/clarifications/"
+               class="vendor-navlink {% if active_nav == 'clarifications' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-circle-question nav-icon text-info"></i>Clarifications
+            </a>
 
-                    <a href="/vendor/purchase-orders/"
-                       class="vendor-navlink {% if active_nav == 'orders' %}active-nav-item{% endif %}">
-                        <i class="fa-solid fa-cart-shopping nav-icon text-cyan"></i>Purchase Orders
-                    </a>
+            <a href="/vendor/purchase-orders/"
+               class="vendor-navlink {% if active_nav == 'orders' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-cart-shopping nav-icon text-cyan"></i>Purchase Orders
+            </a>
 
-                    <a href="/vendor/invoices/"
-                       class="vendor-navlink {% if active_nav == 'invoices' %}active-nav-item{% endif %}">
-                        <i class="fa-solid fa-file-invoice nav-icon" style="color:#a78bfa;"></i>Invoices
-                    </a>
+            <a href="/vendor/invoices/"
+               class="vendor-navlink {% if active_nav == 'invoices' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-file-invoice nav-icon" style="color:#a78bfa;"></i>Invoices
+            </a>
 
-                    <a href="/vendor/contracts/"
-                       class="vendor-navlink {% if active_nav == 'contracts' %}active-nav-item{% endif %}">
-                        <i class="fa-solid fa-file-contract nav-icon" style="color:#f97316;"></i>Contracts
-                    </a>
+            <a href="/vendor/contracts/"
+               class="vendor-navlink {% if active_nav == 'contracts' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-file-contract nav-icon" style="color:#f97316;"></i>Contracts
+            </a>
 
-                    <a href="/vendor/performance/"
-                       class="vendor-navlink {% if active_nav == 'performance' %}active-nav-item{% endif %}">
-                        <i class="fa-solid fa-chart-line nav-icon text-success"></i>Supplier Performance
-                    </a>
+            <a href="/vendor/performance/"
+               class="vendor-navlink {% if active_nav == 'performance' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-chart-line nav-icon text-success"></i>Supplier Performance
+            </a>
 
-                    <a href="/vendor/documents/"
-                       class="vendor-navlink {% if active_nav == 'documents' %}active-nav-item{% endif %}">
-                        <i class="fa-solid fa-folder-closed nav-icon text-info"></i>Documents
-                    </a>
+            <a href="/vendor/documents/"
+               class="vendor-navlink {% if active_nav == 'documents' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-folder-closed nav-icon text-info"></i>Documents
+            </a>
 
-                    <a href="/vendor/notifications/"
-                       class="vendor-navlink d-flex justify-content-between {% if active_nav == 'notifications' %}active-nav-item{% endif %}">
-                        <span class="d-flex align-items-center">
-                            <i class="fa-solid fa-bell nav-icon text-warning"></i>Notifications
-                        </span>
-                        {% if metrics.unread_notifications and metrics.unread_notifications > 0 %}
-                        <span class="badge bg-danger rounded-pill" style="font-size:0.65rem;">{{ metrics.unread_notifications }}</span>
-                        {% endif %}
-                    </a>
+            <a href="/vendor/notifications/"
+               class="vendor-navlink d-flex justify-content-between {% if active_nav == 'notifications' %}active-nav-item{% endif %}">
+                <span class="d-flex align-items-center">
+                    <i class="fa-solid fa-bell nav-icon text-warning"></i>Notifications
+                </span>
+                {% if metrics.unread_notifications and metrics.unread_notifications > 0 %}
+                <span class="badge bg-danger rounded-pill" style="font-size:0.65rem;">{{ metrics.unread_notifications }}</span>
+                {% endif %}
+            </a>
 
-                    <a href="/vendor/reports/"
-                       class="vendor-navlink {% if active_nav == 'reports' %}active-nav-item{% endif %}">
-                        <i class="fa-solid fa-clock-rotate-left nav-icon text-secondary"></i>Reports
-                    </a>
+            <a href="/vendor/reports/"
+               class="vendor-navlink {% if active_nav == 'reports' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-clock-rotate-left nav-icon text-secondary"></i>Reports
+            </a>
 
-                    <a href="/vendor/account/"
-                       class="vendor-navlink {% if active_nav == 'account' %}active-nav-item{% endif %}">
-                        <i class="fa-solid fa-shield-halved nav-icon text-cyan"></i>Account &amp; Security
-                    </a>
+            <a href="/vendor/account/"
+               class="vendor-navlink {% if active_nav == 'account' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-shield-halved nav-icon text-cyan"></i>Account &amp; Security
+            </a>
 
-                    <a href="/vendor/profile/"
-                       class="vendor-navlink {% if active_nav == 'settings' %}active-nav-item{% endif %}">
-                        <i class="fa-solid fa-gear nav-icon text-secondary"></i>Profile Settings
-                    </a>
+            <a href="/vendor/profile/"
+               class="vendor-navlink {% if active_nav == 'settings' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-gear nav-icon text-secondary"></i>Profile Settings
+            </a>
 
-                </nav>
+            <!-- Security Footnote -->
+            <div class="mt-4 pt-3 border-top border-secondary border-opacity-25 px-2 mb-2">
+                <div class="d-flex align-items-center text-muted small" style="font-size: 0.68rem;">
+                    <i class="fa-solid fa-lock text-success me-2"></i>
+                    <span>RBAC Backend Enforced &bull; Sealed Bids</span>
+                </div>
+            </div>
+        </nav>
 
-                <div class="mt-4 pt-3 border-top border-secondary border-opacity-25 px-1">
-                    <div class="d-flex align-items-center text-muted small" style="font-size: 0.68rem;">
-                        <i class="fa-solid fa-lock text-success me-2"></i>
-                        <span>RBAC Backend Enforced &bull; Sealed Bids</span>
+        <!-- 3. Fixed Bottom User Profile + Sign Out -->
+        <div class="sidebar-footer border-top border-secondary border-opacity-25 px-3 py-2.5 bg-dark flex-shrink-0" style="margin-top: auto;">
+            <div class="d-flex align-items-center justify-content-between gap-2">
+                <div class="d-flex align-items-center overflow-hidden" style="min-width: 0;">
+                    <div class="flex-shrink-0 me-2" style="width: 32px; height: 32px; background: rgba(0, 176, 185, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-user-tie text-cyan small"></i>
+                    </div>
+                    <div class="overflow-hidden" style="min-width: 0;">
+                        <div class="small fw-semibold text-white text-truncate" title="{{ user.email }}">{{ user.email }}</div>
+                        <div class="text-secondary text-truncate" style="font-size: 0.68rem; line-height: 1.1;">Authorized Representative</div>
                     </div>
                 </div>
-
+                <a href="/logout/" class="btn btn-outline-secondary btn-sm rounded-circle p-0 text-white flex-shrink-0 d-flex align-items-center justify-content-center sidebar-signout-btn" style="width: 32px; height: 32px;" title="Sign out">
+                    <i class="fa-solid fa-arrow-right-from-bracket text-light" style="font-size: 0.8rem;"></i>
+                </a>
             </div>
         </div>
     </aside>
