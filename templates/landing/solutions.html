@@ -1,0 +1,1296 @@
+{% extends 'landing/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+/* ============================================================
+   SOLUTIONS PAGE - Exact match to original ProcureSphere 360 React
+   Reference: procuresphere.vercel.app/solutions
+   Components: PageLayout + AnimatedModulesStack(hideHeader=true) + SolutionsPage
+   ============================================================ */
+
+/* Page Shell & Main */
+.sol-page-layout {
+  min-height: 100vh;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.sol-main {
+  padding-top: 130px;
+  overflow-x: hidden;
+}
+
+/* Page Hero Section (PageLayout exact match) */
+.sol-hero-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 30px 24px 40px;
+  text-align: center;
+}
+
+/* Eyebrow with decorative lines on both sides */
+.sol-eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #2456D6;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.sol-eyebrow-line {
+  display: block;
+  width: 32px;
+  height: 1px;
+  background: #2456D6;
+  opacity: 0.5;
+}
+
+.sol-hero-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(36px, 5vw, 56px);
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 20px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.sol-hero-subtitle {
+  font-size: clamp(16px, 2vw, 19px);
+  color: #475569;
+  max-width: 780px;
+  margin: 0 auto;
+  line-height: 1.65;
+  font-weight: 400;
+}
+
+/* Page Content Wrapper */
+.sol-content-wrapper {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 24px 100px;
+}
+
+/* ============================================================
+   ANIMATED MODULES STACK (hideHeader=true)
+   Directly under Hero Subtitle
+   ============================================================ */
+.sol-deck-wrap {
+  margin-bottom: 60px;
+}
+
+#modules {
+  position: relative;
+  width: 100%;
+  padding: 10px 20px 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  scroll-margin-top: 80px;
+}
+
+/* Desktop & Tablet Deck Stage */
+.sol-deck-stage {
+  position: relative;
+  width: 280px;
+  height: 320px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  perspective: 1200px;
+}
+
+.sol-card {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 24px;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  transform-origin: center bottom;
+  box-shadow: 0 12px 32px rgba(15, 27, 45, 0.18);
+  border: 2px solid transparent;
+  user-select: none;
+  box-sizing: border-box;
+  will-change: transform, box-shadow;
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.sol-card:hover {
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4) !important;
+  border-color: #ffffff !important;
+  z-index: 60 !important;
+}
+
+.sol-card-icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.sol-card h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 12px;
+  letter-spacing: -0.02em;
+}
+
+.sol-card p {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.sol-card-cta {
+  margin-top: 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.18);
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
+/* Mobile Swipeable Card Carousel */
+.sol-carousel-wrap {
+  display: none;
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sol-carousel-viewport {
+  position: relative;
+  width: 100%;
+  max-width: 280px;
+  min-height: 330px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sol-carousel-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 14px rgba(15, 27, 45, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 20;
+  color: #1e293b;
+  transition: all 0.2s ease;
+}
+.sol-carousel-nav:hover {
+  background: #f8fafc;
+  transform: translateY(-50%) scale(1.05);
+}
+.sol-carousel-nav.prev { left: -18px; }
+.sol-carousel-nav.next { right: -18px; }
+
+.sol-carousel-card {
+  width: 100%;
+  min-height: 320px;
+  border-radius: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  padding: 30px 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  touch-action: pan-y;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+.sol-carousel-counter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+.sol-carousel-counter-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  letter-spacing: 0.04em;
+}
+.sol-carousel-hint {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.sol-carousel-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.sol-dot {
+  height: 7px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================================
+   MODULE MODAL
+   ============================================================ */
+.sol-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 27, 45, 0.6);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.sol-modal-overlay.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sol-modal-box {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 40px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
+  position: relative;
+  transform: scale(0.9) translateY(20px);
+  transition: transform 0.25s ease;
+}
+.sol-modal-overlay.is-open .sol-modal-box {
+  transform: scale(1) translateY(0);
+}
+
+.sol-modal-close {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 20px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.sol-modal-close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.sol-modal-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.sol-modal-box h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #0f1b2d;
+  margin: 0 0 16px;
+  line-height: 1.2;
+}
+
+.sol-modal-box p {
+  font-size: 16px;
+  color: #475569;
+  line-height: 1.6;
+  margin: 0 0 32px;
+}
+
+.sol-modal-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  padding: 14px 28px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+.sol-modal-cta:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+/* ============================================================
+   MODULE DEEP DIVE LIFECYCLE
+   ============================================================ */
+.sol-deepdive-header {
+  text-align: center;
+  margin-bottom: 36px;
+  scroll-margin-top: 100px;
+}
+
+.sol-deepdive-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 32px;
+  color: #0f172a;
+  font-weight: 600;
+  margin: 0 0 10px;
+  line-height: 1.2;
+}
+
+.sol-deepdive-header p {
+  color: #64748b;
+  font-size: 16px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Step Selector Horizontal Bar */
+.sol-step-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 36px;
+}
+
+.sol-step-btn {
+  background: #ffffff;
+  color: #0f172a;
+  border: 2px solid #cbd5e1;
+  border-radius: 16px;
+  padding: 18px 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 8px 24px rgba(15, 27, 45, 0.08), 0 2px 6px rgba(15, 27, 45, 0.04);
+}
+
+.sol-step-btn.is-active {
+  background: #2456D6;
+  color: #ffffff;
+  border: 3px solid #1d4ed8;
+  box-shadow: 0 16px 36px rgba(36, 86, 214, 0.28), 0 4px 12px rgba(36, 86, 214, 0.14);
+}
+
+.sol-step-btn:hover:not(.is-active) {
+  border-color: #93c5fd;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(15, 27, 45, 0.12);
+}
+
+.sol-step-num {
+  font-size: 12px;
+  font-weight: 800;
+  opacity: 0.7;
+  font-family: 'DM Mono', monospace;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.sol-step-btn.is-active .sol-step-num {
+  opacity: 0.95;
+}
+
+.sol-step-label {
+  font-size: 15px;
+  font-weight: 800;
+  display: block;
+  line-height: 1.35;
+}
+
+/* Detail Panels */
+.sol-detail-panel {
+  display: none;
+  background: #ffffff;
+  border: 2px solid #cbd5e1;
+  border-radius: 26px;
+  padding: 48px;
+  box-shadow: 0 24px 56px rgba(15, 27, 45, 0.16), 0 8px 20px rgba(15, 27, 45, 0.08);
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 40px;
+  animation: sol-fade-in 0.35s ease;
+}
+
+.sol-detail-panel.is-active {
+  display: grid;
+}
+
+@keyframes sol-fade-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Left Column */
+.sol-detail-tags {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.sol-detail-tag-cat {
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: 'DM Mono', monospace;
+}
+
+.sol-detail-tag-status {
+  background: #ecfdf5;
+  color: #059669;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+}
+
+.sol-detail-left h2 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 16px 0;
+  line-height: 1.25;
+}
+
+.sol-detail-left > p {
+  font-size: 18px;
+  color: #1e293b;
+  line-height: 1.7;
+  margin-bottom: 28px;
+}
+
+.sol-features-label {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.sol-features-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sol-feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 16px;
+  color: #1e293b;
+  line-height: 1.6;
+}
+
+.sol-check-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #2456D6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+/* Right Column: Metric Callout */
+.sol-metric-card {
+  background: #f8fafc;
+  border: 2px solid #cbd5e1;
+  border-radius: 22px;
+  padding: 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.sol-metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sol-metric-label-top {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: 'DM Mono', monospace;
+}
+
+.sol-metric-live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.sol-metric-value-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 32px 24px;
+  border: 2px solid #93c5fd;
+  text-align: center;
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.12);
+}
+
+.sol-metric-value-label {
+  font-size: 15px;
+  color: #475569;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.sol-metric-value-num {
+  font-size: clamp(36px, 4vw, 52px);
+  font-weight: 800;
+  color: #2456D6;
+  font-family: 'DM Mono', monospace;
+  line-height: 1.1;
+}
+
+.sol-metric-footer {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 18px;
+}
+
+.sol-metric-footer-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.sol-metric-footer p {
+  font-size: 15px;
+  color: #475569;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ============================================================
+   RESPONSIVE - TABLET & MOBILE
+   ============================================================ */
+@media (min-width: 600px) and (max-width: 1280px) {
+  .sol-step-selector {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .sol-detail-panel {
+    grid-template-columns: 1fr;
+    padding: 32px 24px;
+    gap: 28px;
+  }
+}
+
+@media (max-width: 600px) {
+  .sol-main {
+    padding-top: 90px;
+  }
+  .sol-hero-section {
+    padding: 24px 16px 30px;
+  }
+  .sol-content-wrapper {
+    padding: 0 16px 60px;
+  }
+  #modules {
+    padding: 10px 16px 40px;
+  }
+
+  /* Switch desktop deck to swipeable mobile carousel */
+  .sol-deck-stage {
+    display: none !important;
+  }
+  .sol-carousel-wrap {
+    display: flex !important;
+  }
+
+  .sol-step-selector {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .sol-step-btn {
+    padding: 14px 12px;
+    border-radius: 12px;
+  }
+  .sol-step-label {
+    font-size: 13px;
+  }
+
+  .sol-detail-panel {
+    padding: 24px 20px;
+    border-radius: 18px;
+    gap: 20px;
+  }
+  .sol-detail-left > p {
+    font-size: 16px;
+  }
+  .sol-feature-item {
+    font-size: 15px;
+  }
+  .sol-metric-card {
+    padding: 20px;
+  }
+  .sol-metric-value-card {
+    padding: 24px 16px;
+  }
+  .sol-metric-value-num {
+    font-size: clamp(28px, 8vw, 40px);
+  }
+  .sol-deepdive-header h2 {
+    font-size: clamp(22px, 6vw, 28px);
+  }
+}
+
+@media (max-width: 400px) {
+  .sol-step-selector {
+    grid-template-columns: 1fr 1fr;
+  }
+  .sol-step-btn {
+    padding: 12px 10px;
+  }
+  .sol-step-label {
+    font-size: 12px;
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sol-page-layout">
+  <main class="sol-main">
+
+    <!-- PAGE HERO SECTION (Exact React PageLayout) -->
+    <section class="sol-hero-section">
+      <div class="sol-eyebrow">
+        <span class="sol-eyebrow-line"></span>
+        CONNECTED SOLUTIONS
+        <span class="sol-eyebrow-line"></span>
+      </div>
+      <h1 class="sol-hero-title">Source-to-Pay Operating System</h1>
+      <p class="sol-hero-subtitle">
+        From the first departmental request to the final settled payment, every transaction is synchronized in one verifiable architecture.
+      </p>
+    </section>
+
+    <!-- CONTENT WRAPPER -->
+    <div class="sol-content-wrapper">
+
+      <!-- ANIMATED CARD DECK (hideHeader=true - peeking up directly below subtitle) -->
+      <div class="sol-deck-wrap">
+        <div id="modules">
+          <!-- Desktop & Tablet: Animated Stacked/Fanned Deck -->
+          <div class="sol-deck-stage" id="sol-deck-stage">
+            <!-- Cards dynamically built by JS with active spring transforms -->
+          </div>
+
+          <!-- Mobile: Swipeable Carousel -->
+          <div class="sol-carousel-wrap" id="sol-carousel">
+            <div class="sol-carousel-viewport" id="sol-carousel-viewport">
+              <button type="button" class="sol-carousel-nav prev" id="sol-carousel-prev" aria-label="Previous capability">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+              <button type="button" class="sol-carousel-nav next" id="sol-carousel-next" aria-label="Next capability">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+              <div class="sol-carousel-card" id="sol-carousel-card"></div>
+            </div>
+            <div class="sol-carousel-counter">
+              <span class="sol-carousel-counter-text" id="sol-carousel-num">1 of 6</span>
+              <span class="sol-carousel-hint">  Swipe to explore</span>
+            </div>
+            <div class="sol-carousel-dots" id="sol-carousel-dots"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODULE DEEP DIVE LIFECYCLE TARGET ANCHOR -->
+      <div id="lifecycle-detail" class="sol-deepdive-header">
+        <div class="sol-eyebrow" style="margin-bottom: 14px;">
+          <span class="sol-eyebrow-line"></span>
+          MODULE DEEP DIVE
+          <span class="sol-eyebrow-line"></span>
+        </div>
+        <h2>Interactive Source-to-Pay Lifecycle</h2>
+        <p>Select any stage to inspect the workflow automation, verification controls, and business rules.</p>
+      </div>
+
+      <!-- STEP SELECTOR HORIZONTAL BAR -->
+      <div class="sol-step-selector" id="sol-step-selector">
+        {% for step in s2p_steps %}
+        <button
+          type="button"
+          class="sol-step-btn {% if step.id == 'pr' %}is-active{% endif %}"
+          id="sol-step-btn-{{ step.id }}"
+          onclick="solSelectStep('{{ step.id }}')"
+          data-step="{{ step.id }}"
+          aria-pressed="{% if step.id == 'pr' %}true{% else %}false{% endif %}"
+        >
+          <span class="sol-step-num">STAGE {{ step.number }}</span>
+          <span class="sol-step-label">{{ step.title|truncatechars:30 }}</span>
+        </button>
+        {% endfor %}
+      </div>
+
+      <!-- STEP DETAIL CARDS -->
+      {% for step in s2p_steps %}
+      <div
+        class="sol-detail-panel {% if step.id == 'pr' %}is-active{% endif %}"
+        id="sol-detail-{{ step.id }}"
+        role="region"
+        aria-label="{{ step.title }}"
+      >
+        <!-- Left Column: Details -->
+        <div class="sol-detail-left">
+          <div class="sol-detail-tags">
+            <span class="sol-detail-tag-cat">{{ step.category }}</span>
+            <span class="sol-detail-tag-status">  {{ step.status_tag }}</span>
+          </div>
+
+          <h2>{{ step.title }}</h2>
+          <p>{{ step.summary }}</p>
+
+          <div class="sol-features-label">Core Functional Controls:</div>
+          <ul class="sol-features-list">
+            {% for feature in step.features %}
+            <li class="sol-feature-item">
+              <span class="sol-check-icon" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true">
+                  <path d="m5 12 4 4L19 6"/>
+                </svg>
+              </span>
+              <span>{{ feature }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <!-- Right Column: Metric Callout -->
+        <div class="sol-metric-card">
+          <div class="sol-metric-header">
+            <span class="sol-metric-label-top">ENTERPRISE METRIC IMPACT</span>
+            <span class="sol-metric-live-dot" aria-hidden="true"></span>
+          </div>
+
+          <div class="sol-metric-value-card">
+            <div class="sol-metric-value-label">{{ step.metric_label }}</div>
+            <div class="sol-metric-value-num">{{ step.metric_value }}</div>
+          </div>
+
+          <div class="sol-metric-footer">
+            <div class="sol-metric-footer-title">System Verification Controls:</div>
+            <p>Actions are evaluated server-side with budget threshold checking, boundary validation, and structured audit event logging.</p>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+    </div><!-- /sol-content-wrapper -->
+  </main>
+</div>
+
+<!-- MODULE MODAL -->
+<div class="sol-modal-overlay" id="sol-module-modal" aria-modal="true" role="dialog" aria-label="Module details">
+  <div class="sol-modal-box" id="sol-modal-box">
+    <button class="sol-modal-close" id="sol-modal-close-btn" aria-label="Close modal">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+        <path d="M18 6 6 18M6 6l12 12"/>
+      </svg>
+    </button>
+    <div class="sol-modal-icon" id="sol-modal-icon">
+      <svg id="sol-modal-icon-svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+        <path d=""/>
+      </svg>
+    </div>
+    <h3 id="sol-modal-title"></h3>
+    <p id="sol-modal-desc"></p>
+    <button type="button" id="sol-modal-cta" class="sol-modal-cta">
+      <span id="sol-modal-cta-text">Explore Module</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+      </svg>
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  'use strict';
+
+  /* Module Data (identical to React AnimatedModulesStack) */
+  var modules = [
+    {
+      id: 'vendors',
+      stepId: 'vendors',
+      title: 'Vendor Management',
+      desc: 'Automated KYC and tracking.',
+      longDesc: 'Procuresphere automates vendor onboarding, KYC compliance, and performance tracking, ensuring you only work with verified and high-quality suppliers.',
+      color: '#3b82f6',
+      icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z'
+    },
+    {
+      id: 'intake',
+      stepId: 'pr',
+      title: 'Intake & Approvals',
+      desc: 'Dynamic forms & routing.',
+      longDesc: 'Empower your teams with dynamic intake forms and intelligent approval routing, ensuring every request is properly categorized and authorized without bottlenecks.',
+      color: '#8b5cf6',
+      icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z'
+    },
+    {
+      id: 'sourcing',
+      stepId: 'sourcing',
+      title: 'Strategic Sourcing',
+      desc: 'RFx events and bid analysis.',
+      longDesc: 'Run competitive RFx events with ease. Our strategic sourcing module provides deep analytics and bid comparison tools to help you secure the best value.',
+      color: '#ec4899',
+      icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z'
+    },
+    {
+      id: 'orders',
+      stepId: 'po',
+      title: 'Purchase Orders',
+      desc: 'Generate and track POs.',
+      longDesc: 'Generate, track, and manage Purchase Orders automatically. Keep your inventory and budget in check with real-time visibility into order fulfillment.',
+      color: '#f59e0b',
+      icon: 'M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.16.12-.36.18-.57.18-.21 0-.41-.06-.57-.18l-7.9-4.44A.991.991 0 013 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.16-.12.36-.18.57-.18.21 0 .41.06.57.18l7.9 4.44c.32.17.53.5.53.88v9zM12 4.15L6.04 7.5 12 10.85l5.96-3.35L12 4.15z'
+    },
+    {
+      id: 'invoices',
+      stepId: 'match',
+      title: 'Invoice Automation',
+      desc: 'AI-powered OCR matching.',
+      longDesc: 'Eliminate manual data entry with our AI-powered OCR matching. Invoices are automatically verified against POs and receipts for touchless processing.',
+      color: '#10b981',
+      icon: 'M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2 4.5 3.5 3 2v20z'
+    },
+    {
+      id: 'contracts',
+      stepId: 'clm',
+      title: 'Contract Management',
+      desc: 'Centralized repository alerts.',
+      longDesc: 'Maintain a centralized repository of all your supplier agreements. Stay ahead of expirations and renewals with automated alerts and lifecycle management.',
+      color: '#6366f1',
+      icon: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z'
+    }
+  ];
+
+  /* Modal Handlers */
+  var overlay = document.getElementById('sol-module-modal');
+  var modalIcon = document.getElementById('sol-modal-icon');
+  var modalIconSvg = document.getElementById('sol-modal-icon-svg');
+  var modalTitle = document.getElementById('sol-modal-title');
+  var modalDesc = document.getElementById('sol-modal-desc');
+  var modalCta = document.getElementById('sol-modal-cta');
+  var modalCtaText = document.getElementById('sol-modal-cta-text');
+  var modalCloseBtn = document.getElementById('sol-modal-close-btn');
+  var currentActiveModalMod = null;
+
+  function openModal(mod) {
+    currentActiveModalMod = mod;
+    modalIcon.style.background = mod.color + '15';
+    modalIcon.style.color = mod.color;
+    modalIconSvg.querySelector('path').setAttribute('d', mod.icon);
+    modalTitle.textContent = mod.title;
+    modalDesc.textContent = mod.longDesc;
+    modalCtaText.textContent = 'Explore ' + mod.title;
+    modalCta.style.background = mod.color;
+    modalCta.style.boxShadow = '0 8px 24px ' + mod.color + '40';
+    overlay.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    overlay.classList.remove('is-open');
+    document.body.style.overflow = '';
+    currentActiveModalMod = null;
+  }
+
+  modalCloseBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) closeModal();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && overlay.classList.contains('is-open')) closeModal();
+  });
+
+  modalCta.addEventListener('click', function() {
+    if (!currentActiveModalMod) return;
+    var targetStep = currentActiveModalMod.stepId || currentActiveModalMod.id;
+    closeModal();
+    window.solSelectStep(targetStep);
+    var el = document.getElementById('lifecycle-detail');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+
+  /* Card Deck Animation & Positioning (Exact React AnimatedModulesStack Math) */
+  var deckStage = document.getElementById('sol-deck-stage');
+  var animState = 'fanned'; // 'stacked' | 'fanned' | 'messy'
+  var isHovered = false;
+  var cardEls = [];
+  var animTimer = null;
+
+  function isMobile() { return window.innerWidth < 600; }
+  function isTablet() { return window.innerWidth >= 600 && window.innerWidth <= 1280; }
+
+  function getCardTransform(index, state) {
+    var centerOffset = index - 2.5;
+    var ww = window.innerWidth;
+
+    if (state === 'fanned') {
+      var spacing = 160;
+      var scale = 1;
+      var yMult = 20;
+      var rotMult = 8;
+
+      if (isMobile()) {
+        spacing = 36;
+        scale = 0.92;
+        yMult = 8;
+        rotMult = 5;
+      } else if (isTablet()) {
+        // Proportional tablet fit formula from React: keeps all 6 fanned cards 100% within tablet screen without side cutoff
+        var progress = Math.max(0, Math.min(1, (ww - 600) / 680));
+        scale = 0.68 + progress * 0.26;
+        spacing = 68.0 + progress * 78.0;
+        yMult = 12.0 + progress * 8.0;
+        rotMult = 5.5 + progress * 2.5;
+      }
+
+      return {
+        x: centerOffset * spacing,
+        y: Math.abs(centerOffset) * yMult,
+        rot: centerOffset * rotMult,
+        scale: scale
+      };
+    }
+
+    if (state === 'messy') {
+      var jRot = isMobile() ? [-8, 6, -4, 8, -6, 10] : [-14, 8, -6, 12, -10, 16];
+      var jX = isMobile() ? [-18, 14, -8, 16, -12, 18] : (isTablet() ? [-28, 18, -12, 22, -16, 26] : [-40, 25, -15, 30, -20, 35]);
+      var jY = isMobile() ? [6, -8, 3, -4, 6, -2] : [10, -15, 5, -8, 12, -4];
+      var messyScale = isMobile() ? 0.9 : (isTablet() ? 0.82 : 0.98);
+      return {
+        x: jX[index] || 0,
+        y: jY[index] || 0,
+        rot: jRot[index] || 0,
+        scale: messyScale
+      };
+    }
+
+    // stacked
+    var sRot = [-5, 3, -2, 4, -3, 2];
+    var sY = index * -4;
+    return {
+      x: 0,
+      y: sY,
+      rot: sRot[index] || 0,
+      scale: isMobile() ? 0.92 : (isTablet() ? 0.85 : 0.95)
+    };
+  }
+
+  function applyDeckTransforms() {
+    cardEls.forEach(function(el, i) {
+      if (el.dataset.hovered === 'true') return;
+      var t = getCardTransform(i, animState);
+      el.style.transform = 'translate3d(' + t.x + 'px, ' + t.y + 'px, 0) rotate(' + t.rot + 'deg) scale(' + t.scale + ')';
+    });
+  }
+
+  function scheduleNextDeckTransition() {
+    clearTimeout(animTimer);
+    if (isHovered || overlay.classList.contains('is-open')) return;
+
+    var delay = (animState === 'fanned') ? 3000 : (animState === 'stacked') ? 400 : 600;
+    animTimer = setTimeout(function() {
+      if (animState === 'stacked') {
+        animState = 'fanned';
+      } else if (animState === 'fanned') {
+        animState = 'messy';
+      } else {
+        animState = 'stacked';
+      }
+      applyDeckTransforms();
+      scheduleNextDeckTransition();
+    }, delay);
+  }
+
+  function buildDesktopDeck() {
+    if (!deckStage) return;
+    deckStage.innerHTML = '';
+    cardEls = [];
+
+    modules.forEach(function(mod, i) {
+      var el = document.createElement('div');
+      el.className = 'sol-card';
+      el.style.background = mod.color;
+      el.style.borderColor = mod.color;
+      el.style.zIndex = i;
+      el.setAttribute('role', 'button');
+      el.setAttribute('tabindex', '0');
+      el.setAttribute('aria-label', 'Explore ' + mod.title);
+
+      el.innerHTML =
+        '<div class="sol-card-icon-wrap">' +
+          '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="' + mod.icon + '"/></svg>' +
+        '</div>' +
+        '<h3>' + mod.title + '</h3>' +
+        '<p>' + mod.desc + '</p>' +
+        '<div class="sol-card-cta"><span>Explore Details</span><span> </span></div>';
+
+      el.addEventListener('mouseenter', function() {
+        el.dataset.hovered = 'true';
+        isHovered = true;
+        clearTimeout(animTimer);
+        var t = getCardTransform(i, animState);
+        var hoverScale = isTablet() ? t.scale * 1.06 : 1.1;
+        el.style.transform = 'translate3d(' + t.x + 'px, ' + (t.y - 12) + 'px, 0) rotate(' + t.rot + 'deg) scale(' + hoverScale + ')';
+      });
+
+      el.addEventListener('mouseleave', function() {
+        el.dataset.hovered = 'false';
+        isHovered = false;
+        applyDeckTransforms();
+        scheduleNextDeckTransition();
+      });
+
+      el.addEventListener('click', function() {
+        openModal(mod);
+      });
+
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openModal(mod);
+        }
+      });
+
+      deckStage.appendChild(el);
+      cardEls.push(el);
+    });
+
+    applyDeckTransforms();
+    scheduleNextDeckTransition();
+  }
+
+  /* Mobile Swipeable Carousel */
+  var carouselCard = document.getElementById('sol-carousel-card');
+  var carouselNum = document.getElementById('sol-carousel-num');
+  var carouselDots = document.getElementById('sol-carousel-dots');
+  var prevBtn = document.getElementById('sol-carousel-prev');
+  var nextBtn = document.getElementById('sol-carousel-next');
+  var mobileIndex = 0;
+  var touchStartX = 0;
+  var touchEndX = 0;
+
+  function renderMobileDots() {
+    if (!carouselDots) return;
+    carouselDots.innerHTML = '';
+    modules.forEach(function(m, i) {
+      var dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'sol-dot';
+      dot.setAttribute('aria-label', 'Go to ' + m.title);
+      dot.style.width = (i === mobileIndex) ? '22px' : '7px';
+      dot.style.background = (i === mobileIndex) ? modules[i].color : '#cbd5e1';
+      dot.addEventListener('click', function() {
+        goToMobileSlide(i);
+      });
+      carouselDots.appendChild(dot);
+    });
+  }
+
+  function renderMobileCarousel() {
+    if (!carouselCard) return;
+    var mod = modules[mobileIndex];
+    carouselCard.style.background = mod.color;
+    carouselCard.style.boxShadow = '0 14px 34px ' + mod.color + '45, 0 4px 12px rgba(0,0,0,0.08)';
+    carouselCard.innerHTML =
+      '<div class="sol-card-icon-wrap">' +
+        '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="' + mod.icon + '"/></svg>' +
+      '</div>' +
+      '<h3 style="font-size:20px;font-weight:700;color:#fff;margin:0 0 10px;letter-spacing:-0.02em;">' + mod.title + '</h3>' +
+      '<p style="font-size:14px;color:rgba(255,255,255,0.92);line-height:1.5;margin:0 0 18px;">' + mod.desc + '</p>' +
+      '<div style="font-size:12px;font-weight:700;color:#fff;display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.25);padding:7px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.3);">' +
+        '<span>Explore Details</span><span> </span>' +
+      '</div>';
+
+    if (carouselNum) {
+      carouselNum.textContent = (mobileIndex + 1) + ' of ' + modules.length;
+    }
+
+    renderMobileDots();
+  }
+
+  function goToMobileSlide(index) {
+    mobileIndex = (index + modules.length) % modules.length;
+    renderMobileCarousel();
+  }
+
+  if (prevBtn) {
+    prevBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      goToMobileSlide(mobileIndex - 1);
+    });
+  }
+
+  if (nextBtn) {
+    nextBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      goToMobileSlide(mobileIndex + 1);
+    });
+  }
+
+  if (carouselCard) {
+    carouselCard.addEventListener('click', function() {
+      openModal(modules[mobileIndex]);
+    });
+
+    carouselCard.addEventListener('touchstart', function(e) {
+      touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+
+    carouselCard.addEventListener('touchend', function(e) {
+      touchEndX = e.changedTouches[0].clientX;
+      var diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > 30) {
+        if (diff < 0) {
+          goToMobileSlide(mobileIndex + 1);
+        } else {
+          goToMobileSlide(mobileIndex - 1);
+        }
+      }
+    }, { passive: true });
+  }
+
+  /* Lifecycle Step Selector */
+  window.solSelectStep = function(stepId) {
+    document.querySelectorAll('.sol-detail-panel').forEach(function(el) {
+      el.classList.remove('is-active');
+    });
+    var detail = document.getElementById('sol-detail-' + stepId);
+    if (detail) {
+      detail.classList.add('is-active');
+    }
+
+    document.querySelectorAll('.sol-step-btn').forEach(function(btn) {
+      var isActive = btn.dataset.step === stepId;
+      btn.classList.toggle('is-active', isActive);
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+  };
+
+  function handleUrlStep() {
+    var params = new URLSearchParams(window.location.search);
+    var stepParam = params.get('step');
+    var hash = window.location.hash.replace('#', '');
+    var target = stepParam || hash || 'pr';
+
+    var validIds = ['vendors', 'pr', 'sourcing', 'po', 'grn', 'match', 'clm'];
+    if (validIds.indexOf(target) !== -1) {
+      window.solSelectStep(target);
+      setTimeout(function() {
+        var el = document.getElementById('lifecycle-detail');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+    }
+  }
+
+  window.addEventListener('resize', function() {
+    applyDeckTransforms();
+  });
+
+  /* Init */
+  buildDesktopDeck();
+  renderMobileCarousel();
+  handleUrlStep();
+  window.addEventListener('popstate', handleUrlStep);
+
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,168 @@
+/* Uiverse Card Styles */
+.u-card {
+  width: 100%;
+  height: 240px;
+  background: #f1f5f9;
+  border-radius: 32px;
+  padding: 3px;
+  position: relative;
+  box-shadow: 0 12px 28px rgba(15, 27, 45, 0.12), 0 4px 10px rgba(15, 27, 45, 0.08);
+  transition: all 0.5s ease-in-out;
+  border: 1px solid #e2e8f0;
+}
+
+.u-card .mail {
+  position: absolute;
+  right: 1.5rem;
+  top: 1.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 4;
+}
+
+.u-card .mail svg {
+  stroke: #cbd5e1;
+  stroke-width: 2px;
+  transition: stroke 0.3s ease;
+}
+
+
+.u-card.force-open .mail svg {
+  stroke: var(--blue);
+}
+
+.u-card .profile-pic {
+  position: absolute;
+  width: calc(100% - 6px);
+  height: calc(100% - 6px);
+  top: 3px;
+  left: 3px;
+  border-radius: 29px;
+  z-index: 1;
+  border: 0px solid var(--blue);
+  overflow: hidden;
+  transition: all 0.5s ease-in-out 0.2s, z-index 0.5s ease-in-out 0.2s;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.u-card .profile-pic svg {
+  width: 56px;
+  height: 56px;
+  color: var(--blue);
+  transition: all 0.5s ease-in-out 0s;
+  z-index: 1;
+  stroke-width: 1.75px;
+}
+
+.u-card .bottom {
+  position: absolute;
+  bottom: 3px;
+  left: 3px;
+  right: 3px;
+  background: var(--blue);
+  top: 80%;
+  border-radius: 29px;
+  z-index: 2;
+  box-shadow: inset 0 4px 10px rgba(255,255,255,0.1);
+  overflow: hidden;
+  transition: all 0.5s cubic-bezier(0.645, 0.045, 0.355, 1) 0s;
+}
+
+.u-card .bottom .content {
+  position: absolute;
+  top: 50%;
+  left: 1.5rem;
+  right: 1.5rem;
+  transform: translateY(0);
+  opacity: 0;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.5s cubic-bezier(0.645, 0.045, 0.355, 1);
+  pointer-events: none;
+}
+
+
+.u-card.force-open .bottom .content {
+  opacity: 1;
+  transform: translateY(-50%);
+  pointer-events: auto;
+}
+
+.u-card .bottom .content .name {
+  display: block;
+  font-size: 32px;
+  color: white;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.u-card .bottom .content .label {
+  display: block;
+  font-size: 13px;
+  color: #a8c1ff;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.u-card .bottom .content .about-me {
+  display: block;
+  font-size: 14px;
+  color: rgba(255,255,255,0.9);
+  margin-top: 1rem;
+  line-height: 1.5;
+}
+
+
+
+
+.u-card.force-open .bottom {
+  top: 40%;
+  border-radius: 60px 29px 29px 29px;
+  transition: all 0.5s cubic-bezier(0.645, 0.045, 0.355, 1) 0.2s;
+}
+
+
+.u-card.force-open .profile-pic {
+  width: 70px;
+  height: 70px;
+  aspect-ratio: 1;
+  top: 15px;
+  left: 15px;
+  border-radius: 50%;
+  z-index: 3;
+  border: 5px solid var(--blue);
+  box-shadow: 0 10px 20px rgba(15,27,45,0.2);
+  transition: all 0.5s ease-in-out, z-index 0.5s ease-in-out 0.1s;
+}
+
+
+.u-card.force-open .profile-pic svg {
+  width: 32px;
+  height: 32px;
+}
+
+/* Base title that shows when closed */
+.u-card-base-title {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  z-index: 4;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  letter-spacing: 0.5px;
+}
+
+
+.u-card.force-open .u-card-base-title {
+  opacity: 0;
+}
