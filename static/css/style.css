@@ -611,6 +611,10 @@ img, picture, svg, video, canvas {
     .w-lg-100 {
         width: 100% !important;
 
+
+    }
+}
+
 /* Force Table Action Columns and Forms into a Single Row */
 .table th.text-end,
 .table td.text-end,
@@ -771,5 +775,10 @@ img, picture, svg, video, canvas {
     .approver-page-body {
         padding: 2rem 2.5rem !important;
 
+
     }
 }
+
+    }
+}
+
