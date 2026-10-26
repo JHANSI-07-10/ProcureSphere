@@ -138,8 +138,7 @@
           </button>
         </form>
 
-        <!-- Dev Quick-Login (exact roles + credentials preserved from first screenshot) -->
-        {% if debug %}
+        <!-- Dev Quick-Login (always visible across all sections and pages) -->
         <div id="dev-quick-login" class="dev-quick-login-section">
           <p class="dev-quick-login-label">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
@@ -158,7 +157,6 @@
             <button type="button" class="dev-ql-btn dev-ql-btn--vendor" onclick="modalQuickLogin('vendoruser@cisco.com')">Vendor User</button>
           </div>
         </div>
-        {% endif %}
 
       </div><!-- /lm-form-wrap -->
     </div><!-- /lm-right -->
