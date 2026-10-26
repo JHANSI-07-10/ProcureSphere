@@ -1,0 +1,258 @@
+{% load static %}
+
+<div
+  class="editorial-wrapper"
+  id="editorial-testimonials"
+  style="opacity:0;transform:scale(0.97);transition:opacity 0.8s cubic-bezier(0.16,1,0.3,1),transform 0.8s cubic-bezier(0.16,1,0.3,1);"
+>
+  <div class="editorial-frame">
+
+    {# ── Main two-column area ── #}
+    <div class="editorial-main">
+
+      {# Left column: portrait collage #}
+      <div class="editorial-portraits" id="editorial-portraits-panel" aria-hidden="true">
+        {# portrait_man_sketch #}
+        <img id="ep-p1"
+          src="{% static 'landing/images/portrait_man_sketch.webp' %}"
+          class="editorial-portrait-img"
+          alt=""
+          aria-hidden="true"
+        />
+        {# portrait_woman_sketch #}
+        <img id="ep-p2"
+          src="{% static 'landing/images/portrait_woman_sketch.webp' %}"
+          class="editorial-portrait-img"
+          alt=""
+          aria-hidden="true"
+        />
+        {# portrait_oldman_sketch #}
+        <img id="ep-p3"
+          src="{% static 'landing/images/portrait_oldman_sketch.webp' %}"
+          class="editorial-portrait-img"
+          alt=""
+          aria-hidden="true"
+        />
+      </div>
+
+      {# Right column: quote + author — JS cross-fades content #}
+      <div class="editorial-content">
+        <div class="editorial-text-content" id="editorial-text-content">
+          <h3 class="editorial-quote" id="editorial-quote"></h3>
+          <div class="editorial-author" id="editorial-author">
+            <strong id="editorial-name"></strong>
+            <span id="editorial-role"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>{# /editorial-main #}
+
+    {# ── Footer: metadata tags + nav arrows + dots ── #}
+    <div class="editorial-footer">
+      <div class="editorial-metadata">
+        <div class="metadata-tags" id="editorial-metadata-tags"></div>
+      </div>
+      <div class="editorial-controls">
+        <button class="nav-arrow" id="ep-prev" aria-label="Previous testimonial">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+        <div class="editorial-nav" id="editorial-nav-dots"></div>
+        <button class="nav-arrow" id="ep-next" aria-label="Next testimonial">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+  </div>{# /editorial-frame #}
+</div>{# /editorial-wrapper #}
+
+<script>
+(function () {
+  'use strict';
+
+  var TESTIMONIALS = [
+    {
+      id: 't1',
+      quote: 'Procurement decisions become clearer when every request, supplier and approval is connected.',
+      name: 'Arjun Mehta',
+      role: 'Chief Procurement Officer',
+      metadata: ['Procurement workflows', 'Purchase orders'],
+      layout: [
+        { id: 'p1', top: '15%', left: '15%', scale: 1.1, opacity: 1,    zIndex: 3 },
+        { id: 'p2', top: '45%', left: '45%', scale: 0.7, opacity: 0.3,  zIndex: 1 },
+        { id: 'p3', top: '60%', left: '-5%', scale: 0.55,opacity: 0.15, zIndex: 0 }
+      ]
+    },
+    {
+      id: 't2',
+      quote: 'A connected procurement workflow gives our teams the visibility they need to move faster.',
+      name: 'Priya Sharma',
+      role: 'Head of Supply Chain',
+      metadata: ['Supplier management', 'Approvals'],
+      layout: [
+        { id: 'p1', top: '-5%',  left: '-5%', scale: 0.55,opacity: 0.15, zIndex: 0 },
+        { id: 'p2', top: '20%',  left: '15%', scale: 1.1, opacity: 1,    zIndex: 3 },
+        { id: 'p3', top: '50%',  left: '45%', scale: 0.7, opacity: 0.3,  zIndex: 1 }
+      ]
+    },
+    {
+      id: 't3',
+      quote: 'We replaced six disconnected tools with one elegant operating picture. The clarity is unprecedented.',
+      name: 'Robert Chen',
+      role: 'VP of Finance',
+      metadata: ['Financial control', 'Risk management'],
+      layout: [
+        { id: 'p1', top: '50%', left: '45%', scale: 0.7, opacity: 0.3,  zIndex: 1 },
+        { id: 'p2', top: '0%',  left: '-5%', scale: 0.55,opacity: 0.15, zIndex: 0 },
+        { id: 'p3', top: '20%', left: '15%', scale: 1.1, opacity: 1,    zIndex: 3 }
+      ]
+    }
+  ];
+
+  /* ── DOM refs ── */
+  var wrapper   = document.getElementById('editorial-testimonials');
+  var quoteEl   = document.getElementById('editorial-quote');
+  var nameEl    = document.getElementById('editorial-name');
+  var roleEl    = document.getElementById('editorial-role');
+  var tagsEl    = document.getElementById('editorial-metadata-tags');
+  var dotsEl    = document.getElementById('editorial-nav-dots');
+  var textBlock = document.getElementById('editorial-text-content');
+  var prevBtn   = document.getElementById('ep-prev');
+  var nextBtn   = document.getElementById('ep-next');
+  var portraits = {
+    p1: document.getElementById('ep-p1'),
+    p2: document.getElementById('ep-p2'),
+    p3: document.getElementById('ep-p3')
+  };
+
+  if (!wrapper || !quoteEl) return;
+
+  var current = 0;
+  var timer   = null;
+
+  /* ── Entrance animation (mirrors whileInView scale+opacity) ── */
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) {
+        wrapper.style.opacity   = '1';
+        wrapper.style.transform = 'scale(1)';
+        io.unobserve(wrapper);
+        startCycle();
+      }
+    });
+  }, { threshold: 0.05, rootMargin: '-100px 0px' });
+  io.observe(wrapper);
+
+  /* ── Apply portrait layout with CSS transitions (spring approx) ── */
+  function applyLayout(layout) {
+    layout.forEach(function (p) {
+      var el = portraits[p.id];
+      if (!el) return;
+      el.style.top     = p.top;
+      el.style.left    = p.left;
+      el.style.transform = 'scale(' + p.scale + ')';
+      el.style.opacity = p.opacity;
+      el.style.zIndex  = p.zIndex;
+    });
+  }
+
+  /* ── Cross-fade text (mirrors AnimatePresence wait mode) ── */
+  function updateText(t) {
+    /* fade out */
+    textBlock.style.opacity   = '0';
+    textBlock.style.transform = 'translateY(-10px)';
+    setTimeout(function () {
+      /* swap content */
+      quoteEl.textContent = '\u201c' + t.quote + '\u201d';
+      nameEl.textContent  = t.name;
+      roleEl.textContent  = t.role;
+
+      /* metadata tags */
+      tagsEl.innerHTML = '';
+      t.metadata.forEach(function (tag) {
+        var s = document.createElement('span');
+        s.className   = 'metadata-tag';
+        s.textContent = tag;
+        tagsEl.appendChild(s);
+      });
+
+      /* fade in */
+      textBlock.style.opacity   = '1';
+      textBlock.style.transform = 'translateY(0)';
+    }, 260);
+  }
+
+  /* ── Dot nav rebuild ── */
+  function buildDots() {
+    dotsEl.innerHTML = '';
+    TESTIMONIALS.forEach(function (t, i) {
+      var btn = document.createElement('button');
+      btn.className   = 'nav-dot' + (i === current ? ' active' : '');
+      btn.setAttribute('aria-label', 'Go to testimonial ' + (i + 1));
+      btn.addEventListener('click', function () { goTo(i); });
+      dotsEl.appendChild(btn);
+    });
+  }
+
+  /* ── Go-to testimonial ── */
+  function goTo(idx) {
+    current = (idx + TESTIMONIALS.length) % TESTIMONIALS.length;
+    var t   = TESTIMONIALS[current];
+    applyLayout(t.layout);
+    updateText(t);
+    buildDots();
+  }
+
+  /* ── Auto-cycle every 3500 ms (matches setInterval(3500)) ── */
+  function startCycle() {
+    stopCycle();
+    timer = setInterval(function () {
+      goTo(current + 1);
+    }, 3500);
+  }
+  function stopCycle() {
+    if (timer) { clearInterval(timer); timer = null; }
+  }
+
+  /* ── Arrow buttons ── */
+  prevBtn.addEventListener('click', function () {
+    stopCycle();
+    goTo(current - 1);
+    startCycle();
+  });
+  nextBtn.addEventListener('click', function () {
+    stopCycle();
+    goTo(current + 1);
+    startCycle();
+  });
+
+  /* ── Init: set portrait CSS transitions and render first testimonial ── */
+  Object.values(portraits).forEach(function (el) {
+    if (!el) return;
+    el.style.transition = 'top 0.55s cubic-bezier(0.16,1,0.3,1), left 0.55s cubic-bezier(0.16,1,0.3,1), transform 0.55s cubic-bezier(0.16,1,0.3,1), opacity 0.55s ease';
+    el.style.transformOrigin = 'top left';
+  });
+  textBlock.style.transition = 'opacity 0.28s ease, transform 0.28s ease';
+
+  /* Render first item immediately (before cycle starts) */
+  var t0 = TESTIMONIALS[0];
+  applyLayout(t0.layout);
+  quoteEl.textContent = '\u201c' + t0.quote + '\u201d';
+  nameEl.textContent  = t0.name;
+  roleEl.textContent  = t0.role;
+  t0.metadata.forEach(function (tag) {
+    var s = document.createElement('span');
+    s.className   = 'metadata-tag';
+    s.textContent = tag;
+    tagsEl.appendChild(s);
+  });
+  buildDots();
+  /* Cycle starts via IntersectionObserver when section enters viewport */
+
+})();
+</script>

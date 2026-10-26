@@ -38,14 +38,14 @@
                             {% endfor %}
                         {% endif %}
 
-                        <form id="loginForm" method="POST" action="/login/{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}" autocomplete="off">
+                        <form id="loginForm" method="POST" action="/login/{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}">
                             {% csrf_token %}
                             
                             <div class="mb-3">
                                 <label for="email" class="form-label fw-semibold text-secondary small">Work Email Address</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-envelope"></i></span>
-                                    <input type="email" class="form-control fs-6" id="email" name="email" value="{{ email|default:'' }}" placeholder="name@company.com" required autofocus>
+                                    <input type="email" class="form-control fs-6" id="email" name="email" value="{{ email|default:'' }}" placeholder="name@company.com" autocomplete="email" required autofocus>
                                 </div>
                             </div>
 
@@ -53,7 +53,7 @@
                                 <label for="password" class="form-label fw-semibold text-secondary small">Password</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-lock"></i></span>
-                                    <input type="password" class="form-control fs-6" id="password" name="password" placeholder="••••••••••••" required>
+                                    <input type="password" class="form-control fs-6" id="password" name="password" placeholder="••••••••••••" autocomplete="current-password" required>
                                 </div>
                             </div>
 

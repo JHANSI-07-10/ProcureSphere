@@ -585,7 +585,7 @@ img, picture, svg, video, canvas {
     border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
 }
 
-<<<<<<< Updated upstream
+
 /* Responsive Width Utilities */
 @media (min-width: 576px) {
     .w-sm-auto {
@@ -1188,4 +1188,6 @@ aside.bg-dark a i {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
+    }
+}
 
