@@ -1,0 +1,566 @@
+{% extends 'landing/base.html' %}
+{% load static %}
+
+{% block intro_screen %}
+<!-- Intro Video Screen -->
+<div class="intro-screen" id="intro-screen">
+  <video
+    id="intro-video"
+    src="{% static 'landing/videos/intro.mp4' %}"
+    autoplay
+    muted
+    playsinline
+    preload="auto"
+    class="intro-video"
+  ></video>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- ===== HERO SECTION ===== -->
+<div class="slides-deck">
+  <section class="hero section-pad slide-hero" aria-labelledby="hero-heading" id="hero">
+    <div class="hero-copy">
+      <h1 id="hero-heading" class="hero-title">
+        <span style="color:inherit;white-space:nowrap;">The Intelligent</span><br>
+        Enterprise<br>
+        Procurement<br>
+        <span>Platform</span>
+      </h1>
+      <p class="hero-lede">Connect requests, approvals, suppliers, sourcing, purchase orders, invoices, contracts and financial control in one intelligent procurement platform.</p>
+      <div class="hero-actions">
+        <a class="button button-primary" href="#modules">
+          Discover more
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7l10 10M17 7v10H7"/></svg>
+        </a>
+      </div>
+      <div class="hero-proof">
+        <div>
+          <span class="proof-mark">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>
+          </span>
+          <span><strong>One connected system</strong><small>for every procurement decision</small></span>
+        </div>
+        <div class="proof-rule"></div>
+        <small class="proof-caption">SCROLL TO ENTER THE SYSTEM
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg>
+        </small>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <video
+        id="hero-video"
+        muted
+        loop
+        playsinline
+        class="hero-video"
+        style="width:100%;max-width:920px;height:auto;object-fit:contain;mask-image:linear-gradient(to bottom,#000 82%,rgba(0,0,0,0.2) 87%,transparent 91%),linear-gradient(135deg,#000 78%,rgba(0,0,0,0.2) 84%,transparent 88%);-webkit-mask-image:linear-gradient(to bottom,#000 82%,rgba(0,0,0,0.2) 87%,transparent 91%),linear-gradient(135deg,#000 78%,rgba(0,0,0,0.2) 84%,transparent 88%);mask-composite:intersect;-webkit-mask-composite:destination-in;mix-blend-mode:multiply;"
+      >
+        <source src="{% static 'landing/videos/hero-video-matched.mp4' %}" type="video/mp4" />
+      </video>
+
+      <div class="hero-stat" style="pointer-events:auto;">
+        <strong class="animated-text" id="hero-stat-num">
+          {% for char in "13,000+" %}
+          <span style="animation-delay:{{ forloop.counter0|add:2.8|floatformat:1 }}s">{{ char }}</span>
+          {% endfor %}
+        </strong>
+        <span style="opacity:0;animation:slideUpFade 0.9s cubic-bezier(0.16,1,0.3,1) forwards;animation-delay:3.6s;">ENTERPRISES USE OUR PROCUREMENT PLATFORM</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SOLUTION / ABOUT PLATFORM ===== -->
+  <div class="solution-slide" id="solution">
+
+    <!-- About Platform Section -->
+    <div style="position:relative;background:#ffffff;width:100%;">
+      <section class="about-platform-section" style="position:relative;padding:clamp(44px,5.5vh,68px) 0 clamp(44px,5.5vh,68px);max-width:1440px;margin:0 auto;width:100%;box-sizing:border-box;">
+
+        <div style="padding:0 clamp(24px,4vw,56px);margin-bottom:22px;">
+          <div style="display:inline-flex;align-items:center;gap:8px;padding:5px 14px;border-radius:999px;background:#eff6ff;color:#1d68f6;border:1px solid #dbeafe;font-size:11.5px;font-weight:750;letter-spacing:0.08em;margin-bottom:10px;text-transform:uppercase;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#1d68f6;"></span>
+            ABOUT PLATFORM
+          </div>
+          <h2 style="display:flex;flex-wrap:wrap;gap:0 8px;font-family:'Playfair Display','Georgia',serif;font-size:clamp(26px,2.8vw,38px);line-height:1.2;margin-top:0;margin-bottom:8px;color:#0F1B2D;font-weight:700;">
+            Replacing chaos with a controlled
+            <span class="highlight-underline">source-to-pay</span>
+            workflow.
+          </h2>
+          <p style="font-size:15px;color:#334155;line-height:1.55;margin:0;max-width:780px;font-weight:500;">
+            ProcureSphere 360 eliminates disconnected emails, spreadsheets, and manual approvals, bringing total traceability to every transaction across your enterprise.
+          </p>
+        </div>
+
+        <!-- Interactive Module Cards -->
+        <div id="about-platform-grid" style="display:grid;grid-template-columns:minmax(0,1.15fr) minmax(380px,0.95fr);gap:clamp(24px,3vw,40px);align-items:stretch;padding:0 clamp(24px,4vw,56px);">
+          <div style="display:flex;flex-direction:column;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:13px;color:#475569;font-weight:650;">
+              <span>Select or hover on any module below:</span>
+              <span id="active-module-label" style="color:#0052cc;font-weight:750;">Purchase &amp; Approvals selected →</span>
+            </div>
+            <div class="cinematic-cards-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              {% for mod in platform_modules %}
+              <div class="stat-card-wrap-{{ mod.id }}">
+                <div
+                  class="uiverse-card card-theme-{{ mod.id }} {% if forloop.first %}is-active is-inspecting{% endif %}"
+                  data-module="{{ mod.id }}"
+                  data-name="{{ mod.name }}"
+                  data-color="{{ mod.theme_color }}"
+                  data-accent="{{ mod.accent_light }}"
+                  data-summary="{{ mod.summary }}"
+                  onclick="selectPlatformModule({{ mod.id }})"
+                  onmouseenter="selectPlatformModule({{ mod.id }})"
+                  role="button"
+                  tabindex="0"
+                  style="cursor:pointer;height:178px;min-height:178px;border-radius:16px;outline:{% if forloop.first %}3.5px solid {{ mod.accent_light }}{% else %}1.5px solid rgba(15,27,45,0.12){% endif %};outline-offset:2px;transform:{% if forloop.first %}scale(1.025){% else %}none{% endif %};box-shadow:{% if forloop.first %}0 22px 48px -8px {{ mod.theme_color }}66,0 8px 22px rgba(15,27,45,0.22){% else %}0 12px 30px -6px rgba(15,27,45,0.24),0 4px 14px rgba(15,27,45,0.12){% endif %};transition:all 0.25s cubic-bezier(0.16,1,0.3,1);"
+                >
+                  <div class="logo" style="top:14px;left:16px;width:28px;height:28px;">
+                    {% include 'landing/partials/icon.html' with name=mod.icon size=22 %}
+                  </div>
+                  <div class="title" style="font-size:clamp(1.2rem,1.35vw,1.45rem);top:50%;font-weight:800;">{{ mod.name }}</div>
+                  <div class="card-tap-cue" style="position:absolute;bottom:10px;width:100%;text-align:center;">
+                    <span style="font-size:11px;color:rgba(255,255,255,0.95);font-weight:{% if forloop.first %}750{% else %}600{% endif %}">
+                      {% if forloop.first %}● Viewing Details →{% else %}Hover to view details ↗{% endif %}
+                    </span>
+                  </div>
+                  <div class="box box3"></div>
+                  <div class="box box2"></div>
+                  <div class="box box1">
+                    <div class="content" style="padding:1rem;">
+                      <span class="box-title" style="font-size:1.1rem;margin-bottom:6px;">{{ mod.name }}</span>
+                      <span class="box-text" style="font-size:0.85rem;line-height:1.4;">{{ mod.short_desc }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Module Details Panel -->
+          <div id="module-detail-panel" style="position:relative;width:100%;height:100%;min-height:372px;border-radius:18px;overflow:hidden;background:#ffffff;border:2px solid #94a3b8;box-shadow:0 24px 60px -12px rgba(15,27,45,0.22),0 8px 24px -4px rgba(15,27,45,0.1);display:flex;flex-direction:column;box-sizing:border-box;">
+            <div id="module-accent-stripe" style="height:5px;width:100%;background:linear-gradient(90deg,#0052cc,#00d2ff);transition:background 0.3s ease;"></div>
+            {% for mod in platform_modules %}
+            <div class="module-detail-content" id="module-detail-{{ mod.id }}" style="padding:22px 26px;display:{% if forloop.first %}flex{% else %}none{% endif %};flex-direction:column;justify-content:space-between;height:100%;box-sizing:border-box;">
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                  <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:42px;height:42px;border-radius:11px;background:{{ mod.theme_color }}18;color:{{ mod.theme_color }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      {% include 'landing/partials/icon.html' with name=mod.icon size=24 %}
+                    </div>
+                    <h3 style="margin:0;font-size:25px;font-weight:800;font-family:'Playfair Display','Georgia',serif;color:#0F1B2D;line-height:1.2;">{{ mod.name }}</h3>
+                  </div>
+                  <span style="font-size:11.5px;font-weight:750;color:{{ mod.theme_color }};background:{{ mod.theme_color }}14;padding:5px 11px;border-radius:6px;font-family:'DM Mono',monospace;letter-spacing:0.04em;">ENTERPRISE CAPABILITY</span>
+                </div>
+                <p style="margin:0 0 16px 0;font-size:16px;color:#0F1B2D;line-height:1.55;font-weight:600;">{{ mod.summary }}</p>
+                <div style="display:flex;flex-direction:column;gap:11px;">
+                  {% for pt in mod.points %}
+                  <div style="display:flex;align-items:flex-start;gap:14px;padding:12px 16px;border-radius:12px;background:#f8fafc;border:1.5px solid #cbd5e1;box-shadow:0 4px 14px -2px rgba(15,27,45,0.08),0 2px 6px rgba(15,27,45,0.04);">
+                    <div style="width:32px;height:32px;border-radius:8px;background:{{ mod.theme_color }}20;color:{{ mod.theme_color }};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+                      {% include 'landing/partials/icon.html' with name=pt.icon size=16 %}
+                    </div>
+                    <div style="display:flex;flex-direction:column;">
+                      <span style="font-size:16.5px;font-weight:800;color:#0a101d;line-height:1.3;">{{ pt.title }}</span>
+                      <span style="font-size:14.5px;color:#1e293b;line-height:1.5;margin-top:3px;font-weight:500;">{{ pt.desc }}</span>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Section Divider -->
+    <div style="width:100%;display:flex;align-items:center;justify-content:center;position:relative;background:#ffffff;">
+      <div style="width:100%;max-width:1360px;height:1px;background:linear-gradient(90deg,transparent 0%,#cbd5e1 20%,#94a3b8 50%,#cbd5e1 80%,transparent 100%);"></div>
+    </div>
+
+    <!-- Trust Stats + Cards -->
+    <section class="trust-stats-section" style="position:relative;padding-top:clamp(64px,7vh,88px);padding-bottom:0px;background:linear-gradient(180deg,#f8fafc 0%,#f1f5f9 60%,#ffffff 100%);border-top:1px solid #e2e8f0;">
+      <div class="trust-stats-header animate-on-scroll">
+        <div>
+          <div style="display:inline-flex;align-items:center;gap:8px;padding:5px 14px;border-radius:999px;background:#eff6ff;color:#1d68f6;border:1px solid #dbeafe;font-size:11.5px;font-weight:750;letter-spacing:0.08em;margin-bottom:16px;text-transform:uppercase;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#1d68f6;box-shadow:0 0 6px #1d68f6;"></span>
+            PROVEN AT SCALE
+          </div>
+          <h2 style="font-family:'Playfair Display','Georgia',serif;font-size:clamp(32px,4vw,44px);line-height:1.1;margin-top:0;margin-bottom:20px;color:#0F1B2D;font-weight:700;">
+            The Standard for <span class="highlight-underline" style="color:#0052cc;">Enterprises</span> That Expect More
+          </h2>
+          <p style="font-size:20px;color:#334155;line-height:1.6;margin:0;font-weight:450;">
+            Delivering frictionless sourcing, automated billing, and seamless procurement for over 500+ global enterprises.
+          </p>
+        </div>
+        <div class="trust-animation-container">
+          <img src="{% static 'landing/images/animation.webp' %}" alt="ProcureSphere Animation" />
+        </div>
+      </div>
+
+      <!-- Scroll-animated Trust Cards -->
+      <div id="trust-cards-container" class="trust-sequence-container" style="height:240vh;position:relative;width:100%;">
+        <div class="trust-sequence-sticky" style="position:sticky;top:0px;display:flex;flex-direction:column;justify-content:center;min-height:100vh;padding-top:60px;padding-bottom:80px;background:#ffffff;z-index:5;box-sizing:border-box;">
+          <div class="trust-cards-grid" style="width:100%;margin:0 auto 80px auto;max-width:1300px;padding:0 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;">
+            {% for card in trust_cards %}
+            <div
+              class="u-card"
+              id="trust-card-{{ forloop.counter0 }}"
+              data-card-index="{{ forloop.counter0 }}"
+              role="button"
+              tabindex="0"
+              aria-expanded="false"
+              style="border:1px solid {{ card.color }}50;"
+              onclick="toggleTrustCard({{ forloop.counter0 }})"
+              onkeydown="if(event.key==='Enter'||event.key===' ')toggleTrustCard({{ forloop.counter0 }})"
+            >
+              <button class="mail" aria-label="Open card details" onclick="event.stopPropagation();toggleTrustCard({{ forloop.counter0 }})">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7l10 10M17 7v10H7"/></svg>
+              </button>
+              <div class="profile-pic" style="background:{{ card.color }}15;color:{{ card.color }};">
+                {% if card.icon == 'badge' %}
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+                {% elif card.icon == 'chart' %}
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                {% elif card.icon == 'receipt' %}
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2 4.5 3.5 3 2v20z"/></svg>
+                {% elif card.icon == 'savings' %}
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+                {% else %}
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                {% endif %}
+              </div>
+              <div class="u-card-base-title">
+                <span class="u-card-base-label">{{ card.label }}</span>
+                <span class="u-card-tap-cue">Tap for stats ↗</span>
+              </div>
+              <div class="bottom">
+                <div class="content">
+                  <span class="name">{{ card.stat }}</span>
+                  <span class="label">{{ card.label }}</span>
+                  <span class="about-me">{{ card.desc }}</span>
+                  <span class="u-card-close-cue">Tap to close ✕</span>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- Trusted Brands -->
+          <div class="trusted-brands animate-on-scroll" style="margin-top:0;position:relative;padding-top:10px;padding-bottom:20px;">
+            <div style="position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);z-index:0;opacity:0.20;width:280px;height:280px;background-image:url('{% static "landing/images/handshake.gif" %}');background-size:contain;background-repeat:no-repeat;background-position:center;pointer-events:none;"></div>
+            <div class="trusted-label" style="justify-content:flex-start;position:relative;z-index:2;">
+              <span class="green-dot"></span> TRUSTED BY GLOBAL ENTERPRISES &amp; PROCUREMENT TEAMS
+            </div>
+            <div class="brand-pills-wrapper" style="position:relative;z-index:2;">
+              <div class="brand-pills-track">
+                <div class="brand-pills">
+                  <div class="brand-pill"><div class="brand-logo bg-blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></div><div><strong>Apex Global</strong><span>Manufacturing</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m12 3 8 4.5-8 4.5-8-4.5L12 3Z"/><path d="m4 12 8 4.5 8-4.5"/><path d="m4 16.5 8 4.5 8-4.5"/></svg></div><div><strong>Nova Systems</strong><span>Technology</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></div><div><strong>Meridian</strong><span>Logistics</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-navy"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 2.8 8 7 10 4.2-2 7-5.2 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg></div><div><strong>Vanguard</strong><span>Financial</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 13h5M10 17h5"/></svg></div><div><strong>Horizon</strong><span>Healthcare</span></div></div>
+                </div>
+                <div class="brand-pills" aria-hidden="true">
+                  <div class="brand-pill"><div class="brand-logo bg-blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></div><div><strong>Apex Global</strong><span>Manufacturing</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m12 3 8 4.5-8 4.5-8-4.5L12 3Z"/><path d="m4 12 8 4.5 8-4.5"/><path d="m4 16.5 8 4.5 8-4.5"/></svg></div><div><strong>Nova Systems</strong><span>Technology</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></div><div><strong>Meridian</strong><span>Logistics</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-navy"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 2.8 8 7 10 4.2-2 7-5.2 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg></div><div><strong>Vanguard</strong><span>Financial</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 13h5M10 17h5"/></svg></div><div><strong>Horizon</strong><span>Healthcare</span></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Modules Stack Section -->
+    <div id="modules">
+      {% include 'landing/partials/modules_stack.html' %}
+    </div>
+  </div>
+</div><!-- end slides-deck -->
+
+<!-- ===== BENEFITS SECTION (Dark) ===== -->
+{% include 'landing/partials/benefits_section.html' %}
+
+<!-- ===== BENEFITS COMPARISON ===== -->
+{% include 'landing/partials/benefits_comparison.html' %}
+
+<!-- ===== ROLES SECTION ===== -->
+<section class="roles section-pad role-requester" id="roles">
+  <div class="roles-top" style="flex-direction:column;align-items:center;text-align:center;gap:48px;">
+    <div class="section-title align-center animate-on-scroll">
+      <div class="eyebrow"><span class="eyebrow-line"></span>WHO IS IT FOR<span class="eyebrow-line"></span></div>
+      <h2>One platform. Every team.</h2>
+      <p>One connected system adapts to the decisions each team owns.</p>
+    </div>
+
+    <div class="role-avatar-wrapper" style="position:relative;width:100%;display:flex;flex-direction:column;align-items:center;">
+      <div style="position:relative;width:100%;max-width:100%;">
+        <div class="role-avatar-selector" id="role-selector" role="tablist" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:16px;justify-content:center;max-width:100%;-webkit-overflow-scrolling:touch;">
+          {% for role_item in roles %}
+          <button
+            onclick="selectRole('{{ role_item.key }}')"
+            role="tab"
+            aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+            aria-label="Open {{ role_item.key }} dashboard"
+            id="role-btn-{{ role_item.key }}"
+            class="role-avatar-btn {% if forloop.first %}is-active{% endif %}"
+            style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:12px;opacity:{% if forloop.first %}1{% else %}0.7{% endif %};transition:opacity 0.3s ease;min-width:140px;padding:8px;"
+          >
+            <div class="role-avatar-circle {% if forloop.first %}is-active{% endif %}" style="width:140px;height:140px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:{% if forloop.first %}#f0f4ff{% else %}transparent{% endif %};margin-bottom:8px;transition:all 0.4s ease;">
+              <img
+                src="{% static 'landing/roles/' %}{{ role_item.key|lower }}/{% if forloop.first %}active{% else %}idle{% endif %}.webp"
+                alt="{{ role_item.key }} avatar"
+                id="role-img-{{ role_item.key }}"
+                style="width:100%;height:100%;object-fit:contain;"
+              />
+            </div>
+            <span id="role-label-{{ role_item.key }}" style="font-size:16px;font-weight:{% if forloop.first %}600{% else %}500{% endif %};color:{% if forloop.first %}#0f1b2d{% else %}#64748b{% endif %};text-transform:capitalize;">{{ role_item.key|lower }}</span>
+          </button>
+          {% endfor %}
+        </div>
+        <div class="role-scroll-track"><div class="role-scroll-thumb" id="role-scroll-thumb"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Role Interface (changes on selection) -->
+  <div id="role-interface-wrapper">
+    {% for role_item in roles %}
+    <div class="role-interface role-{{ role_item.key|lower }}" id="role-interface-{{ role_item.key }}" style="display:{% if forloop.first %}grid{% else %}none{% endif %};">
+      <div class="role-sidebar">
+        <a class="brand brand-compact" href="/" aria-label="ProcureSphere 360 home">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12"/><ellipse cx="16" cy="16" rx="12" ry="5.5"/><path d="M4.5 16h23"/><path d="M16 4v24"/><circle cx="24.8" cy="11" r="2.1"/><circle cx="9.5" cy="21.5" r="2.1"/></svg>
+          </span>
+          <span class="brand-text"><strong>ProcureSphere</strong><em>360</em></span>
+        </a>
+        <span class="sidebar-label">WORKSPACE</span>
+        {% for item in role_item.items %}
+        <div class="sidebar-item {% if forloop.first %}selected{% endif %}">
+          {% if forloop.first %}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>
+          {% elif forloop.last %}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>
+          {% else %}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 13h5M10 17h5"/></svg>
+          {% endif %}
+          {{ item }}
+        </div>
+        {% endfor %}
+        <span class="sidebar-label bottom">ACCOUNT</span>
+        <div class="sidebar-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 2.8 8 7 10 4.2-2 7-5.2 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>Controls</div>
+      </div>
+      <div class="role-main">
+        <div class="role-toolbar">
+          <div><small>{{ role_item.key }} WORKSPACE</small><strong>{{ role_item.title }}</strong></div>
+          <span class="toolbar-avatar">{{ role_item.key|first }}</span>
+        </div>
+        <div class="role-insights">
+          <div class="role-stat"><small>OPEN ITEMS</small><strong>{{ role_item.open_items }}</strong><span>Illustrative view</span></div>
+          <div class="role-stat"><small>ON TRACK</small><strong>84<em>%</em></strong><span>Illustrative view</span></div>
+          <div class="role-stat"><small>NEXT ACTION</small><strong>06</strong><span>needs your review</span></div>
+        </div>
+        <div class="role-table">
+          <div class="table-head"><span>WORK ITEM</span><span>OWNER</span><span>STATUS</span><span>VALUE</span></div>
+          {% for row in role_item.table %}
+          <div class="table-row">
+            <span><i class="table-file"></i>{{ row.item }}</span>
+            <span>{{ row.owner }}</span>
+            <span><b class="table-status {{ row.status_class }}"></b>{{ row.status }}</span>
+            <span>{{ row.value }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="app-bottom-note">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>
+          This is illustrative demo content — not live company performance.
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+</section>
+
+<!-- ===== TESTIMONIALS ===== -->
+<section class="testimonials section-pad" id="testimonials" style="padding-top:40px;padding-bottom:60px;">
+  <div class="section-title align-center animate-on-scroll">
+    <div class="eyebrow"><span class="eyebrow-line"></span>ILLUSTRATIVE PERSPECTIVES<span class="eyebrow-line"></span></div>
+    <h2>Perspectives from every side of procurement.</h2>
+    <p>One connected experience for procurement teams, finance stakeholders and suppliers.</p>
+  </div>
+  {% include 'landing/partials/testimonials.html' %}
+</section>
+
+<!-- ===== FAQ ===== -->
+<section class="faq section-pad" id="faq" style="background:var(--soft);padding-top:60px;padding-bottom:100px;">
+  <div class="section-title align-center animate-on-scroll">
+    <div class="eyebrow"><span class="eyebrow-line"></span>FAQ<span class="eyebrow-line"></span></div>
+    <h2>Clarity before the first conversation.</h2>
+    <p>A few practical answers for teams evaluating a connected procurement operating system.</p>
+  </div>
+  <div class="home-faq-accordion" style="max-width:820px;margin:60px auto 0;display:flex;flex-direction:column;gap:16px;">
+    {% for faq in faqs %}
+    <div
+      class="home-faq-item animate-on-scroll{% if forloop.first %} is-open{% endif %}"
+      id="home-faq-item-{{ forloop.counter0 }}"
+      data-faq="{{ forloop.counter0 }}"
+    >
+      <button
+        class="home-faq-toggle"
+        onclick="toggleFAQ({{ forloop.counter0 }})"
+        aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}"
+        aria-controls="home-faq-panel-{{ forloop.counter0 }}"
+        id="home-faq-btn-{{ forloop.counter0 }}"
+      >
+        <span>{{ faq.question }}</span>
+        <div class="home-faq-icon" id="home-faq-icon-{{ forloop.counter0 }}">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>
+        </div>
+      </button>
+      <div class="home-faq-answer-wrapper" id="home-faq-panel-{{ forloop.counter0 }}">
+        <div class="home-faq-answer-inner">
+          <div class="home-faq-answer-content">{{ faq.answer }}</div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ===== CONTACT ===== -->
+<section class="contact section-pad" id="contact">
+  <div class="contact-copy animate-on-scroll">
+    <div class="section-title align-left">
+      <div class="eyebrow"><span class="eyebrow-line"></span>CONTACT / RFP</div>
+      <h2 style="font-family:'Playfair Display','Georgia',serif;font-size:clamp(20px,2.5vw,28px);font-weight:600;">
+        Bring us the workflow you want to connect.
+      </h2>
+    </div>
+    <div style="margin-top:-40px;max-width:300px;display:flex;justify-content:center;">
+      <img
+        id="contact-vendor-img"
+        src="{% static 'landing/roles/vendor/idle.webp' %}"
+        alt="Vendor Status"
+        style="width:100%;height:auto;transition:all 0.4s ease;clip-path:inset(0 0 20% 0);margin-bottom:-20%;border-radius:16px;"
+      />
+    </div>
+  </div>
+
+  <!-- HTMX Contact Form -->
+  <div id="contact-form-wrapper">
+    <form
+      class="rfp-form"
+      id="contact-form"
+      hx-post="{% url 'contact_submit' %}"
+      hx-target="#contact-form-wrapper"
+      hx-swap="innerHTML"
+      hx-on::after-request="onContactFormResponse(event)"
+    >
+      {% csrf_token %}
+      <div class="form-grid">
+        <label><span>Name</span><input required name="name" placeholder="Your name" /></label>
+        <label><span>Email</span><input required type="email" name="email" placeholder="yourname@gmail.com" /></label>
+        <label><span>Company</span><input required name="company" placeholder="Company name" /></label>
+        <label><span>Procurement scope</span>
+          <select required name="scope">
+            <option value="" disabled selected>Select a scope</option>
+            <option>Source-to-pay</option>
+            <option>Supplier management</option>
+            <option>Invoice and financial control</option>
+            <option>Contract lifecycle</option>
+            <option>Vendor participation</option>
+          </select>
+        </label>
+      </div>
+      <label><span>Message</span><textarea required name="message" rows="5" placeholder="Tell us what you want to connect..."></textarea></label>
+      <div class="form-actions">
+        <button class="button button-primary" type="submit">
+          Request a Demo
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg>
+        </button>
+      </div>
+    </form>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Home page specific JS
+document.addEventListener('DOMContentLoaded', function() {
+  // Intro screen handling
+  const introScreen = document.getElementById('intro-screen');
+  const introVideo = document.getElementById('intro-video');
+  const siteShell = document.querySelector('.site-shell');
+  const heroVideo = document.getElementById('hero-video');
+
+  if (introScreen && introVideo) {
+    // Check if this is internal navigation (intro already played)
+    const introPlayed = sessionStorage.getItem('ps360_intro_played');
+    if (introPlayed) {
+      introScreen.style.display = 'none';
+      if (heroVideo) { heroVideo.play().catch(() => {}); }
+      return;
+    }
+
+    introVideo.setAttribute('muted', '');
+    introVideo.defaultMuted = true;
+    introVideo.muted = true;
+    introVideo.playsInline = true;
+
+    const finishIntro = () => {
+      sessionStorage.setItem('ps360_intro_played', '1');
+      introScreen.classList.add('slide-up');
+      setTimeout(() => {
+        introScreen.style.display = 'none';
+        if (heroVideo) { heroVideo.play().catch(() => {}); }
+      }, 700);
+    };
+
+    introVideo.onended = finishIntro;
+    introVideo.onerror = () => setTimeout(finishIntro, 500);
+
+    const playPromise = introVideo.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Autoplay blocked - finish intro after delay
+        setTimeout(finishIntro, 2000);
+      });
+    }
+
+    // Timeout fallback: if video doesn't play within 6s
+    setTimeout(() => {
+      if (!sessionStorage.getItem('ps360_intro_played')) {
+        finishIntro();
+      }
+    }, 6000);
+
+    // User gesture triggers play
+    const handleGesture = () => {
+      introVideo.play().catch(() => {});
+      window.removeEventListener('click', handleGesture);
+      window.removeEventListener('touchstart', handleGesture);
+    };
+    window.addEventListener('click', handleGesture, { once: true });
+    window.addEventListener('touchstart', handleGesture, { once: true, passive: true });
+  }
+});
+
+// Contact form response handler
+function onContactFormResponse(event) {
+  const contactVendorImg = document.getElementById('contact-vendor-img');
+  if (contactVendorImg && event.detail.successful) {
+    contactVendorImg.src = '{% static "landing/roles/vendor/active.webp" %}';
+    contactVendorImg.style.transform = 'scale(1.02)';
+    contactVendorImg.style.filter = 'drop-shadow(0 12px 24px rgba(36,86,214,0.2))';
+  }
+}
+</script>
+{% endblock %}

@@ -12,6 +12,10 @@ path("password-change/", password_change_view, name="password_change"),
     path("superadmin/", include("apps.core.superadmin_urls")),
     path("manager/", include("apps.core.manager_urls")),
     path("vendor/", include("apps.vendors.vendor_dashboard_urls")),
+    # Public landing website - included BEFORE apps.core.urls so that
+    # anonymous traffic to "/" resolves to landing_home. Authenticated
+    # users are forwarded inside landing_home via direct Python call.
+    path("", include("apps.core.landing_urls")),
     # Core & Auth & Page Views
     path("", include("apps.core.urls")),
     path("", include("apps.accounts.urls")),
