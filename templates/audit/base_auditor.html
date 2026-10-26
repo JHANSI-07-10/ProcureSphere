@@ -3,189 +3,168 @@
 {% block title %}Compliance & Audit Portal — ProcureSphere 360{% endblock %}
 
 {% block navbar %}
-{# Suppress default base top navbar to render custom Auditor layout #}
+<!-- Top Navigation Bar for Compliance Auditor (Vendor Dashboard Standard) -->
+<nav class="navbar navbar-dark bg-dark shadow-sm py-2 border-bottom border-secondary border-opacity-25 sticky-top">
+    <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
+        <div class="d-flex align-items-center overflow-hidden me-2">
+            <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" aria-label="Toggle navigation" onclick="toggleAuditorSidebar()">
+                <i class="fa-solid fa-bars text-white fs-4"></i>
+            </button>
+            <a href="/audit/dashboard/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
+                <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 176, 185, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-layer-group text-cyan"></i>
+                </div>
+                <span class="fs-6 fs-sm-5 fw-bold tracking-tight text-truncate">ProcureSphere <span class="text-cyan">360</span></span>
+                
+            </a>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
+            <!-- Scope Switcher Dropdown (Vendor Style Dark Pill) -->
+            <div class="dropdown">
+                <button class="btn btn-sm bg-dark bg-opacity-75 border border-secondary border-opacity-50 text-white dropdown-toggle fw-semibold rounded-pill px-2 px-md-3 py-1 d-flex align-items-center gap-1 gap-md-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa-solid fa-globe text-cyan"></i>
+                    <span id="activeScopeLabel" class="d-none d-sm-inline">Scope: All Business Units (Global)</span>
+                    <span class="d-inline d-sm-none">Global</span>
+                </button>
+                <ul class="dropdown-menu shadow-lg border-0 bg-dark text-white small">
+                    <li><a class="dropdown-item text-white active" href="javascript:void(0)" onclick="setAuditorScope('All Business Units (Global)')">🌐 All Business Units (Global)</a></li>
+                    <li><a class="dropdown-item text-white" href="javascript:void(0)" onclick="setAuditorScope('IT Infrastructure (IT-OPS)')">💻 IT Infrastructure Operations</a></li>
+                    <li><a class="dropdown-item text-white" href="javascript:void(0)" onclick="setAuditorScope('Global Supply Chain (OPS)')">📦 Global Operations</a></li>
+                    <li><a class="dropdown-item text-white" href="javascript:void(0)" onclick="setAuditorScope('Finance &amp; Accounting (FIN-AP)')">💳 Finance &amp; AP</a></li>
+                </ul>
+            </div>
+
+            <!-- Evidence Vault Badge -->
+            <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white small">
+                <i class="fa-solid fa-shield-halved text-cyan me-2"></i>
+                <span>Evidence Vault</span>
+            </div>
+
+            <!-- User Profile & Dropdown -->
+            {% if user.is_authenticated %}
+            <div class="d-flex align-items-center gap-2">
+                <div class="d-none d-lg-block text-end lh-sm me-1">
+                    <div class="fw-semibold text-white small mb-1">{{ user.email|default:"auditor@hpe.com" }}</div>
+                    <div class="text-muted d-block" style="font-size: 0.7rem; line-height: 1;">Compliance Auditor</div>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-dark border border-secondary border-opacity-50 rounded-circle text-white d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fa-solid fa-user-shield text-cyan"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 bg-dark text-white small">
+                        <li><a class="dropdown-item text-white py-2" href="/audit/logs/"><i class="fa-solid fa-fingerprint text-cyan me-2"></i> Audit Logs</a></li>
+                        <li><a class="dropdown-item text-white py-2" href="/audit/lifecycle/"><i class="fa-solid fa-diagram-project text-cyan me-2"></i> Lifecycle Explorer</a></li>
+                        <li><hr class="dropdown-divider border-secondary"></li>
+                        <li><a class="dropdown-item text-danger py-2" href="/logout/"><i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out</a></li>
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</nav>
 {% endblock navbar %}
 
 {% block layout %}
 <!-- Mobile & Tablet Sidebar Backdrop Overlay -->
 <div id="auditorSidebarBackdrop" class="auditor-backdrop d-lg-none" onclick="toggleAuditorSidebar()"></div>
 
-<div class="auditor-app-layout d-flex min-vh-100 bg-slate-50">
+<div class="d-flex align-items-start w-100" style="min-height: calc(100vh - 58px); max-width: 100vw;">
 
     <!-- ========================================================================= -->
-    <!-- 1. STICKY DARK SIDEBAR (ProcureSphere 360 Theme: Navy #002B49 / #0F172A)  -->
+    <!-- 1. STICKY DARK SIDEBAR (Vendor Dashboard Standard: 260px, sticky top: 58px) -->
     <!-- ========================================================================= -->
-    <aside id="auditorSidebar" class="auditor-sidebar bg-dark text-white border-end border-secondary border-opacity-25 d-flex flex-column flex-shrink-0 shadow-sm" style="width: 268px;">
+    <aside id="auditorSidebar" class="offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white auditor-sidebar" tabindex="-1" aria-labelledby="auditorSidebarLabel" style="width: 260px; min-width: 260px; height: calc(100vh - 58px); position: sticky; top: 58px; z-index: 1000; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent;">
         
-        <!-- Sidebar Brand Header -->
-        <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
-            <a href="/audit/dashboard/" class="d-flex align-items-center text-white text-decoration-none">
-                <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
-                <div>
-                    <div class="brand-title fw-bold font-heading lh-1 text-white fs-6">ProcureSphere <span class="text-primary fw-light">360</span></div>
-                    <span class="badge bg-info text-dark rounded-pill fw-bold mt-1" style="font-size: 0.62rem; letter-spacing: 0.04em;">
-                        COMPLIANCE AUDITOR
-                    </span>
-                </div>
-            </a>
-            <!-- Mobile/Tablet Close Button -->
-            <button class="btn btn-link text-white-50 p-1 d-lg-none" type="button" aria-label="Close Navigation" onclick="toggleAuditorSidebar()">
+        <!-- Mobile/Tablet Offcanvas Header (Hidden on Desktop) -->
+        <div class="offcanvas-header d-lg-none border-bottom border-secondary border-opacity-25 px-3 py-2.5">
+            <h6 class="offcanvas-title fw-bold text-white mb-0" id="auditorSidebarLabel"><i class="fa-solid fa-layer-group text-cyan me-2"></i>Audit Portal</h6>
+            <button class="btn btn-link text-white-50 p-1" type="button" aria-label="Close Navigation" onclick="toggleAuditorSidebar()">
                 <i class="fa-solid fa-xmark fs-5"></i>
             </button>
         </div>
 
-        <!-- Sidebar Navigation Items (Dedicated Routes) -->
-        <div class="sidebar-nav-container flex-grow-1 overflow-y-auto px-2 py-3">
-            <ul class="nav nav-pills flex-column gap-1 small" id="sidebarMenu">
-                <li class="nav-section-label text-uppercase text-secondary fw-bold px-2 pt-1 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">
-                    AUDIT &amp; TRACEABILITY
-                </li>
-                <li class="nav-item">
-                    <a href="/audit/dashboard/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if request.path == '/audit/dashboard/' or request.path == '/' or request.path == '/audit/' %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                        <i class="fa-solid fa-chart-pie me-2"></i>
-                        <span>Executive Dashboard</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/audit/logs/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/logs/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                        <i class="fa-solid fa-fingerprint me-2"></i>
-                        <span>Audit Logs</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/audit/sourcing-activity/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/sourcing-activity/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                        <i class="fa-solid fa-gavel me-2"></i>
-                        <span>Sourcing &amp; Bids</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/audit/approvals/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/approvals/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                        <i class="fa-solid fa-signature me-2"></i>
-                        <span>Approvals &amp; Gate Trail</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/audit/po-changes/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/po-changes/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                        <i class="fa-solid fa-cart-shopping me-2"></i>
-                        <span>PO Changes &amp; Records</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/audit/invoice-exceptions/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/invoice-exceptions/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                        <i class="fa-solid fa-triangle-exclamation me-2"></i>
-                        <span>Invoice Exceptions</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/audit/vendors/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/vendors/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                        <i class="fa-solid fa-building-shield me-2"></i>
-                        <span>Vendor Compliance</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/audit/contract-changes/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/contract-changes/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                        <i class="fa-solid fa-file-contract me-2"></i>
-                        <span>Contracts &amp; SLA Risk</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/audit/security-events/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/security-events/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                        <i class="fa-solid fa-shield-halved me-2"></i>
-                        <span>Security &amp; Auth Events</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/audit/lifecycle/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/audit/lifecycle/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                        <i class="fa-solid fa-diagram-project me-2"></i>
-                        <span>Lifecycle Explorer</span>
-                    </a>
-                </li>
-                <li class="nav-item my-2 border-top border-secondary border-opacity-25"></li>
-                <li class="nav-item">
-                    <a href="/reports/hub/" class="nav-link auditor-nav-link rounded-3 py-2 px-3 small {% if '/reports/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
-                        <i class="fa-solid fa-chart-line me-2"></i>
-                        <span>Financial Reports</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
+        <div class="px-2 py-3">
+            <div class="d-flex align-items-center justify-content-between px-2 mb-2 text-secondary text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.06em;">
+                <span>Audit &amp; Traceability</span>
+                <i class="fa-solid fa-shield-check text-cyan" style="font-size:0.75rem;"></i>
+            </div>
+            
+            <nav class="d-flex flex-column gap-1" id="sidebarMenu" aria-label="Compliance Auditor Navigation">
+                <a href="/audit/dashboard/" class="vendor-navlink unified-navlink {% if request.path == '/audit/dashboard/' or request.path == '/' or request.path == '/audit/' %}active active-nav-item{% endif %}">
+                    <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i>
+                    <span>Executive Dashboard</span>
+                </a>
+                <a href="/audit/logs/" class="vendor-navlink unified-navlink {% if '/audit/logs/' in request.path %}active active-nav-item{% endif %}">
+                    <i class="fa-solid fa-fingerprint nav-icon text-cyan"></i>
+                    <span>Audit Logs</span>
+                </a>
+                <a href="/audit/sourcing-activity/" class="vendor-navlink unified-navlink {% if '/audit/sourcing-activity/' in request.path %}active active-nav-item{% endif %}">
+                    <i class="fa-solid fa-gavel nav-icon text-warning"></i>
+                    <span>Sourcing &amp; Bids</span>
+                </a>
+                <a href="/audit/approvals/" class="vendor-navlink unified-navlink {% if '/audit/approvals/' in request.path %}active active-nav-item{% endif %}">
+                    <i class="fa-solid fa-signature nav-icon text-success"></i>
+                    <span>Approvals &amp; Gate Trail</span>
+                </a>
+                <a href="/audit/po-changes/" class="vendor-navlink unified-navlink {% if '/audit/po-changes/' in request.path %}active active-nav-item{% endif %}">
+                    <i class="fa-solid fa-cart-shopping nav-icon text-cyan"></i>
+                    <span>PO Changes &amp; Records</span>
+                </a>
+                <a href="/audit/invoice-exceptions/" class="vendor-navlink unified-navlink {% if '/audit/invoice-exceptions/' in request.path %}active active-nav-item{% endif %}">
+                    <i class="fa-solid fa-triangle-exclamation nav-icon text-warning"></i>
+                    <span>Invoice Exceptions</span>
+                </a>
+                <a href="/audit/vendors/" class="vendor-navlink unified-navlink {% if '/audit/vendors/' in request.path %}active active-nav-item{% endif %}">
+                    <i class="fa-solid fa-building-shield nav-icon text-success"></i>
+                    <span>Vendor Compliance</span>
+                </a>
+                <a href="/audit/contract-changes/" class="vendor-navlink unified-navlink {% if '/audit/contract-changes/' in request.path %}active active-nav-item{% endif %}">
+                    <i class="fa-solid fa-file-contract nav-icon text-info"></i>
+                    <span>Contracts &amp; SLA Risk</span>
+                </a>
+                <a href="/audit/security-events/" class="vendor-navlink unified-navlink {% if '/audit/security-events/' in request.path %}active active-nav-item{% endif %}">
+                    <i class="fa-solid fa-shield-halved nav-icon text-danger"></i>
+                    <span>Security &amp; Auth Events</span>
+                </a>
+                <a href="/audit/lifecycle/" class="vendor-navlink unified-navlink {% if '/audit/lifecycle/' in request.path %}active active-nav-item{% endif %}">
+                    <i class="fa-solid fa-diagram-project nav-icon text-cyan"></i>
+                    <span>Lifecycle Explorer</span>
+                </a>
 
-        <!-- Sidebar Footer -->
-        <div class="sidebar-footer border-top border-secondary border-opacity-25 px-3 py-3 mt-auto">
-            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                <div class="d-flex align-items-center" style="min-width: 0;">
-                    <i class="fa-solid fa-circle-user text-info fs-4 me-2"></i>
-                    <div style="min-width: 0;">
-                        <div class="small fw-semibold text-white text-truncate" title="{{ user.email }}">{{ user.email|default:"auditor@hpe.com" }}</div>
-                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Compliance Auditor</div>
+                <div class="nav-section-label">REPORTS</div>
+                <a href="/reports/hub/" class="vendor-navlink unified-navlink {% if '/reports/' in request.path %}active active-nav-item{% endif %}">
+                    <i class="fa-solid fa-chart-line nav-icon text-secondary"></i>
+                    <span>Financial Reports</span>
+                </a>
+
+                <!-- Security Footnote -->
+                <div class="mt-4 pt-3 border-top border-secondary border-opacity-25 px-2 mb-2">
+                    <div class="d-flex align-items-center text-muted small" style="font-size: 0.68rem;">
+                        <i class="fa-solid fa-lock text-success me-2"></i>
+                        <span>Immutable Audit Trail &bull; WORM Compliant</span>
                     </div>
                 </div>
-                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill" title="Sign out"><i class="fa-solid fa-arrow-right-from-bracket"></i><span class="visually-hidden">Sign out</span></a>
-            </div>
-            <div class="d-flex align-items-center justify-content-between small text-white-50 pt-2 border-top border-secondary border-opacity-25">
-                <span class="d-flex align-items-center text-truncate me-2">
-                    <i class="fa-solid fa-shield-halved me-2 text-info"></i>
-                    <span class="text-truncate">Read-Only Evidence Vault</span>
-                </span>
-                <span class="badge bg-secondary bg-opacity-25 text-white-50 border border-secondary border-opacity-50">v2026.1</span>
-            </div>
+            </nav>
         </div>
     </aside>
 
     <!-- ========================================================================= -->
     <!-- 2. MAIN CONTENT WRAPPER                                                   -->
     <!-- ========================================================================= -->
-    <div class="auditor-main-content flex-grow-1 d-flex flex-column min-vh-100">
+    <main class="auditor-main-content flex-grow-1 p-3 p-md-4" style="min-width: 0; background-color: #f8fafc; min-height: calc(100vh - 58px); max-width: 100vw; overflow-x: hidden;">
         
-        <!-- Top Sticky Header Bar (Sticky on Desktop, Tablet, and Mobile) -->
-        <header class="auditor-topbar sticky-top bg-white border-bottom px-3 px-md-4 py-2 d-flex align-items-center justify-content-between shadow-xs z-3">
-            <div class="d-flex align-items-center gap-2 gap-md-3">
-                <!-- Hamburger Button for Mobile & Tablet -->
-                <button class="btn btn-outline-secondary btn-sm rounded-3 d-lg-none d-flex align-items-center justify-content-center" type="button" aria-label="Toggle Navigation" onclick="toggleAuditorSidebar()" style="width: 36px; height: 36px;">
-                    <i class="fa-solid fa-bars fs-6"></i>
-                </button>
-                
-                <!-- Scope Switcher Dropdown -->
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-light border dropdown-toggle fw-semibold rounded-pill px-2 px-md-3 py-1 text-dark d-flex align-items-center gap-1 gap-md-2 shadow-2xs" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fa-solid fa-globe text-primary"></i>
-                        <span id="activeScopeLabel" class="d-none d-sm-inline">Scope: All Business Units (Global)</span>
-                        <span class="d-inline d-sm-none">Global</span>
-                    </button>
-                    <ul class="dropdown-menu shadow-sm border-0 small">
-                        <li><a class="dropdown-item active" href="javascript:void(0)" onclick="setAuditorScope('All Business Units (Global)')">🌐 All Business Units (Global)</a></li>
-                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="setAuditorScope('IT Infrastructure (IT-OPS)')">💻 IT Infrastructure Operations</a></li>
-                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="setAuditorScope('Global Supply Chain (OPS)')">📦 Global Operations</a></li>
-                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="setAuditorScope('Finance & Accounting (FIN-AP)')">💳 Finance & AP</a></li>
-                    </ul>
-                </div>
-            </div>
+        {% block auditor_breadcrumbs %}{% endblock auditor_breadcrumbs %}
 
-            <!-- User Pill & Signout Button -->
-            <div class="d-flex align-items-center gap-2 gap-md-3">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="avatar-circle-sm bg-primary text-white fw-bold d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 shadow-2xs">
-                        {{ user.email|slice:":1"|upper|default:"A" }}
-                    </div>
-                    <div class="d-none d-md-block text-start leading-tight">
-                        <div class="fw-bold text-dark small">{{ user.email|default:"auditor@hpe.com" }}</div>
-                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Compliance Auditor</div>
-                    </div>
-                </div>
-                <a href="/logout/" class="btn btn-outline-secondary btn-sm rounded-pill px-2 px-md-3 fw-semibold d-flex align-items-center gap-1 shadow-2xs">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                    <span class="d-none d-sm-inline">Sign out</span>
-                </a>
-            </div>
-        </header>
+        <!-- Toast / Alert Region for Async Feedback -->
+        <div id="auditorToastContainer" class="toast-container position-fixed top-0 end-0 p-3 z-3" style="margin-top: 65px;"></div>
 
         <!-- Main Body Content Block -->
-        <main class="auditor-page-body flex-grow-1 p-2 p-sm-3 p-md-4">
-            {% block auditor_content %}
-                {% block content %}{% endblock content %}
-            {% endblock auditor_content %}
-        </main>
-    </div>
+        {% block auditor_content %}
+            {% block content %}{% endblock content %}
+        {% endblock auditor_content %}
+    </main>
 </div>
 
 <!-- ========================================================================= -->
@@ -238,17 +217,15 @@
     .text-white-75 { color: rgba(255, 255, 255, 0.75) !important; }
     .hover-bg-slate:hover { background-color: #F8FAFC; }
 
-    /* Sticky Navbar across all screen sizes */
-    .auditor-topbar {
-        position: -webkit-sticky !important;
-        position: sticky !important;
-        top: 0 !important;
-        z-index: 1030 !important;
-        background-color: rgba(255, 255, 255, 0.98) !important;
-        backdrop-filter: blur(12px) !important;
-        -webkit-backdrop-filter: blur(12px) !important;
-        border-bottom: 1px solid #E2E8F0 !important;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+    /* Section label style matching Vendor Standard */
+    .nav-section-label {
+        font-size: 0.63rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: rgba(255, 255, 255, 0.38);
+        padding: 0.6rem 0.75rem 0.2rem;
+        margin-top: 0.25rem;
     }
 
     .auditor-main-content {
@@ -262,28 +239,38 @@
         overscroll-behavior-y: contain !important;
     }
 
-    /* Desktop Sidebar (>= 992px) */
+    /* Desktop Sidebar (>= 992px) - Vendor Dashboard Standard: 260px, sticky top: 58px */
     @media (min-width: 992px) {
         .auditor-sidebar {
-            width: 268px !important;
-            min-width: 268px !important;
-            height: 100vh;
-            position: -webkit-sticky;
-            position: sticky;
-            top: 0;
-            z-index: 1020;
+            width: 260px !important;
+            min-width: 260px !important;
+            height: calc(100vh - 58px) !important;
+            position: -webkit-sticky !important;
+            position: sticky !important;
+            top: 58px !important;
+            z-index: 1000;
             background-color: #212529 !important;
             border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
+            overflow-y: auto !important;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        }
+        .auditor-sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .auditor-sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
         }
         .auditor-backdrop {
             display: none !important;
         }
     }
 
-    /* Mobile & Tablet Responsive Sidebar (< 992px) */
+    /* Mobile & Tablet Responsive Sidebar Drawer (< 992px) */
     @media (max-width: 991.98px) {
         .auditor-sidebar {
-            position: fixed;
+            position: fixed !important;
             top: 0;
             left: 0;
             bottom: 0;
@@ -292,7 +279,7 @@
             height: 100vh;
             z-index: 1050;
             transform: translateX(-100%);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             background-color: #212529 !important;
             box-shadow: none;
         }
@@ -312,43 +299,11 @@
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
             z-index: 1040;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
+            display: none;
         }
         .auditor-backdrop.show {
-            opacity: 1;
-            visibility: visible;
+            display: block !important;
         }
-    }
-
-    .brand-badge-square {
-        width: 36px;
-        height: 36px;
-        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
-    }
-
-    /* Navigation links matching Procurement Executive */
-    .auditor-nav-link {
-        font-size: 0.875rem !important;
-        transition: all 0.18s ease-in-out;
-        border: 1px solid transparent;
-        color: rgba(255, 255, 255, 0.75) !important;
-    }
-    .auditor-nav-link:hover {
-        background-color: rgba(255, 255, 255, 0.08) !important;
-        color: #FFFFFF !important;
-        transform: none;
-    }
-    .auditor-nav-link.active {
-        background-color: #0d6efd !important;
-        color: #FFFFFF !important;
-        font-weight: 700 !important;
-        border-color: transparent !important;
-        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.25) !important;
-    }
-    .auditor-nav-link.active i {
-        color: #FFFFFF !important;
     }
 
     /* Top-Accent KPI Cards */
@@ -443,23 +398,11 @@
         const backdrop = document.getElementById('auditorSidebarBackdrop');
 
         if (sidebar) {
-            // Isolate mouse wheel scrolling so the background dashboard NEVER scrolls up/down when cursor is over sidebar
-            sidebar.addEventListener('wheel', (e) => {
-                const nav = sidebar.querySelector('.sidebar-nav-container');
-                if (nav && nav.scrollHeight > nav.clientHeight) {
-                    const atTop = nav.scrollTop <= 0 && e.deltaY < 0;
-                    const atBottom = (nav.scrollHeight - nav.scrollTop - nav.clientHeight <= 1) && e.deltaY > 0;
-                    if (!atTop && !atBottom) {
-                        nav.scrollTop += e.deltaY;
-                    }
-                }
-                e.preventDefault();
-                e.stopPropagation();
-            }, { passive: false });
+            
         }
 
         if (window.innerWidth < 992) {
-            const navLinks = document.querySelectorAll('.auditor-nav-link');
+            const navLinks = document.querySelectorAll('.vendor-navlink, .unified-navlink');
             navLinks.forEach(link => {
                 link.addEventListener('click', () => {
                     if (sidebar) sidebar.classList.remove('show');

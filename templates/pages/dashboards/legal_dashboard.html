@@ -31,39 +31,36 @@
     }
 </style>
 
-<div class="container-fluid p-0">
-    <!-- Clean White Overview / Header Banner (Stores Design Reference) -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
-        <div class="card-body p-3 p-md-4">
-            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
-                <div>
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                        <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 text-uppercase fw-bold rounded-pill border border-primary border-opacity-25" style="font-size: 0.72rem; letter-spacing: 0.05em;">
-                            <i class="fa-solid fa-scale-balanced me-1"></i> Legal Compliance Desk
-                        </span>
-                        <span class="badge bg-success bg-opacity-10 text-success px-2 py-1 rounded-pill border border-success border-opacity-25" style="font-size: 0.72rem;">
-                            <i class="fa-solid fa-circle me-1" style="font-size: 0.5rem;"></i> Active Session
-                        </span>
-                        <span class="text-muted small ms-1">
-                            <i class="fa-solid fa-user-shield me-1 text-primary"></i> {{ user.email }}
-                        </span>
-                    </div>
-                    <h2 class="h3 fw-bold mb-1 text-dark font-heading">Contract Lifecycle & SLA Workspace</h2>
-                    <p class="text-muted mb-0 small">Manage contract approvals, enforce vendor legal obligations, mitigate SLA compliance risks, and track renewal schedules across all corporate entities.</p>
-                </div>
-                <div class="d-flex flex-wrap align-items-center gap-2 justify-content-start justify-content-lg-end">
-                    <div class="bg-light border rounded-3 p-2 px-3 text-start">
-                        <div class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.05em;">Portfolio Value</div>
-                        <div class="fw-bold text-primary font-heading fs-5">${{ metrics.total_contract_value|floatformat:2 }}</div>
-                    </div>
-                    <a href="{% url 'contracts_list' %}" class="btn btn-outline-primary px-3 py-2 rounded-3 fw-semibold d-flex align-items-center">
-                        <i class="fa-solid fa-file-contract me-2"></i> Contract Register
-                    </a>
-                    <a href="{% url 'contract_create' %}" class="btn btn-primary px-3 py-2 rounded-3 fw-semibold d-flex align-items-center shadow-sm">
-                        <i class="fa-solid fa-plus me-2"></i> New Draft
-                    </a>
-                </div>
+<div class="container-fluid px-0">
+    <!-- Welcome Header & Quick Actions (Vendor Design Standard) -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 fw-semibold small">
+                    <i class="fa-solid fa-scale-balanced me-1"></i> Legal Compliance Desk
+                </span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0 fw-semibold" style="font-size: 0.7rem;">
+                    <span class="status-dot-pulse me-1"></span> Active Session
+                </span>
             </div>
+            <h3 class="fw-bold text-dark mb-1 font-heading">
+                {% autoescape off %}Contract Lifecycle & SLA Workspace{% endautoescape %}
+            </h3>
+            <p class="text-muted mb-0 small">
+                Welcome, <strong>{{ user.email }}</strong> &bull; Manage contract approvals, enforce vendor legal obligations, and track renewals.
+            </p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <div class="bg-white border rounded-pill px-3 py-1 text-start shadow-sm d-none d-sm-block">
+                <span class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.05em;">Portfolio Value:</span>
+                <span class="fw-bold text-primary font-heading small ms-1">${{ metrics.total_contract_value|floatformat:2 }}</span>
+            </div>
+            <a href="{% url 'contract_create' %}" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">
+                <i class="fa-solid fa-plus me-1"></i> New Draft
+            </a>
+            <a href="{% url 'contracts_list' %}" class="btn btn-outline-dark btn-sm rounded-pill px-3">
+                <i class="fa-solid fa-file-contract me-1"></i> Contract Register
+            </a>
         </div>
     </div>
 

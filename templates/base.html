@@ -16,23 +16,279 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
     <!-- Custom Design System Styles -->
-    <link href="/static/css/style.css" rel="stylesheet">
+    <link href="/static/css/style.css?v=unified_v2" rel="stylesheet">
     <!-- HTMX Library -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <!-- Chart.js 4.4 JS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        /* ========================================================================= */
+        /* VENDOR DASHBOARD REFERENCE SIDEBAR DESIGN STANDARD                        */
+        /* Enforces exact vendor sidebar styles globally for all roles               */
+        /* ========================================================================= */
+        @media (min-width: 992px) {
+            .vendor-sidebar-desktop,
+            .unified-sidebar-desktop,
+            .approver-sidebar-desktop,
+            .requester-sidebar-desktop,
+            .superadmin-sidebar-desktop,
+            .stores-desk-nav,
+            .finance-sidebar-desktop,
+            .legal-sidebar-desktop,
+            .manager-sidebar-desktop,
+            .auditor-sidebar,
+            aside.bg-dark {
+                width: 260px !important;
+                min-width: 260px !important;
+                flex-shrink: 0 !important;
+                position: sticky !important;
+                top: 58px !important;
+                height: calc(100vh - 58px) !important;
+                overflow-y: auto !important;
+                scrollbar-width: thin;
+                scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+                z-index: 1000;
+                align-self: flex-start;
+            }
+            .vendor-sidebar-desktop::-webkit-scrollbar,
+            .unified-sidebar-desktop::-webkit-scrollbar,
+            aside.bg-dark::-webkit-scrollbar {
+                width: 4px;
+            }
+            .vendor-sidebar-desktop::-webkit-scrollbar-thumb,
+            .unified-sidebar-desktop::-webkit-scrollbar-thumb,
+            aside.bg-dark::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 4px;
+            }
+        }
+
+        /* Section label style - exact Vendor Dashboard reference */
+        .nav-section-label {
+            font-size: 0.63rem !important;
+            letter-spacing: 0.08em !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            color: rgba(255, 255, 255, 0.38) !important;
+            padding: 0.6rem 0.75rem 0.2rem !important;
+            margin-top: 0.25rem !important;
+            line-height: 1.2 !important;
+        }
+
+        /* Top-level nav link - EXACT same styling as Vendor Dashboard */
+        .vendor-navlink,
+        .unified-navlink,
+        aside.bg-dark nav a,
+        aside.bg-dark .sidebar-nav-container a,
+        aside.bg-dark a.nav-link {
+            display: flex !important;
+            align-items: center !important;
+            padding: 0.45rem 0.75rem !important;
+            border-radius: 8px !important;
+            font-size: 0.875rem !important;
+            font-weight: 500 !important;
+            color: rgba(255, 255, 255, 0.75) !important;
+            text-decoration: none !important;
+            transition: background 0.15s, color 0.15s !important;
+            margin-bottom: 3px !important;
+        }
+
+        .vendor-navlink:hover,
+        .vendor-navlink:focus,
+        .unified-navlink:hover,
+        .unified-navlink:focus,
+        aside.bg-dark nav a:hover,
+        aside.bg-dark nav a:focus,
+        aside.bg-dark .sidebar-nav-container a:hover,
+        aside.bg-dark .sidebar-nav-container a:focus,
+        aside.bg-dark a.nav-link:hover,
+        aside.bg-dark a.nav-link:focus {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: #FFFFFF !important;
+            text-decoration: none !important;
+        }
+
+        /* Active nav item - Solid Royal Blue Pill identical to Vendor Reference */
+        .vendor-navlink.active-nav-item,
+        .vendor-navlink.active,
+        .unified-navlink.active-nav-item,
+        .unified-navlink.active,
+        aside.bg-dark nav a.active-nav-item,
+        aside.bg-dark nav a.active,
+        aside.bg-dark .sidebar-nav-container a.active,
+        aside.bg-dark .sidebar-nav-container a.active-nav-item,
+        aside.bg-dark a.nav-link.active,
+        aside.bg-dark a.nav-link.active-nav-item {
+            background: #0D6EFD !important;
+            color: #FFFFFF !important;
+            font-weight: 700 !important;
+            box-shadow: 0 2px 8px rgba(13, 110, 253, 0.35) !important;
+            text-decoration: none !important;
+        }
+
+        /* Icon within nav links */
+        .vendor-navlink .nav-icon,
+        .unified-navlink .nav-icon,
+        .vendor-navlink i,
+        .unified-navlink i,
+        aside.bg-dark nav a i,
+        aside.bg-dark .sidebar-nav-container a i,
+        aside.bg-dark a.nav-link i {
+            width: 20px !important;
+            text-align: center !important;
+            margin-right: 0.65rem !important;
+            flex-shrink: 0 !important;
+        }
+
+        /* Brand Header Box in Sidebar */
+        .sidebar-brand-box {
+            padding: 0.85rem 1rem !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+
+        /* Footer and Brand links isolation */
+        aside.bg-dark .sidebar-brand-box a,
+        aside.bg-dark .sidebar-brand-box a:hover {
+            display: inline-flex !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
+        aside.bg-dark .sidebar-footer a,
+        aside.bg-dark a.sidebar-signout-btn,
+        aside.bg-dark .sidebar-footer a:hover,
+        aside.bg-dark a.sidebar-signout-btn:hover {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: auto !important;
+            padding: 0.25rem 0.6rem !important;
+            border-radius: 50rem !important;
+            margin-bottom: 0 !important;
+            box-shadow: none !important;
+        }
+
+        /* Sleek 4px scrollbars for all dark sidebars (identical to Vendor Portal) */
+        aside.bg-dark,
+        aside.bg-dark nav,
+        aside.bg-dark .sidebar-nav-container,
+        .unified-sidebar-desktop,
+        .vendor-sidebar-desktop,
+        #procExecSidebar nav,
+        #managerSidebar .sidebar-nav-container,
+        #auditorSidebar .sidebar-nav-container {
+            scrollbar-width: thin !important;
+            scrollbar-color: rgba(255, 255, 255, 0.15) transparent !important;
+        }
+
+        aside.bg-dark::-webkit-scrollbar,
+        aside.bg-dark nav::-webkit-scrollbar,
+        aside.bg-dark .sidebar-nav-container::-webkit-scrollbar,
+        .unified-sidebar-desktop::-webkit-scrollbar,
+        .vendor-sidebar-desktop::-webkit-scrollbar,
+        #procExecSidebar nav::-webkit-scrollbar,
+        #managerSidebar .sidebar-nav-container::-webkit-scrollbar,
+        #auditorSidebar .sidebar-nav-container::-webkit-scrollbar {
+            width: 4px !important;
+            height: 4px !important;
+        }
+
+        aside.bg-dark::-webkit-scrollbar-track,
+        aside.bg-dark nav::-webkit-scrollbar-track,
+        aside.bg-dark .sidebar-nav-container::-webkit-scrollbar-track,
+        .unified-sidebar-desktop::-webkit-scrollbar-track,
+        .vendor-sidebar-desktop::-webkit-scrollbar-track,
+        #procExecSidebar nav::-webkit-scrollbar-track,
+        #managerSidebar .sidebar-nav-container::-webkit-scrollbar-track,
+        #auditorSidebar .sidebar-nav-container::-webkit-scrollbar-track {
+            background: transparent !important;
+        }
+
+        aside.bg-dark::-webkit-scrollbar-thumb,
+        aside.bg-dark nav::-webkit-scrollbar-thumb,
+        aside.bg-dark .sidebar-nav-container::-webkit-scrollbar-thumb,
+        .unified-sidebar-desktop::-webkit-scrollbar-thumb,
+        .vendor-sidebar-desktop::-webkit-scrollbar-thumb,
+        #procExecSidebar nav::-webkit-scrollbar-thumb,
+        #managerSidebar .sidebar-nav-container::-webkit-scrollbar-thumb,
+        #auditorSidebar .sidebar-nav-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15) !important;
+            border-radius: 4px !important;
+        }
+
+        aside.bg-dark::-webkit-scrollbar-thumb:hover,
+        aside.bg-dark nav::-webkit-scrollbar-thumb:hover,
+        aside.bg-dark .sidebar-nav-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3) !important;
+        }
+    </style>
 </head>
 <body class="bg-light app-body">
     {% block navbar %}
     {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}
-    {# Procurement Executive: sidebar-only layout (brand, user and sign-out live in the sidebar) #}
+    <!-- Top Navigation Bar for Procurement Executive (Vendor Dashboard Standard) -->
+    <nav class="navbar navbar-dark bg-dark shadow-sm py-2 border-bottom border-secondary border-opacity-25 sticky-top proc-exec-topbar">
+        <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
+            <div class="d-flex align-items-center overflow-hidden me-2">
+                <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#procExecSidebar" aria-controls="procExecSidebar" aria-label="Toggle navigation">
+                    <i class="fa-solid fa-bars text-white fs-4"></i>
+                </button>
+                <a href="/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
+                    <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 176, 185, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-layer-group text-cyan"></i>
+                    </div>
+                    <span class="fs-6 fs-sm-5 fw-bold tracking-tight text-truncate">ProcureSphere <span class="text-cyan">360</span></span>
+                    <span class="badge bg-secondary bg-opacity-50 text-light ms-2 px-2 py-1 small rounded-pill d-none d-sm-inline-block">Procurement Executive</span>
+                </a>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
+                <!-- Operations Desk Badge -->
+                <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white">
+                    <i class="fa-solid fa-shield-halved text-cyan me-2 fs-5"></i>
+                    <div class="text-start lh-sm">
+                        <span class="fw-semibold small d-block mb-1">Procurement Operations Desk</span>
+                        <span class="text-muted d-block" style="font-size: 0.7rem; line-height: 1;">Sourcing &bull; Governance &bull; PO Execution</span>
+                    </div>
+                </div>
+
+                <!-- Notifications Icon -->
+                <a href="{% url 'notification_list' %}" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Notifications">
+                    <i class="fa-solid fa-bell fs-5"></i>
+                </a>
+
+                <!-- User Profile & Dropdown -->
+                <div class="d-flex align-items-center gap-2">
+                    <div class="d-none d-lg-block text-end lh-sm me-1">
+                        <div class="fw-semibold text-white small mb-1">{{ user.email }}</div>
+                        <div class="text-muted d-block" style="font-size: 0.7rem; line-height: 1;">Procurement Executive</div>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-dark border border-secondary border-opacity-50 rounded-circle text-white d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa-solid fa-user-tie text-cyan"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 bg-dark text-white">
+                            <li><a class="dropdown-item text-white py-2" href="{% url 'notification_list' %}"><i class="fa-solid fa-bell text-warning me-2"></i> Notifications</a></li>
+                            <li><a class="dropdown-item text-white py-2" href="{% url 'vendor_governance' %}"><i class="fa-solid fa-shield-halved text-cyan me-2"></i> Vendor Governance</a></li>
+                            <li><hr class="dropdown-divider border-secondary"></li>
+                            <li><a class="dropdown-item text-danger py-2" href="/logout/"><i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
     {% else %}
     <!-- Top Navigation Bar for other roles -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-2">
         <div class="container-fluid px-2 px-sm-3 px-lg-4">
             <a href="/" class="navbar-brand d-flex align-items-center text-white me-2 me-lg-4 text-truncate">
-                <i class="fa-solid fa-layer-group text-primary fa-lg me-2 flex-shrink-0"></i>
-                <span class="fs-6 fs-sm-5 fw-bold text-truncate">ProcureSphere <span class="text-primary fw-light">360</span></span>
+                <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 176, 185, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-layer-group text-cyan"></i>
+                </div>
+                <span class="fs-6 fs-sm-5 fw-bold text-truncate">ProcureSphere <span class="text-cyan">360</span></span>
             </a>
             <button class="navbar-toggler border-0 p-1" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -123,18 +379,13 @@
     {% endblock navbar %}
 
     {% block layout %}
-    <div class="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}d-flex min-vh-100 position-relative{% else %}container-fluid p-0{% endif %}">
+    <div class="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}d-flex align-items-start w-100{% else %}container-fluid p-0{% endif %}" style="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}min-height: calc(100vh - 58px); max-width: 100vw;{% endif %}">
         {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}
         {% include 'partials/proc_exec_sidebar.html' %}
         {% endif %}
 
         <!-- Main Page Content Area -->
-        <main class="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}flex-grow-1 p-3 p-md-4 p-xl-4 overflow-auto bg-light{% else %}container-fluid p-3 p-md-4 overflow-auto{% endif %}" style="min-width: 0;">
-            {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}
-            <button class="btn btn-outline-dark btn-sm d-lg-none mb-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#procExecSidebar" aria-controls="procExecSidebar">
-                <i class="fa-solid fa-bars me-1"></i> Menu
-            </button>
-            {% endif %}
+        <main class="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}flex-grow-1 p-2 p-sm-3 p-md-4 bg-light w-100{% else %}container-fluid p-3 p-md-4 overflow-auto{% endif %}" style="min-width: 0; {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}max-width: 100vw; overflow-x: hidden;{% endif %}">
             {% block content %}{% endblock %}
         </main>
     </div>

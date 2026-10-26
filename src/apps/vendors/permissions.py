@@ -83,4 +83,6 @@ class VendorAccessPermission(BasePermission):
 
 class GovernanceOperatePermission(BasePermission):
     def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return can_view_governance(request.user)
         return can_operate_governance(request.user)

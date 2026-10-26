@@ -1,8 +1,12 @@
+from datetime import timedelta
 import logging
 import secrets
 import string
 
-import requests
+try:
+    import requests
+except ImportError:
+    requests = None
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.mail import send_mail
@@ -606,6 +610,11 @@ def record_vendor_risk_assessment_service(
         assessed_by=assessor,
         created_by=assessor,
     )
+    if previous and record.created_at <= previous.created_at:
+        VendorRiskRecord.objects.filter(pk=record.pk).update(
+            created_at=previous.created_at + timedelta(milliseconds=10)
+        )
+        record.refresh_from_db()
     create_audit_log_service(
         actor=assessor,
         action=AuditLog.ACTION_CREATE,
@@ -636,6 +645,11 @@ def update_vendor_profile_service(
     Vendor self-service profile update: updates trade name, address, phone, banking info, and tax fields.
     Legal name, TIN, vendor number, and category are locked and require governance approval.
     """
+    if vendor.status == Vendor.STATUS_SUSPENDED:
+        raise ValidationError(
+            f"Vendor '{vendor.legal_name}' is suspended. Self-service updates are frozen."
+        )
+
     previous_state = {
         "trade_name": vendor.trade_name,
         "address": vendor.address,
@@ -961,6 +975,11 @@ def create_vendor_contact_service(
     Creates a new authorized vendor contact for the vendor.
     If is_primary is set, demotes other contacts of this vendor.
     """
+    if vendor.status == Vendor.STATUS_SUSPENDED:
+        raise ValidationError(
+            f"Vendor '{vendor.legal_name}' is suspended. Contact creation is frozen."
+        )
+
     first_name = (data.get("first_name") or "").strip()
     last_name = (data.get("last_name") or "").strip()
     email = (data.get("email") or "").strip()
@@ -1012,6 +1031,11 @@ def update_vendor_contact_service(
     Updates an authorized vendor contact.
     Enforces strict vendor-level isolation (contact must belong to vendor).
     """
+    if vendor.status == Vendor.STATUS_SUSPENDED:
+        raise ValidationError(
+            f"Vendor '{vendor.legal_name}' is suspended. Contact updates are frozen."
+        )
+
     if contact.vendor_id != vendor.id:
         raise PermissionDenied(
             "You do not have permission to modify a contact belonging to another vendor."
@@ -1073,6 +1097,11 @@ def delete_vendor_contact_service(
     Deletes an authorized vendor contact.
     Enforces strict vendor-level isolation.
     """
+    if vendor.status == Vendor.STATUS_SUSPENDED:
+        raise ValidationError(
+            f"Vendor '{vendor.legal_name}' is suspended. Contact deletion is frozen."
+        )
+
     if contact.vendor_id != vendor.id:
         raise PermissionDenied(
             "You do not have permission to delete a contact belonging to another vendor."

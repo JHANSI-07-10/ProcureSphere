@@ -33,9 +33,9 @@ def generate_purchase_order_service(
     """
     from apps.core.services import generate_document_number
 
-    if vendor.status == Vendor.STATUS_SUSPENDED:
+    if vendor.status in (Vendor.STATUS_ON_HOLD, Vendor.STATUS_SUSPENDED):
         raise ValidationError(
-            f"Vendor '{vendor.legal_name}' is suspended and cannot be issued POs."
+            f"Vendor '{vendor.legal_name}' is {vendor.get_status_display().lower()} and cannot be issued POs."
         )
 
     po_number = generate_document_number(PurchaseOrder, "po_number", "PO")
@@ -213,6 +213,11 @@ def amend_purchase_order_service(
     """
     if not reason:
         raise ValidationError("Amendment justification reason is required.")
+
+    if po.vendor.status == Vendor.STATUS_SUSPENDED:
+        raise ValidationError(
+            f"Vendor '{po.vendor.legal_name}' is suspended and PO cannot be amended."
+        )
 
     # 1. Take JSON snapshot of previous version
     snapshot = {

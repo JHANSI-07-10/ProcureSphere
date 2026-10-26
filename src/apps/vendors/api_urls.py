@@ -632,13 +632,16 @@ class VendorAssessRiskAPIView(APIView):
     Records a new VendorRiskRecord and optionally updates vendor status (ACTIVE, ON_HOLD, SUSPENDED).
     """
 
-    permission_classes = [IsAuthenticated, IsProcurementManager]
+    permission_classes = [IsAuthenticated, GovernanceOperatePermission]
 
     def post(self, request, pk):
         vendor = get_object_or_404(Vendor, pk=pk)
 
         risk_level = str(request.data.get("risk_level", VendorRiskRecord.RISK_LEVEL_LOW)).upper()
-        assessment_notes = str(request.data.get("assessment_notes", "")).strip()
+        assessment_notes = str(
+            request.data.get("notes", request.data.get("assessment_notes", ""))
+        ).strip()
+        risk_flags = request.data.get("risk_flags", [])
         governance_status = request.data.get("governance_status")
 
         valid_levels = [
@@ -663,6 +666,7 @@ class VendorAssessRiskAPIView(APIView):
         risk_record = VendorRiskRecord.objects.create(
             vendor=vendor,
             risk_level=risk_level,
+            risk_flags=risk_flags,
             assessment_notes=assessment_notes,
             assessed_by=request.user,
         )

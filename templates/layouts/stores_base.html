@@ -1,441 +1,172 @@
 {% extends 'base.html' %}
 
-{% block title %}{% block stores_title %}Stores & Receiving Workspace{% endblock %} — ProcureSphere 360{% endblock %}
+{% block title %}{% block stores_title %}Stores &amp; Receiving Workspace{% endblock %} — ProcureSphere 360{% endblock %}
 
-{% block navbar %}{% endblock navbar %}
-
-{% block layout %}
-<style>
-    /* Scope Stores Receiver Workspace styling matching Legal Manager application shell */
-    .stores-layout-container {
-        display: flex;
-        min-height: 100vh;
-        width: 100%;
-        max-width: 100vw;
-        overflow-x: hidden;
-        background-color: #F8FAFC;
-    }
-
-    /* Stores Dedicated Sidebar */
-    .stores-sidebar {
-        width: 240px;
-        background: linear-gradient(180deg, #001F35 0%, #0F172A 60%, #080D1A 100%);
-        color: #F8FAFC;
-        position: fixed;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        z-index: 1040;
-        display: flex;
-        flex-direction: column;
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
-        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .stores-sidebar-header {
-        height: 54px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 0.85rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(0, 43, 73, 0.4);
-    }
-
-    .stores-sidebar-body {
-        flex: 1;
-        overflow-y: auto;
-        padding: 0.65rem 0.5rem;
-    }
-
-    .stores-sidebar-footer {
-        padding: 0.65rem 0.85rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(15, 23, 42, 0.9);
-    }
-
-    .stores-sidebar .sidebar-section-title {
-        font-size: 0.62rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #64748B;
-        padding: 0.5rem 0.5rem 0.2rem 0.5rem;
-    }
-
-    .stores-sidebar .sidebar-nav {
-        list-style: none;
-        padding: 0;
-        margin: 0 0 0.65rem 0;
-    }
-
-    .stores-sidebar .sidebar-nav-link {
-        display: flex;
-        align-items: center;
-        padding: 0.4rem 0.65rem;
-        color: #94A3B8;
-        text-decoration: none;
-        font-size: 0.8rem;
-        font-weight: 500;
-        border-radius: 6px;
-        transition: all 0.2s ease;
-        margin-bottom: 2px;
-    }
-
-    .stores-sidebar .sidebar-nav-link i {
-        font-size: 0.9rem;
-        width: 20px;
-        margin-right: 8px;
-        text-align: center;
-        color: #64748B;
-        transition: color 0.2s ease;
-    }
-
-    .stores-sidebar .sidebar-nav-link:hover {
-        color: #F8FAFC;
-        background: rgba(255, 255, 255, 0.06);
-    }
-
-    .stores-sidebar .sidebar-nav-link:hover i {
-        color: #00B0B9;
-    }
-
-    .stores-sidebar .sidebar-nav-link.active {
-        color: #FFFFFF;
-        background: linear-gradient(90deg, rgba(0, 176, 185, 0.25) 0%, rgba(0, 176, 185, 0.08) 100%);
-        border-left: 3px solid #00B0B9;
-        font-weight: 600;
-    }
-
-    .stores-sidebar .sidebar-nav-link.active i {
-        color: #00B0B9;
-    }
-
-    /* Stores Main Content Wrapper */
-    .stores-main-wrapper {
-        flex: 1;
-        margin-left: 240px;
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
-        width: calc(100% - 240px);
-        max-width: calc(100vw - 240px);
-        background-color: #F8FAFC;
-    }
-
-    .stores-topbar {
-        height: 54px;
-        background: #FFFFFF;
-        border-bottom: 1px solid #E2E8F0;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 1.25rem;
-        position: sticky;
-        top: 0;
-        z-index: 1030;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    }
-
-    .stores-main-content {
-        flex: 1;
-        padding: 0.85rem 1.15rem;
-        overflow-y: auto;
-        max-width: 1600px;
-        width: 100%;
-        margin: 0 auto;
-    }
-
-    /* Compact Density Sizing Rules matching Legal Workspace */
-    .stores-compact-workspace {
-        font-size: 0.82rem;
-    }
-
-    .stores-compact-workspace .card {
-        border-radius: 8px;
-        margin-bottom: 0.85rem;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
-    }
-
-    .stores-compact-workspace .card-header {
-        padding: 0.55rem 0.85rem;
-    }
-
-    .stores-compact-workspace .card-body {
-        padding: 0.85rem;
-    }
-
-    .stores-compact-workspace .table th {
-        padding: 0.45rem 0.65rem;
-        font-size: 0.72rem;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-    }
-
-    .stores-compact-workspace .table td {
-        padding: 0.45rem 0.65rem;
-        font-size: 0.78rem;
-    }
-
-    .stores-compact-workspace .stat-card {
-        padding: 0.75rem 0.85rem;
-    }
-
-    .stores-compact-workspace .metric-value {
-        font-size: 1.4rem !important;
-        font-weight: 700;
-    }
-
-    .stores-compact-workspace .btn-sm {
-        padding: 0.2rem 0.55rem;
-        font-size: 0.75rem;
-    }
-
-    /* Responsive Breakpoints */
-    @media (min-width: 1400px) {
-        .stores-compact-workspace {
-            font-size: 0.82rem;
-        }
-        .stores-main-content {
-            padding: 1rem 1.5rem;
-        }
-    }
-
-    @media (max-width: 1399.98px) {
-        .stores-compact-workspace {
-            font-size: 0.8rem;
-        }
-        .stores-compact-workspace .stat-card {
-            padding: 0.65rem 0.75rem;
-        }
-        .stores-compact-workspace .metric-value {
-            font-size: 1.25rem !important;
-        }
-    }
-
-    @media (max-width: 991.98px) {
-        .stores-sidebar {
-            transform: translateX(-100%);
-            width: 250px;
-        }
-        .stores-sidebar.show-mobile {
-            transform: translateX(0);
-        }
-        .stores-main-wrapper {
-            margin-left: 0;
-            width: 100%;
-            max-width: 100vw;
-        }
-        .stores-topbar {
-            padding: 0 0.85rem;
-        }
-        .stores-main-content {
-            padding: 0.75rem 0.85rem;
-        }
-    }
-
-    @media (max-width: 575.98px) {
-        .stores-compact-workspace .metric-value {
-            font-size: 1.15rem !important;
-        }
-        .stores-topbar h6 {
-            font-size: 0.85rem !important;
-        }
-    }
-
-    .mobile-backdrop-stores {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(4px);
-        z-index: 1035;
-    }
-
-    .mobile-backdrop-stores.show {
-        display: block;
-    }
-</style>
-
-<div class="stores-layout-container">
-    <!-- Backdrop for Mobile Navigation -->
-    <div id="storesMobileBackdrop" class="mobile-backdrop-stores" onclick="toggleStoresSidebar()"></div>
-
-    <!-- Dedicated Stores Receiver Sidebar -->
-    <aside id="storesAppSidebar" class="stores-sidebar">
-        <div class="stores-sidebar-header">
-            <a href="{% url 'receipts_dashboard' %}" class="d-flex align-items-center text-white text-decoration-none">
-                <div class="brand-icon-box me-2" style="width: 30px; height: 30px; background: rgba(0, 176, 185, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fa-solid fa-boxes-packing text-cyan" style="font-size: 0.85rem; color: #00B0B9;"></i>
-                </div>
-                <div class="lh-sm">
-                    <span class="fw-bold tracking-tight d-block" style="color: #F8FAFC; font-size: 0.9rem;">ProcureSphere <span style="color: #00B0B9;">360</span></span>
-                    <span class="badge bg-secondary bg-opacity-50 text-light px-1.5 py-0.5 rounded-pill" style="font-size: 0.58rem;">Stores & Receiving</span>
-                </div>
-            </a>
-            <button type="button" class="btn btn-sm text-white-50 d-lg-none border-0 p-1" onclick="toggleStoresSidebar()">
-                <i class="fa-solid fa-xmark fs-5"></i>
+{% block navbar %}
+<!-- Top Navigation for Stores & Receiving (Vendor Design Standard) -->
+<nav class="navbar navbar-dark bg-dark shadow-sm py-2 sticky-top border-bottom border-secondary border-opacity-25 stores-topbar">
+    <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
+        <div class="d-flex align-items-center overflow-hidden me-2">
+            <!-- Mobile / Tablet Hamburger Button -->
+            <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#storesSidebar" aria-controls="storesSidebar" aria-label="Toggle navigation" onclick="toggleStoresSidebar()">
+                <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
+            <a href="/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
+                <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 176, 185, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-boxes-packing text-cyan"></i>
+                </div>
+                <span class="fs-6 fs-sm-5 fw-bold tracking-tight text-truncate">ProcureSphere <span class="text-cyan">360</span></span>
+                <span class="badge bg-secondary bg-opacity-50 text-light ms-2 px-2 py-1 small rounded-pill d-none d-sm-inline-block">Stores &amp; Receiving</span>
+            </a>
         </div>
 
-        <div class="stores-sidebar-body">
-            <!-- Receiving Intake Section -->
-            <div class="sidebar-section-title">RECEIVING & INTAKE</div>
-            <ul class="sidebar-nav">
-                <li class="sidebar-nav-item">
-                    <a href="{% url 'receipts_dashboard' %}" class="sidebar-nav-link {% if request.path == '/receipts/dashboard/' or request.path == '/' or request.path == '/dashboard/' %}active{% endif %}">
-                        <i class="fa-solid fa-chart-pie"></i>
-                        <span>Receiving Desk</span>
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a href="{% url 'orders_list' %}" class="sidebar-nav-link {% if '/purchase-orders/' in request.path and not 'tab=deliveries' in request.get_full_path and not '/create/' in request.path or '/orders/' in request.path and not 'tab=deliveries' in request.get_full_path and not '/create/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-cart-flatbed"></i>
-                        <span>Receive PO Goods</span>
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a href="{% url 'orders_list' %}?tab=deliveries" class="sidebar-nav-link {% if 'tab=deliveries' in request.get_full_path %}active{% endif %}">
-                        <i class="fa-solid fa-truck-ramp-box"></i>
-                        <span>PO Deliveries</span>
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a href="{% url 'receipts_list' %}" class="sidebar-nav-link {% if request.path == '/receipts/' or '/receipts/' in request.path and not '/inspections/' in request.path and not '/handoffs/' in request.path and not '/rejections/' in request.path and not '/returns/' in request.path and not 'delivery-performance' in request.path and not '/dashboard/' in request.path and not '/create/' in request.path and not '/inspect/' in request.path and not '/handoff/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-boxes-stacked"></i>
-                        <span>Goods Receipts (GRN)</span>
-                    </a>
-                </li>
-            </ul>
+        <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
+            <!-- Receiving Desk Badge -->
+            <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white">
+                <i class="fa-solid fa-warehouse text-cyan me-2"></i>
+                <span class="small fw-semibold">{% block page_heading %}Warehouse & Receiving Operations Desk{% endblock %}</span>
+            </div>
 
-            <!-- Quality & Warehouse Gates Section -->
-            <div class="sidebar-section-title">QUALITY & INVENTORY GATES</div>
-            <ul class="sidebar-nav">
-                <li class="sidebar-nav-item">
-                    <a href="{% url 'receipts_inspection_queue' %}" class="sidebar-nav-link {% if '/receipts/inspections/' in request.path or '/inspect/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-microscope"></i>
-                        <span>Inspection Gate</span>
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a href="{% url 'receipts_rejections_queue' %}" class="sidebar-nav-link {% if '/receipts/rejections/' in request.path or '/receipts/returns/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-arrow-rotate-left"></i>
-                        <span>Rejections & Returns</span>
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a href="{% url 'receipts_stock_handoff_queue' %}" class="sidebar-nav-link {% if '/receipts/stock-handoff/' in request.path or '/receipts/handoffs/' in request.path or '/handoff/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-boxes-stacked"></i>
-                        <span>Warehouse Handoff</span>
-                    </a>
-                </li>
-            </ul>
-
-            <!-- Reports & Analytics Section -->
-            <div class="sidebar-section-title">REPORTS & TRACEABILITY</div>
-            <ul class="sidebar-nav">
-                <li class="sidebar-nav-item">
-                    <a href="{% url 'receipts_delivery_performance_report' %}" class="sidebar-nav-link {% if 'delivery-performance' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-chart-line"></i>
-                        <span>Delivery & Rejection</span>
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a href="/reports/hub/" class="sidebar-nav-link {% if '/reports/' in request.path and not 'delivery-performance' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-folder-open"></i>
-                        <span>Reports Hub</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-
-        <div class="stores-sidebar-footer">
+            <!-- User Profile & Sign Out -->
             {% if user.is_authenticated %}
-            <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-primary bg-opacity-25 text-primary fw-bold d-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px; font-size: 0.75rem;">
-                    {{ user.email|slice:":1"|upper }}
+            <div class="d-flex align-items-center gap-2">
+                <div class="d-none d-lg-block text-end lh-sm me-1">
+                    <div class="fw-semibold text-white small mb-1">{{ user.email }}</div>
+                    <div class="text-muted d-block" style="font-size: 0.7rem; line-height: 1;">Warehouse Specialist</div>
                 </div>
-                <div class="overflow-hidden me-auto lh-xs">
-                    <div class="fw-bold text-white small text-truncate" style="max-width: 110px; font-size: 0.75rem;">{{ user.email }}</div>
-                    <span class="badge bg-cyan text-dark rounded-pill" style="font-size: 0.58rem; background-color: #00B0B9 !important;">
-                        {{ user.role_code|default:"STORES_RECEIVER" }}
-                    </span>
+                <div class="dropdown">
+                    <button class="btn btn-dark border border-secondary border-opacity-50 rounded-circle text-white d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fa-solid fa-user-tie text-cyan"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 bg-dark text-white">
+                        <li><a class="dropdown-item text-white py-2" href="{% url 'orders_list' %}"><i class="fa-solid fa-cart-flatbed text-cyan me-2"></i> Receive PO Goods</a></li>
+                        <li><a class="dropdown-item text-white py-2" href="{% url 'receipts_list' %}"><i class="fa-solid fa-boxes-stacked text-info me-2"></i> Goods Receipts (GRN)</a></li>
+                        <li><hr class="dropdown-divider border-secondary"></li>
+                        <li><a class="dropdown-item text-danger py-2" href="/logout/"><i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out</a></li>
+                    </ul>
                 </div>
-                <a href="/logout/" class="btn btn-sm btn-link text-white-50 p-1" title="Sign Out">
-                    <i class="fa-solid fa-arrow-right-from-bracket fs-6"></i>
-                </a>
             </div>
             {% endif %}
         </div>
-    </aside>
+    </div>
+</nav>
+{% endblock navbar %}
 
-    <!-- Main Wrapper (Topbar + Page Content) -->
-    <div class="stores-main-wrapper">
-        <!-- Stores Topbar -->
-        <header class="stores-topbar">
-            <div class="d-flex align-items-center">
-                <button type="button" class="btn btn-sm btn-light border me-2 d-lg-none" onclick="toggleStoresSidebar()">
-                    <i class="fa-solid fa-bars fs-6"></i>
-                </button>
-                <div>
-                    <h6 class="fw-bold text-dark mb-0 font-heading" style="font-size: 0.95rem;">{% block page_heading %}Stores & Receiving Desk{% endblock %}</h6>
-                    <div class="text-muted d-none d-md-block" style="font-size: 0.7rem;">
-                        ProcureSphere 360 &bull; Warehouse Operations & Quality Control Hub
+{% block layout %}
+<!-- Mobile backdrop hook -->
+<div id="storesMobileBackdrop" class="stores-backdrop d-lg-none" onclick="toggleStoresSidebar()"></div>
+
+<style>
+    @media (min-width: 992px) {
+        .stores-desk-nav {
+            width: 260px !important;
+            flex-shrink: 0 !important;
+            position: sticky !important;
+            top: 58px !important;
+            height: calc(100vh - 58px) !important;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.15) transparent;
+            z-index: 1000;
+            align-self: flex-start;
+        }
+        .stores-desk-nav::-webkit-scrollbar {
+            width: 4px;
+        }
+        .stores-desk-nav::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 4px;
+        }
+    }
+</style>
+<div class="stores-layout-container d-flex align-items-start w-100" style="min-height: calc(100vh - 58px); max-width: 100vw;">
+    <!-- Desktop Sidebar (>= 992px) -->
+    <aside class="offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white stores-sidebar stores-desk-nav stores-app-sidebar" tabindex="-1" id="storesSidebar" data-stores-sidebar="storesAppSidebar" aria-labelledby="storesSidebarLabel" style="max-width: 85vw;">
+        <div id="storesAppSidebar" class="d-none"></div>
+        <div class="offcanvas-header d-lg-none border-bottom border-secondary border-opacity-25">
+            <h5 class="offcanvas-title fw-bold text-white" id="storesSidebarLabel"><i class="fa-solid fa-boxes-packing text-cyan me-2"></i>Stores &amp; Receiving</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#storesSidebar" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-0 flex-column d-block">
+            <div class="px-2 py-3">
+
+                <div class="d-flex align-items-center justify-content-between px-2 mb-3 text-secondary text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.06em;">
+                    <span>Warehouse Navigation</span>
+                    <i class="fa-solid fa-dolly text-cyan" style="font-size:0.75rem;"></i>
+                </div>
+
+                <nav class="d-flex flex-column gap-1">
+                    <a href="{% url 'receipts_dashboard' %}" class="vendor-navlink unified-navlink sidebar-nav-link {% if request.path == '/receipts/dashboard/' or request.path == '/' or request.path == '/dashboard/' %}active active-nav-item{% endif %}">
+                        <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i><span>Receiving Desk</span>
+                    </a>
+
+                    <div class="nav-section-label">Receiving &amp; Intake</div>
+                    <a href="{% url 'orders_list' %}" class="vendor-navlink unified-navlink sidebar-nav-link {% if '/purchase-orders/' in request.path and not 'tab=deliveries' in request.get_full_path and not '/create/' in request.path or '/orders/' in request.path and not 'tab=deliveries' in request.get_full_path and not '/create/' in request.path %}active active-nav-item{% endif %}">
+                        <i class="fa-solid fa-cart-flatbed nav-icon text-info"></i><span>Receive PO Goods</span>
+                    </a>
+                    <a href="{% url 'orders_list' %}?tab=deliveries" class="vendor-navlink unified-navlink sidebar-nav-link {% if 'tab=deliveries' in request.get_full_path %}active active-nav-item{% endif %}">
+                        <i class="fa-solid fa-truck-ramp-box nav-icon text-warning"></i><span>PO Deliveries</span>
+                    </a>
+                    <a href="{% url 'receipts_list' %}" class="vendor-navlink unified-navlink sidebar-nav-link {% if request.path == '/receipts/' or '/receipts/' in request.path and not '/inspections/' in request.path and not '/handoffs/' in request.path and not '/rejections/' in request.path and not '/returns/' in request.path and not 'delivery-performance' in request.path and not '/dashboard/' in request.path and not '/create/' in request.path and not '/inspect/' in request.path and not '/handoff/' in request.path %}active active-nav-item{% endif %}">
+                        <i class="fa-solid fa-boxes-stacked nav-icon text-success"></i><span>Goods Receipts (GRN)</span>
+                    </a>
+
+                    <div class="nav-section-label">Quality &amp; Inventory Gates</div>
+                    <a href="{% url 'receipts_inspection_queue' %}" class="vendor-navlink unified-navlink sidebar-nav-link {% if '/receipts/inspections/' in request.path or '/inspect/' in request.path %}active active-nav-item{% endif %}">
+                        <i class="fa-solid fa-microscope nav-icon text-warning"></i><span>Inspection Gate</span>
+                    </a>
+                    <a href="{% url 'receipts_rejections_queue' %}" class="vendor-navlink unified-navlink sidebar-nav-link {% if '/receipts/rejections/' in request.path or '/receipts/returns/' in request.path %}active active-nav-item{% endif %}">
+                        <i class="fa-solid fa-arrow-rotate-left nav-icon text-danger"></i><span>Rejections & Returns</span>
+                    </a>
+                    <a href="{% url 'receipts_stock_handoff_queue' %}" class="vendor-navlink unified-navlink sidebar-nav-link {% if '/receipts/stock-handoff/' in request.path or '/receipts/handoffs/' in request.path or '/handoff/' in request.path %}active active-nav-item{% endif %}">
+                        <i class="fa-solid fa-warehouse nav-icon text-cyan"></i><span>Warehouse Handoff</span>
+                    </a>
+
+                    <div class="nav-section-label">Reports &amp; Traceability</div>
+                    <a href="{% url 'receipts_delivery_performance_report' %}" class="vendor-navlink unified-navlink sidebar-nav-link {% if 'delivery-performance' in request.path %}active active-nav-item{% endif %}">
+                        <i class="fa-solid fa-chart-line nav-icon text-success"></i><span>Delivery & Rejection</span>
+                    </a>
+                    <a href="/reports/hub/" class="vendor-navlink unified-navlink sidebar-nav-link {% if '/reports/' in request.path and not 'delivery-performance' in request.path %}active active-nav-item{% endif %}">
+                        <i class="fa-solid fa-folder-open nav-icon text-secondary"></i><span>Reports Hub</span>
+                    </a>
+                </nav>
+
+                <div class="mt-4 pt-3 border-top border-secondary border-opacity-25 px-1">
+                    <div class="d-flex align-items-center text-muted small" style="font-size: 0.68rem;">
+                        <i class="fa-solid fa-lock text-success me-2"></i>
+                        <span>Physical Intake &bull; Quality Verified</span>
                     </div>
                 </div>
+
             </div>
+        </div>
+    </aside>
 
-            <div class="d-flex align-items-center gap-2">
-                <div class="d-none d-sm-flex align-items-center bg-light border border-slate-200 rounded-pill px-2.5 py-1 me-1">
-                    <span class="spinner-grow spinner-grow-sm text-success me-1.5" role="status" style="width: 0.4rem; height: 0.4rem;"></span>
-                    <span class="fw-semibold text-secondary" style="font-size: 0.7rem;">Active Shift</span>
-                </div>
-
-                <a href="{% url 'orders_list' %}" class="btn btn-primary btn-sm rounded-pill fw-bold px-3">
-                    <i class="fa-solid fa-plus me-1"></i> Receive Goods
-                </a>
-
-                {% if user.is_authenticated %}
-                <div class="dropdown ms-1">
-                    <button class="btn btn-outline-secondary btn-sm rounded-circle p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 34px; height: 34px;">
-                        <i class="fa-solid fa-user-gear text-dark fs-6"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3 mt-2" style="font-size: 0.8rem;">
-                        <li class="px-3 py-2 border-bottom">
-                            <div class="fw-bold text-dark small">{{ user.email }}</div>
-                            <div class="text-muted" style="font-size: 0.68rem;">Role: {{ user.role_code|default:"STORES_RECEIVER" }}</div>
-                        </li>
-                        <li><a class="dropdown-item py-2" href="{% url 'receipts_dashboard' %}"><i class="fa-solid fa-warehouse me-2 text-primary"></i> Receiving Desk</a></li>
-                        <li><a class="dropdown-item py-2" href="{% url 'receipts_inspection_queue' %}"><i class="fa-solid fa-microscope me-2 text-warning"></i> Inspection Queue</a></li>
-                        <li><a class="dropdown-item py-2" href="{% url 'receipts_stock_handoff_queue' %}"><i class="fa-solid fa-boxes-stacked me-2 text-success"></i> Stock Handoff</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item py-2 text-danger fw-bold" href="/logout/">
-                                <i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-                {% endif %}
+    <!-- Main Content Area -->
+    <main class="stores-main-content stores-compact-workspace flex-grow-1 p-2 p-sm-3 p-md-4 bg-light w-100" style="min-width: 0; max-width: 100vw; overflow-x: hidden;">
+        <!-- Alert Messages -->
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm border-0 d-flex align-items-center py-2 px-3" role="alert">
+                <i class="fa-solid {% if message.tags == 'success' %}fa-circle-check text-success{% elif message.tags == 'error' or message.tags == 'danger' %}fa-circle-exclamation text-danger{% else %}fa-circle-info text-primary{% endif %} me-2 fs-5"></i>
+                <div class="flex-grow-1">{{ message }}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-        </header>
+            {% endfor %}
+        </div>
+        {% endif %}
 
-        <!-- Main Page Content with Compact Density Scaling -->
-        <main class="stores-main-content stores-compact-workspace">
-            {% block content %}{% endblock %}
-        </main>
-    </div>
+        {% block content %}{% endblock %}
+    </main>
 </div>
 
 <script>
     function toggleStoresSidebar() {
-        const sidebar = document.getElementById('storesAppSidebar');
+        const sidebar = document.getElementById('storesSidebar') || document.getElementById('storesAppSidebar');
         const backdrop = document.getElementById('storesMobileBackdrop');
         if (sidebar) {
+            sidebar.classList.toggle('show');
             sidebar.classList.toggle('show-mobile');
         }
         if (backdrop) {

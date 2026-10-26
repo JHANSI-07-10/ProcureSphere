@@ -247,7 +247,8 @@ h1, h2, h3, h4, h5, h6, .font-heading {
     max-height: 380px;
     overflow-y: auto;
 }
-/* ==========================================================================
+/* ===================================================================}
+
    Comprehensive Mobile Optimization & Responsive Viewport System
    Supports: 320px, 360px, 375px, 390px, 414px (Mobile), 768px (Tablet), 1024px+ (Desktop)
    ========================================================================== */
@@ -610,7 +611,8 @@ img, picture, svg, video, canvas {
     }
     .w-lg-100 {
         width: 100% !important;
-=======
+}
+
 /* Force Table Action Columns and Forms into a Single Row */
 .table th.text-end,
 .table td.text-end,
@@ -651,7 +653,8 @@ img, picture, svg, video, canvas {
     }
 }
 
-/* ==========================================================================
+/* ===================================================================}
+
    Department Approver Dashboard Responsive Suite (Mobile, Tablet, Desktop)
    ========================================================================== */
 
@@ -770,13 +773,419 @@ img, picture, svg, video, canvas {
 @media (min-width: 1440px) {
     .approver-page-body {
         padding: 2rem 2.5rem !important;
->>>>>>> Stashed changes
     }
 }
 
+/* ===================================================================}
 
-<<<<<<< Updated upstream
-=======
+   PROCURESPHERE 360 — UNIFIED DASHBOARD DESIGN SYSTEM (Vendor Portal Baseline)
+   ========================================================================== */
+
+/* 1. Global Shell & Layout */
+.unified-app-layout {
+    display: flex;
+    min-height: calc(100vh - 58px);
+    width: 100%;
+    max-width: 100vw;
+    background-color: #F8FAFC;
+}
+
+.unified-main-content {
+    flex-grow: 1;
+    min-width: 0;
+    max-width: 100vw;
+    overflow-x: hidden;
+    padding: 1.25rem 1.5rem;
+    background-color: #F8FAFC;
+}
+
+@media (max-width: 767.98px) {
+    .unified-main-content {
+        padding: 0.85rem;
+    }
+}
+
+/* 2. Top Navigation Bar */
+.unified-topbar {
+    background-color: #111827 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(8px);
+    min-height: 58px;
+    z-index: 1030;
+}
+
+.unified-brand-box {
+    width: 32px;
+    height: 32px;
+    background: rgba(0, 176, 185, 0.2);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.unified-role-pill {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #F8FAFC;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    padding: 0.25rem 0.65rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.unified-user-avatar-btn {
+    width: 36px;
+    height: 36px;
+    background: #1F2937;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    color: #F8FAFC;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.2s ease;
+}
+
+.unified-user-avatar-btn:hover {
+    background: #374151;
+    border-color: rgba(0, 176, 185, 0.5);
+}
+
+/* 3. Sidebar Navigation */
+.unified-sidebar {
+    width: 260px !important;
+    background-color: #111827 !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #F8FAFC;
+    flex-shrink: 0;
+}
+
+@media (min-width: 992px) {
+    .unified-sidebar-desktop {
+        width: 260px !important;
+        flex-shrink: 0 !important;
+        position: sticky !important;
+        top: 58px !important;
+        height: calc(100vh - 58px) !important;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        z-index: 1020;
+    }
+}
+
+.unified-sidebar-desktop::-webkit-scrollbar {
+    width: 4px;
+}
+.unified-sidebar-desktop::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+
+.nav-section-label {
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.38);
+    padding: 0.65rem 0.75rem 0.25rem;
+    margin-top: 0.25rem;
+}
+
+.unified-navlink,
+aside.bg-dark nav a,
+.unified-sidebar a {
+    display: flex !important;
+    align-items: center !important;
+    padding: 0.52rem 0.85rem !important;
+    border-radius: 8px !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.75) !important;
+    text-decoration: none !important;
+    transition: background 0.15s, color 0.15s !important;
+    margin-bottom: 3px !important;
+}
+
+.unified-navlink:hover,
+.unified-navlink:focus,
+aside.bg-dark nav a:hover,
+.unified-sidebar a:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #FFFFFF !important;
+    text-decoration: none !important;
+}
+
+.unified-navlink.active,
+.unified-navlink.active-nav-item,
+aside.bg-dark nav a.active-nav-item,
+aside.bg-dark nav a.active,
+.unified-sidebar a.active,
+.unified-sidebar a.active-nav-item,
+.sidebar-link.active,
+.sa-nav-link.active,
+.manager-nav-link.active,
+.approver-nav-link.active,
+.auditor-nav-link.active {
+    background: #0D6EFD !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.35) !important;
+    text-decoration: none !important;
+}
+
+.unified-navlink .nav-icon,
+aside.bg-dark nav a i,
+.unified-sidebar a i,
+.sidebar-link i,
+.sa-nav-link i,
+.manager-nav-link i,
+.approver-nav-link i,
+.auditor-nav-link i {
+    width: 20px;
+    text-align: center;
+    margin-right: 0.65rem;
+    flex-shrink: 0;
+}
+
+/* 4. Page Header & Actions */
+.unified-page-header {
+    margin-bottom: 1.5rem;
+}
+
+.unified-page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0F172A;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.25rem;
+}
+
+.unified-page-subtitle {
+    font-size: 0.84rem;
+    color: #64748B;
+    margin-bottom: 0;
+}
+
+/* 5. Stat / KPI Cards (Matching Vendor Reference) */
+.unified-stat-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 1.15rem 1.25rem;
+    box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.04);
+    transition: all 0.22s ease-in-out;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.unified-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px -4px rgba(15, 23, 42, 0.1) !important;
+}
+
+.unified-stat-card.border-start.border-4.border-primary { border-left-color: #0D6EFD !important; }
+.unified-stat-card.border-start.border-4.border-info { border-left-color: #00B0B9 !important; }
+.unified-stat-card.border-start.border-4.border-success { border-left-color: #10B981 !important; }
+.unified-stat-card.border-start.border-4.border-danger { border-left-color: #EF4444 !important; }
+.unified-stat-card.border-start.border-4.border-warning { border-left-color: #F59E0B !important; }
+.unified-stat-card.border-start.border-4.border-secondary { border-left-color: #64748B !important; }
+
+.stat-icon-box {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-icon-box.bg-primary-subtle { background: rgba(13, 110, 253, 0.1) !important; color: #0D6EFD !important; }
+.stat-icon-box.bg-info-subtle { background: rgba(0, 176, 185, 0.12) !important; color: #00B0B9 !important; }
+.stat-icon-box.bg-success-subtle { background: rgba(16, 185, 129, 0.12) !important; color: #10B981 !important; }
+.stat-icon-box.bg-danger-subtle { background: rgba(239, 68, 68, 0.12) !important; color: #EF4444 !important; }
+.stat-icon-box.bg-warning-subtle { background: rgba(245, 158, 11, 0.12) !important; color: #F59E0B !important; }
+
+/* 6. Unified Buttons */
+.btn-primary.rounded-pill {
+    background-color: #0D6EFD;
+    border-color: #0D6EFD;
+    box-shadow: 0 2px 6px rgba(13, 110, 253, 0.25);
+}
+.btn-primary.rounded-pill:hover {
+    background-color: #0B5ED7;
+    border-color: #0A58CA;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.35);
+}
+
+.btn-outline-dark.rounded-pill {
+    border-color: #334155;
+    color: #1E293B;
+}
+.btn-outline-dark.rounded-pill:hover {
+    background-color: #1E293B;
+    color: #FFFFFF;
+}
+
+/* 7. Unified Cards & Tables */
+.card.glass-card {
+    border-radius: 14px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.04);
+}
+
+.card.glass-card .card-header {
+    background: transparent;
+    border-bottom: 1px solid #F1F5F9;
+    padding: 1rem 1.25rem;
+}
+
+.table.unified-table thead th {
+    background-color: #F8FAFC;
+    color: #64748B;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #E2E8F0;
+    padding: 0.75rem 1rem;
+}
+
+.table.unified-table tbody td {
+    padding: 0.85rem 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #F1F5F9;
+}
+
+/* ========================================================================= */
+/* VENDOR DASHBOARD REFERENCE SIDEBAR DESIGN STANDARD                        */
+/* Enforces exact vendor sidebar styles globally for all roles               */
+/* ========================================================================= */
+@media (min-width: 992px) {
+    .vendor-sidebar-desktop,
+    .unified-sidebar-desktop,
+    .approver-sidebar-desktop,
+    .requester-sidebar-desktop,
+    .superadmin-sidebar-desktop,
+    .stores-desk-nav,
+    .finance-sidebar-desktop,
+    .legal-sidebar-desktop,
+    .manager-sidebar-desktop,
+    .auditor-sidebar,
+    aside.bg-dark {
+        width: 260px !important;
+        min-width: 260px !important;
+        flex-shrink: 0 !important;
+        position: sticky !important;
+        top: 58px !important;
+        height: calc(100vh - 58px) !important;
+        overflow-y: auto !important;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        z-index: 1000;
+        align-self: flex-start;
+    }
+    .vendor-sidebar-desktop::-webkit-scrollbar,
+    .unified-sidebar-desktop::-webkit-scrollbar,
+    aside.bg-dark::-webkit-scrollbar {
+        width: 4px;
+    }
+    .vendor-sidebar-desktop::-webkit-scrollbar-thumb,
+    .unified-sidebar-desktop::-webkit-scrollbar-thumb,
+    aside.bg-dark::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+    }
+}
+
+/* Section label style - exact Vendor Dashboard reference */
+.nav-section-label {
+    font-size: 0.63rem !important;
+    letter-spacing: 0.08em !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    color: rgba(255, 255, 255, 0.38) !important;
+    padding: 0.6rem 0.75rem 0.2rem !important;
+    margin-top: 0.35rem !important;
+}
+
+/* Top-level nav link - EXACT same styling as Vendor Dashboard */
+.vendor-navlink,
+.unified-navlink,
+aside.bg-dark nav a,
+aside.bg-dark .nav-pills a,
+aside.bg-dark a.nav-link,
+aside.bg-dark a {
+    display: flex !important;
+    align-items: center !important;
+    padding: 0.45rem 0.75rem !important;
+    border-radius: 8px !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.75) !important;
+    text-decoration: none !important;
+    transition: background 0.15s, color 0.15s !important;
+    margin-bottom: 3px !important;
+}
+
+.vendor-navlink:hover,
+.vendor-navlink:focus,
+.unified-navlink:hover,
+.unified-navlink:focus,
+aside.bg-dark nav a:hover,
+aside.bg-dark nav a:focus,
+aside.bg-dark a.nav-link:hover,
+aside.bg-dark a.nav-link:focus,
+aside.bg-dark a:hover,
+aside.bg-dark a:focus {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #FFFFFF !important;
+    text-decoration: none !important;
+}
+
+/* Active nav item - Solid Royal Blue Pill identical to Vendor Reference */
+.vendor-navlink.active-nav-item,
+.vendor-navlink.active,
+.unified-navlink.active-nav-item,
+.unified-navlink.active,
+aside.bg-dark nav a.active-nav-item,
+aside.bg-dark nav a.active,
+aside.bg-dark a.nav-link.active,
+aside.bg-dark a.nav-link.active-nav-item,
+aside.bg-dark a.active,
+aside.bg-dark a.active-nav-item {
+    background: #0D6EFD !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.35) !important;
+    text-decoration: none !important;
+}
+
+/* Icon within nav links */
+.vendor-navlink .nav-icon,
+.unified-navlink .nav-icon,
+.vendor-navlink i,
+.unified-navlink i,
+aside.bg-dark nav a i,
+aside.bg-dark a.nav-link i,
+aside.bg-dark a i {
+    width: 20px !important;
+    text-align: center !important;
+    margin-right: 0.65rem !important;
+    flex-shrink: 0 !important;
+}
+
+/* Brand Header Box in Sidebar */
+.sidebar-brand-box {
+    padding: 0.85rem 1rem !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
 
 
->>>>>>> Stashed changes

@@ -2,468 +2,163 @@
 
 {% block title %}{% block legal_title %}Legal & Governance Workspace{% endblock %} — ProcureSphere 360{% endblock %}
 
-{% block navbar %}{% endblock navbar %}
-
-{% block layout %}
-<style>
-    /* Scope Legal Manager Workspace styling & default 100% zoom compact 75% scale */
-    .legal-layout-container {
-        display: flex;
-        min-height: 100vh;
-        width: 100%;
-        max-width: 100vw;
-        overflow-x: hidden;
-        background-color: #F8FAFC;
-    }
-
-    /* Legal Dedicated Sidebar */
-    .legal-sidebar {
-        width: 240px;
-        background: linear-gradient(180deg, #001F35 0%, #0F172A 60%, #080D1A 100%);
-        color: #F8FAFC;
-        position: fixed;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        z-index: 1040;
-        display: flex;
-        flex-direction: column;
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
-        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .legal-sidebar-header {
-        height: 54px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 0.85rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(0, 43, 73, 0.4);
-    }
-
-    .legal-sidebar-body {
-        flex: 1;
-        overflow-y: auto;
-        padding: 0.65rem 0.5rem;
-    }
-
-    .legal-sidebar-footer {
-        padding: 0.65rem 0.85rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(15, 23, 42, 0.9);
-    }
-
-    .legal-sidebar .sidebar-section-title {
-        font-size: 0.62rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #64748B;
-        padding: 0.5rem 0.5rem 0.2rem 0.5rem;
-    }
-
-    .legal-sidebar .sidebar-nav {
-        list-style: none;
-        padding: 0;
-        margin: 0 0 0.65rem 0;
-    }
-
-    .legal-sidebar .sidebar-nav-link {
-        display: flex;
-        align-items: center;
-        padding: 0.4rem 0.65rem;
-        color: #94A3B8;
-        text-decoration: none;
-        font-size: 0.8rem;
-        font-weight: 500;
-        border-radius: 6px;
-        transition: all 0.2s ease;
-        margin-bottom: 2px;
-    }
-
-    .legal-sidebar .sidebar-nav-link i {
-        font-size: 0.9rem;
-        width: 20px;
-        margin-right: 8px;
-        text-align: center;
-        color: #64748B;
-        transition: color 0.2s ease;
-    }
-
-    .legal-sidebar .sidebar-nav-link:hover {
-        color: #F8FAFC;
-        background: rgba(255, 255, 255, 0.06);
-    }
-
-    .legal-sidebar .sidebar-nav-link:hover i {
-        color: #00B0B9;
-    }
-
-    .legal-sidebar .sidebar-nav-link.active {
-        color: #FFFFFF;
-        background: linear-gradient(90deg, rgba(0, 176, 185, 0.25) 0%, rgba(0, 176, 185, 0.08) 100%);
-        border-left: 3px solid #00B0B9;
-        font-weight: 600;
-    }
-
-    .legal-sidebar .sidebar-nav-link.active i {
-        color: #00B0B9;
-    }
-
-    /* Legal Main Content Wrapper */
-    .legal-main-wrapper {
-        flex: 1;
-        margin-left: 240px;
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
-        width: calc(100% - 240px);
-        max-width: calc(100vw - 240px);
-        background-color: #F8FAFC;
-    }
-
-    .legal-topbar {
-        height: 54px;
-        background: #FFFFFF;
-        border-bottom: 1px solid #E2E8F0;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 1.25rem;
-        position: sticky;
-        top: 0;
-        z-index: 1030;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    }
-
-    .legal-main-content {
-        flex: 1;
-        padding: 0.85rem 1.15rem;
-        overflow-y: auto;
-        max-width: 1600px;
-        width: 100%;
-        margin: 0 auto;
-    }
-
-    /* Compact 75% Density Sizing Rules for Legal Dashboard */
-    .legal-compact-workspace {
-        font-size: 0.82rem;
-    }
-    
-    .legal-compact-workspace .card {
-        border-radius: 8px;
-        margin-bottom: 0.85rem;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
-    }
-
-    .legal-compact-workspace .card-header {
-        padding: 0.55rem 0.85rem;
-    }
-
-    .legal-compact-workspace .card-body {
-        padding: 0.85rem;
-    }
-
-    .legal-compact-workspace .table th {
-        padding: 0.45rem 0.65rem;
-        font-size: 0.72rem;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-    }
-
-    .legal-compact-workspace .table td {
-        padding: 0.45rem 0.65rem;
-        font-size: 0.78rem;
-    }
-
-    .legal-compact-workspace .stat-card {
-        padding: 0.75rem 0.85rem;
-    }
-
-    .legal-compact-workspace .metric-value {
-        font-size: 1.4rem !important;
-        font-weight: 700;
-    }
-
-    .legal-compact-workspace .btn-sm {
-        padding: 0.2rem 0.55rem;
-        font-size: 0.75rem;
-    }
-
-    .legal-compact-workspace h3 {
-        font-size: 1.3rem;
-    }
-
-    .legal-compact-workspace h4 {
-        font-size: 1.15rem;
-    }
-
-    .legal-compact-workspace h5 {
-        font-size: 1rem;
-    }
-
-    .legal-compact-workspace h6 {
-        font-size: 0.88rem;
-    }
-
-    /* Responsive Breakpoints & Fluid Screen Fitting */
-    @media (min-width: 1400px) {
-        .legal-compact-workspace {
-            font-size: 0.82rem;
-        }
-        .legal-main-content {
-            padding: 1rem 1.5rem;
-        }
-    }
-
-    @media (max-width: 1399.98px) {
-        .legal-compact-workspace {
-            font-size: 0.8rem;
-        }
-        .legal-compact-workspace .stat-card {
-            padding: 0.65rem 0.75rem;
-        }
-        .legal-compact-workspace .metric-value {
-            font-size: 1.25rem !important;
-        }
-    }
-
-    @media (max-width: 991.98px) {
-        .legal-sidebar {
-            transform: translateX(-100%);
-            width: 250px;
-        }
-        .legal-sidebar.show-mobile {
-            transform: translateX(0);
-        }
-        .legal-main-wrapper {
-            margin-left: 0;
-            width: 100%;
-            max-width: 100vw;
-        }
-        .legal-topbar {
-            padding: 0 0.85rem;
-        }
-        .legal-main-content {
-            padding: 0.75rem 0.85rem;
-        }
-    }
-
-    @media (max-width: 575.98px) {
-        .legal-compact-workspace .metric-value {
-            font-size: 1.15rem !important;
-        }
-        .legal-topbar h6 {
-            font-size: 0.85rem !important;
-        }
-    }
-
-    .mobile-backdrop-legal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(4px);
-        z-index: 1035;
-    }
-
-    .mobile-backdrop-legal.show {
-        display: block;
-    }
-</style>
-
-<div class="legal-layout-container">
-    <!-- Backdrop for Mobile Navigation -->
-    <div id="legalMobileBackdrop" class="mobile-backdrop-legal" onclick="toggleLegalSidebar()"></div>
-
-    <!-- Dedicated Legal Manager Sidebar -->
-    <aside id="legalAppSidebar" class="legal-sidebar">
-        <div class="legal-sidebar-header">
-            <a href="/contracts/dashboard/" class="d-flex align-items-center text-white text-decoration-none">
-                <div class="brand-icon-box me-2" style="width: 30px; height: 30px; background: rgba(0, 176, 185, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fa-solid fa-scale-balanced text-cyan" style="font-size: 0.85rem;"></i>
-                </div>
-                <div class="lh-sm">
-                    <span class="fw-bold tracking-tight d-block" style="color: #F8FAFC; font-size: 0.9rem;">ProcureSphere <span style="color: #00B0B9;">360</span></span>
-                    <span class="badge bg-secondary bg-opacity-50 text-light px-1.5 py-0.5 rounded-pill" style="font-size: 0.58rem;">Legal Portal</span>
-                </div>
-            </a>
-            <button type="button" class="btn btn-sm text-white-50 d-lg-none border-0 p-1" onclick="toggleLegalSidebar()">
-                <i class="fa-solid fa-xmark fs-5"></i>
+{% block navbar %}
+<!-- Top Navigation for Legal & Compliance (Vendor Design Standard) -->
+<nav class="navbar navbar-dark bg-dark shadow-sm py-2 sticky-top border-bottom border-secondary border-opacity-25">
+    <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
+        <div class="d-flex align-items-center overflow-hidden me-2">
+            <!-- Mobile / Tablet Hamburger Button -->
+            <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#legalSidebar" aria-controls="legalSidebar" aria-label="Toggle navigation">
+                <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
+            <a href="/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
+                <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 176, 185, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-scale-balanced text-cyan"></i>
+                </div>
+                <span class="fs-6 fs-sm-5 fw-bold tracking-tight text-truncate">ProcureSphere <span class="text-cyan">360</span></span>
+                <span class="badge bg-secondary bg-opacity-50 text-light ms-2 px-2 py-1 small rounded-pill d-none d-sm-inline-block">Legal &amp; Compliance</span>
+            </a>
         </div>
 
-        <div class="legal-sidebar-body">
-            <!-- Legal Management Nav Section -->
-            <div class="sidebar-section-title">LEGAL & CONTRACTS</div>
-            <ul class="sidebar-nav">
-                <li class="sidebar-nav-item">
-                    <a href="/contracts/dashboard/" class="sidebar-nav-link {% if request.path == '/contracts/dashboard/' or request.path == '/' %}active{% endif %}">
-                        <i class="fa-solid fa-chart-pie"></i>
-                        <span>Legal Dashboard</span>
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a href="/contracts/" class="sidebar-nav-link {% if '/contracts/' in request.path and not '/dashboard/' in request.path and not '/create/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-file-contract"></i>
-                        <span>Contract Register</span>
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a href="/contracts/create/" class="sidebar-nav-link {% if '/contracts/create/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-file-signature"></i>
-                        <span>New Contract</span>
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a href="/vendors/onboarding/" class="sidebar-nav-link {% if '/vendors/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-id-card"></i>
-                        <span>Vendor KYC Review</span>
-                    </a>
-                </li>
-            </ul>
+        <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
+            <!-- Legal Portfolio Pill -->
+            <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white">
+                <i class="fa-solid fa-shield-halved text-cyan me-2"></i>
+                <span class="small fw-semibold">Contract Lifecycle &amp; SLA Desk</span>
+            </div>
 
-            <!-- Approvals & Sourcing Nav Section -->
-            <div class="sidebar-section-title">APPROVALS & GOVERNANCE</div>
-            <ul class="sidebar-nav">
-                <li class="sidebar-nav-item">
-                    <a href="/approvals/inbox/" class="sidebar-nav-link {% if '/approvals/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-clock-rotate-left"></i>
-                        <span>Approvals Inbox</span>
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a href="/sourcing-events/" class="sidebar-nav-link {% if '/sourcing' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-gavel"></i>
-                        <span>Sourcing Events</span>
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a href="/vendors/" class="sidebar-nav-link {% if '/vendors/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-building-user"></i>
-                        <span>Vendor Directory</span>
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a href="/scorecards/" class="sidebar-nav-link {% if '/scorecards/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-award"></i>
-                        <span>Vendor Scorecards</span>
-                    </a>
-                </li>
-            </ul>
+            <!-- Notifications Icon -->
+            <a href="/approvals/inbox/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Pending Approvals">
+                <i class="fa-solid fa-bell fs-5"></i>
+            </a>
 
-            <!-- Reports & Analytics Section -->
-            <div class="sidebar-section-title">ANALYTICS & SYSTEM</div>
-            <ul class="sidebar-nav">
-                <li class="sidebar-nav-item">
-                    <a href="/reports/hub/" class="sidebar-nav-link {% if '/reports/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-chart-line"></i>
-                        <span>Reports & Analytics</span>
-                    </a>
-                </li>
-                {% if user.role_code == 'COMPLIANCE_AUDITOR' or user.role_code == 'SUPER_ADMIN' or user.is_superuser %}
-                <li class="sidebar-nav-item">
-                    <a href="/audit/logs/" class="sidebar-nav-link {% if '/audit/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-shield-halved"></i>
-                        <span>Audit Trail Logs</span>
-                    </a>
-                </li>
-                {% endif %}
-            </ul>
-        </div>
-
-        <div class="legal-sidebar-footer">
+            <!-- User Profile & Sign Out -->
             {% if user.is_authenticated %}
-            <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-primary bg-opacity-25 text-primary fw-bold d-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px; font-size: 0.75rem;">
-                    {{ user.email|slice:":1"|upper }}
+            <div class="d-flex align-items-center gap-2">
+                <div class="d-none d-lg-block text-end lh-sm me-1">
+                    <div class="fw-semibold text-white small mb-1">{{ user.email }}</div>
+                    <div class="text-muted d-block" style="font-size: 0.7rem; line-height: 1;">Legal Counsel / Manager</div>
                 </div>
-                <div class="overflow-hidden me-auto lh-xs">
-                    <div class="fw-bold text-white small text-truncate" style="max-width: 110px; font-size: 0.75rem;">{{ user.email }}</div>
-                    <span class="badge bg-cyan text-dark rounded-pill" style="font-size: 0.58rem;">
-                        {{ user.role_code|default:"LEGAL_MGR" }}
-                    </span>
+                <div class="dropdown">
+                    <button class="btn btn-dark border border-secondary border-opacity-50 rounded-circle text-white d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fa-solid fa-user-tie text-cyan"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 bg-dark text-white">
+                        <li><a class="dropdown-item text-white py-2" href="/contracts/create/"><i class="fa-solid fa-file-signature text-cyan me-2"></i> New Contract Draft</a></li>
+                        <li><a class="dropdown-item text-white py-2" href="/contracts/"><i class="fa-solid fa-file-contract text-info me-2"></i> Contract Register</a></li>
+                        <li><hr class="dropdown-divider border-secondary"></li>
+                        <li><a class="dropdown-item text-danger py-2" href="/logout/"><i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out</a></li>
+                    </ul>
                 </div>
-                <a href="/logout/" class="btn btn-sm btn-link text-white-50 p-1" title="Sign Out">
-                    <i class="fa-solid fa-arrow-right-from-bracket fs-6"></i>
-                </a>
             </div>
             {% endif %}
         </div>
-    </aside>
-
-    <!-- Main Wrapper (Topbar + Page Content) -->
-    <div class="legal-main-wrapper">
-        <!-- Legal Topbar -->
-        <header class="legal-topbar">
-            <div class="d-flex align-items-center">
-                <button type="button" class="btn btn-sm btn-light border me-2 d-lg-none" onclick="toggleLegalSidebar()">
-                    <i class="fa-solid fa-bars fs-6"></i>
-                </button>
-                <div>
-                    <h6 class="fw-bold text-dark mb-0 font-heading" style="font-size: 0.95rem;">{% block page_heading %}Legal & Governance Workspace{% endblock %}</h6>
-                    <div class="text-muted d-none d-md-block" style="font-size: 0.7rem;">
-                        ProcureSphere 360 &bull; Enterprise Contract Lifecycle Management
-                    </div>
-                </div>
-            </div>
-
-            <div class="d-flex align-items-center gap-2">
-                <div class="d-none d-sm-flex align-items-center bg-light border border-slate-200 rounded-pill px-2.5 py-1 me-1">
-                    <span class="spinner-grow spinner-grow-sm text-success me-1.5" role="status" style="width: 0.4rem; height: 0.4rem;"></span>
-                    <span class="fw-semibold text-secondary" style="font-size: 0.7rem;">System Active</span>
-                </div>
-
-                <a href="/contracts/create/" class="btn btn-primary btn-sm rounded-pill fw-bold px-3">
-                    <i class="fa-solid fa-plus me-1"></i> New Contract
-                </a>
-
-                {% if user.is_authenticated %}
-                <div class="dropdown ms-1">
-                    <button class="btn btn-outline-secondary btn-sm rounded-circle p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 34px; height: 34px;">
-                        <i class="fa-solid fa-user-gear text-dark fs-6"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3 mt-2" style="font-size: 0.8rem;">
-                        <li class="px-3 py-2 border-bottom">
-                            <div class="fw-bold text-dark small">{{ user.email }}</div>
-                            <div class="text-muted" style="font-size: 0.68rem;">Role: {{ user.role_code|default:"LEGAL_MGR" }}</div>
-                        </li>
-                        <li><a class="dropdown-item py-2" href="/contracts/"><i class="fa-solid fa-scale-balanced me-2 text-primary"></i> Contract Register</a></li>
-                        <li><a class="dropdown-item py-2" href="/approvals/inbox/"><i class="fa-solid fa-square-check me-2 text-warning"></i> Approvals Inbox</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item py-2 text-danger fw-bold" href="/logout/">
-                                <i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-                {% endif %}
-            </div>
-        </header>
-
-        <!-- Main Page Content with Compact Density Scaling -->
-        <main class="legal-main-content legal-compact-workspace">
-            {% block content %}{% endblock %}
-        </main>
     </div>
-</div>
+</nav>
+{% endblock navbar %}
 
-<script>
-    function toggleLegalSidebar() {
-        const sidebar = document.getElementById('legalAppSidebar');
-        const backdrop = document.getElementById('legalMobileBackdrop');
-        if (sidebar) {
-            sidebar.classList.toggle('show-mobile');
+{% block layout %}
+<style>
+    @media (min-width: 992px) {
+        .legal-sidebar-desktop {
+            width: 260px !important;
+            flex-shrink: 0 !important;
+            position: sticky !important;
+            top: 58px !important;
+            height: calc(100vh - 58px) !important;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.15) transparent;
+            z-index: 1000;
+            align-self: flex-start;
         }
-        if (backdrop) {
-            backdrop.classList.toggle('show');
+        .legal-sidebar-desktop::-webkit-scrollbar {
+            width: 4px;
+        }
+        .legal-sidebar-desktop::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 4px;
         }
     }
-</script>
+</style>
+<div class="legal-layout-container d-flex align-items-start w-100" style="min-height: calc(100vh - 58px); max-width: 100vw;">
+    <!-- Desktop Sidebar (>= 992px) -->
+    <aside class="legal-sidebar offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white legal-sidebar-desktop" tabindex="-1" id="legalSidebar" aria-labelledby="legalSidebarLabel" style="max-width: 85vw;">
+        <div class="offcanvas-header d-lg-none border-bottom border-secondary border-opacity-25">
+            <h5 class="offcanvas-title fw-bold text-white" id="legalSidebarLabel"><i class="fa-solid fa-scale-balanced text-cyan me-2"></i>Legal Portal</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#legalSidebar" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-0 flex-column d-block">
+            <div class="px-2 py-3">
+
+                <div class="d-flex align-items-center justify-content-between px-2 mb-3 text-secondary text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.06em;">
+                    <span>Legal Navigation</span>
+                    <i class="fa-solid fa-shield-halved text-cyan" style="font-size:0.75rem;"></i>
+                </div>
+
+                <nav class="d-flex flex-column gap-1">
+                    <a href="/contracts/dashboard/" class="unified-navlink {% if request.path == '/contracts/dashboard/' or request.path == '/' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i>Dashboard
+                    </a>
+
+                    <div class="nav-section-label">LEGAL &amp; CONTRACTS</div>
+                    <a href="/contracts/" class="unified-navlink {% if '/contracts/' in request.path and not '/dashboard/' in request.path and not '/create/' in request.path %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-file-contract nav-icon text-info"></i>Contract Register
+                    </a>
+                    <a href="/contracts/create/" class="unified-navlink {% if '/contracts/create/' in request.path %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-file-signature nav-icon text-warning"></i>New Contract Draft
+                    </a>
+                    <a href="/vendors/onboarding/" class="unified-navlink {% if '/vendors/onboarding/' in request.path %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-id-card nav-icon text-success"></i>Vendor KYC Review
+                    </a>
+
+                    <div class="nav-section-label">APPROVALS &amp; GOVERNANCE</div>
+                    <a href="/approvals/inbox/" class="unified-navlink {% if '/approvals/' in request.path %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-clock-rotate-left nav-icon text-warning"></i>Approvals Inbox
+                    </a>
+                    <a href="/sourcing-events/" class="unified-navlink {% if '/sourcing' in request.path %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-gavel nav-icon text-info"></i>Sourcing Events
+                    </a>
+                    <a href="/vendors/" class="unified-navlink {% if request.path == '/vendors/' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-building-user nav-icon text-success"></i>Vendor Directory
+                    </a>
+
+                    <div class="nav-section-label">COMPLIANCE &amp; TRACEABILITY</div>
+                    <a href="/reports/hub/" class="unified-navlink {% if '/reports/' in request.path %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-chart-line nav-icon text-cyan"></i>Reports Hub
+                    </a>
+                    <a href="/audit/logs/" class="unified-navlink {% if '/audit/logs/' in request.path %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-shield-halved nav-icon text-danger"></i>Audit Trail Log
+                    </a>
+                </nav>
+
+                <div class="mt-4 pt-3 border-top border-secondary border-opacity-25 px-1">
+                    <div class="d-flex align-items-center text-muted small" style="font-size: 0.68rem;">
+                        <i class="fa-solid fa-lock text-success me-2"></i>
+                        <span>SLA Enforcement &bull; Legal Compliance</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow-1 p-2 p-sm-3 p-md-4 bg-light w-100" style="min-width: 0; max-width: 100vw; overflow-x: hidden;">
+        <!-- Alert Messages -->
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm border-0 d-flex align-items-center py-2 px-3" role="alert">
+                <i class="fa-solid {% if message.tags == 'success' %}fa-circle-check text-success{% elif message.tags == 'error' or message.tags == 'danger' %}fa-circle-exclamation text-danger{% else %}fa-circle-info text-primary{% endif %} me-2 fs-5"></i>
+                <div class="flex-grow-1">{{ message }}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+</div>
 {% endblock layout %}
