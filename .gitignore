@@ -56,4 +56,6 @@ docker-compose.override.yml
 
 # Nested duplicate directory
 ProcureSphere_360_cursor/
+__zip_inspect/
+
 

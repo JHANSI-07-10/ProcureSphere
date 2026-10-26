@@ -268,23 +268,122 @@ def benefits(request):
 # ---------------------------------------------------------------------------
 
 def process(request):
-    """Process page."""
-    process_steps = [
-        {'number': '01', 'title': 'Identify & Capture', 'desc': 'A department raises a purchase requisition through a structured form capturing line items, cost centers, and required dates. Budget availability is validated instantly.', 'tag': 'INTAKE'},
-        {'number': '02', 'title': 'Policy-Driven Approval', 'desc': 'The approval engine routes the requisition through the correct chain — manager, finance, and CFO — based on spend threshold and category rules, with a full timestamp audit.', 'tag': 'APPROVAL'},
-        {'number': '03', 'title': 'Competitive Sourcing', 'desc': 'Procurement creates an RFQ or RFP event, invites qualified vendors, and receives sealed bids. Technical and commercial scoring produces a transparent, defensible award recommendation.', 'tag': 'SOURCING'},
-        {'number': '04', 'title': 'Order Execution', 'desc': 'The approved bid converts directly into a purchase order dispatched to the vendor. Amendments and delivery schedules are tracked with version control.', 'tag': 'PURCHASE ORDER'},
-        {'number': '05', 'title': 'Goods Receipt & Inspection', 'desc': 'The receiving dock records delivered quantities, flags partial shipments, and records quality inspection results tied to each PO line item.', 'tag': 'RECEIPT'},
-        {'number': '06', 'title': 'Automated 3-Way Match', 'desc': 'The system automatically reconciles the purchase order, goods receipt note, and vendor invoice — within configured tolerances — before releasing for payment.', 'tag': 'PAYMENT'},
+    """Process page — End-to-End Procurement Lifecycle."""
+    stages = [
+        {
+            'id': 'step-1',
+            'stepNum': '01',
+            'short_title': 'Requirement',
+            'title': 'Requirement & Budget Verification',
+            'subtitle': 'Requisition Initialization',
+            'summary': 'Departments draft purchase requests with specified item lists, specifications, and project allocations. The system checks available budget allocations prior to submission.',
+            'actions': [
+                'Department user creates structured requisition',
+                'Automatic cost-center budget allocation check',
+                'Initial supervisor and department head approval routing',
+            ],
+            'output': 'Approved Requisition with reserved budget allotment',
+            'timeline': 'Real-Time Policy & Budget Verification',
+        },
+        {
+            'id': 'step-2',
+            'stepNum': '02',
+            'short_title': 'Sourcing',
+            'title': 'Sourcing & Vendor Quotations',
+            'subtitle': 'Market Inquiries & Bidding',
+            'summary': 'Procurement teams issue RFQ (Request for Quotation) packages to qualified suppliers. Suppliers submit quotations with pricing, delivery schedules, and technical catalogs.',
+            'actions': [
+                'RFQ published to selected supplier categories',
+                'Supplier portal submission for sealed quotes and timelines',
+                'Side-by-side commercial and technical comparison matrix',
+            ],
+            'output': 'Comparative Bid Analysis & Supplier Selection Record',
+            'timeline': 'Sealed Bidding & Technical Evaluation Window',
+        },
+        {
+            'id': 'step-3',
+            'stepNum': '03',
+            'short_title': 'Purchase Order Generation',
+            'title': 'Purchase Order Generation',
+            'subtitle': 'Formal Order Issuance',
+            'summary': 'Once a quotation is selected, a formal Purchase Order is generated with clear line-item descriptions, payment schedules, delivery dates, and terms of service.',
+            'actions': [
+                'PO document generated with unique reference tracking',
+                'Digital dispatch to supplier via connected workspace',
+                'Supplier formal acknowledgement and delivery confirmation',
+            ],
+            'output': 'Dispatched & Confirmed Purchase Order (PO)',
+            'timeline': 'Automated Order Dispatch Upon Approval',
+        },
+        {
+            'id': 'step-4',
+            'stepNum': '04',
+            'short_title': 'Shipment, Receiving',
+            'title': 'Shipment, Receiving & Inspection',
+            'subtitle': 'Goods Receipt Processing',
+            'summary': 'Upon arrival of physical goods or completion of services, warehouse and operations teams inspect delivery quantities against PO specifications.',
+            'actions': [
+                'Receiving team logs quantity count and physical condition',
+                'Quality checklist verification and acceptance record',
+                'Goods Receipt Note (GRN) created for matched items',
+            ],
+            'output': 'Verified Goods Receipt Note (GRN)',
+            'timeline': 'Dock-Side Quality & Count Inspection',
+        },
+        {
+            'id': 'step-5',
+            'stepNum': '05',
+            'short_title': 'Invoice Review',
+            'title': 'Invoice Review & 3-Way Reconciliation',
+            'subtitle': 'Accounts Payable Validation',
+            'summary': 'Finance matches the vendor invoice against both the original Purchase Order and the Goods Receipt Note to confirm item quantities, rates, and totals match.',
+            'actions': [
+                'Line-by-line item rate verification against Purchase Order',
+                'Quantity received reconciliation against Goods Receipt Note',
+                'Variance detection flag for unexpected price or quantity deviations',
+            ],
+            'output': 'Reconciled Invoice Package Ready for Payment',
+            'timeline': 'Automated 3-Way Tolerance Reconciliation',
+        },
+        {
+            'id': 'step-6',
+            'stepNum': '06',
+            'short_title': 'Payment Settlement',
+            'title': 'Payment Settlement & Order Closeout',
+            'subtitle': 'Financial Disbursement & Archival',
+            'summary': 'Accounts payable releases payment according to agreed payment terms, updates financial ledgers, and archives the completed order dossier for historical reference.',
+            'actions': [
+                'Payment scheduling according to vendor terms',
+                'Remittance advice generated and shared with supplier',
+                'Order status updated to Completed with complete document history',
+            ],
+            'output': 'Settlement Confirmation & Archived Order History',
+            'timeline': 'Contractual Settlement & Audit Archival',
+        },
+    ]
+    principles = [
+        {
+            'title': 'Transparent Tracking',
+            'desc': 'Requisitions and purchase orders carry unique reference numbers, enabling teams to check current status without needing back-and-forth email inquiries.',
+        },
+        {
+            'title': 'Structured Review Stages',
+            'desc': 'Department requisitions and supplier quotes follow standardized review steps to ensure decisions are documented clearly before orders are dispatched.',
+        },
+        {
+            'title': 'Accurate Record Keeping',
+            'desc': 'Completed purchase orders, inspection notes, and settlement records remain stored within the system for quick retrieval during regular internal reviews.',
+        },
     ]
     context = {
         'page_title': 'Process — ProcureSphere 360 Procurement Workflow',
-        'page_description': 'Understand the end-to-end procurement process from requisition to payment with ProcureSphere 360.',
+        'page_description': 'A clear, structured walkthrough of how purchasing requests move from initial department requisition to final delivery, invoice reconciliation, and settlement.',
         'active_nav': 'process',
-        'badge': 'HOW IT WORKS',
-        'title': 'Six stages. One connected operating system.',
-        'subtitle': 'From the first request to the final payment — every step is connected, tracked, and auditable.',
-        'process_steps': process_steps,
+        'badge': 'OPERATING WORKFLOW',
+        'title': 'End-to-End Procurement Lifecycle',
+        'subtitle': 'A clear, structured walkthrough of how purchasing requests move from initial department requisition to final delivery, invoice reconciliation, and settlement.',
+        'stages': stages,
+        'principles': principles,
     }
     return render(request, 'landing/process.html', context)
 
