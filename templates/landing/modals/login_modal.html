@@ -1,0 +1,609 @@
+{% load static %}
+<!-- Login Modal -->
+<div id="login-modal" class="login-fullscreen-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Login to ProcureSphere 360">
+
+  <!-- Exit pill — top-right of viewport, outside the card -->
+  <button type="button" id="login-close-btn" class="lm-exit-pill" aria-label="Close Login">
+    Exit
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  </button>
+
+  <!-- Card -->
+  <div class="login-content-wrapper">
+
+    <!-- ═══════ LEFT PANEL ═══════ -->
+    <div class="lm-left">
+      <!-- Badge -->
+      <div class="lm-badge">
+        <span class="lm-badge-dot"></span>
+        PROCURESPHERE PORTAL
+      </div>
+
+      <!-- Headline -->
+      <h2 class="lm-headline">
+        Enterprise Procurement,<br>
+        <span class="lm-headline-blue">Unified &amp; In Control.</span>
+      </h2>
+
+      <!-- Sub text -->
+      <p class="lm-sub">
+        Connecting every requisition, vendor negotiation, and payment into one seamless, automated source-to-pay workflow.
+      </p>
+
+      <!-- Person image pinned to bottom of left panel -->
+      <div class="lm-img-wrap">
+        <img
+          id="login-char-img"
+          src="{% static 'landing/login-states/normal.webp' %}"
+          alt="Enterprise workspace"
+          class="lm-img"
+        />
+      </div>
+    </div>
+
+    <!-- ═══════ RIGHT PANEL ═══════ -->
+    <div class="lm-right">
+      <div class="lm-form-wrap">
+
+        <!-- Icon -->
+        <div class="lm-icon-box">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#3b6fe8" stroke-width="2" stroke-linecap="round">
+            <line x1="10" y1="2" x2="10" y2="18"/>
+            <line x1="2" y1="10" x2="18" y2="10"/>
+          </svg>
+        </div>
+
+        <!-- Brand + headings -->
+        <p class="lm-brand">ProcureSphere <span>360</span></p>
+        <h1 class="lm-heading">Welcome Back</h1>
+        <p class="lm-tagline">Sign in to your enterprise procurement portal</p>
+
+        <!-- Error -->
+        <div id="login-error-msg" class="login-error-msg" aria-live="polite" style="display:none;"></div>
+
+        <!-- Form -->
+        <form id="login-form" class="lm-form" action="/login/" method="post" novalidate>
+          {% csrf_token %}
+
+          <!-- User ID -->
+          <div class="lm-field">
+            <label for="login-userid" class="lm-label">User ID</label>
+            <div class="lm-input-wrap">
+              <span class="lm-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              </span>
+              <input
+                type="email"
+                id="login-userid"
+                name="email"
+                class="login-input lm-input"
+                placeholder="e.g. enterprise.admin"
+                autocomplete="email"
+                required
+              />
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="lm-field">
+            <label for="login-password" class="lm-label">Password</label>
+            <div class="lm-input-wrap">
+              <span class="lm-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </span>
+              <input
+                type="password"
+                id="login-password"
+                name="password"
+                class="login-input lm-input"
+                placeholder="••••••••••••"
+                autocomplete="current-password"
+                required
+              />
+              <button type="button" id="toggle-password" class="login-pw-toggle lm-eye" aria-label="Toggle password visibility">
+                <svg class="pw-eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Remember + Forgot -->
+          <div class="lm-row">
+            <label class="lm-remember">
+              <input type="checkbox" id="login-remember" name="rememberMe" />
+              <span>Remember me</span>
+            </label>
+            <a href="#" class="login-forgot-link lm-forgot">Forgot Password?</a>
+          </div>
+
+          <!-- Sign In button -->
+          <button type="submit" id="login-submit-btn" class="login-submit-btn lm-submit">
+            <span id="login-btn-text">Sign In &nbsp;→</span>
+            <span id="login-btn-spinner" class="login-btn-spinner" style="display:none;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <circle cx="12" cy="12" r="10" opacity="0.25"/>
+                <path d="M22 12a10 10 0 0 0-10-10" class="spinner-arc"/>
+              </svg>
+            </span>
+          </button>
+        </form>
+
+        <!-- Dev Quick-Login (exact roles + credentials preserved from first screenshot) -->
+        {% if debug %}
+        <div id="dev-quick-login" class="dev-quick-login-section">
+          <p class="dev-quick-login-label">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Dev Logins &nbsp;·&nbsp; Password: <code>Password123!</code>
+          </p>
+          <div class="dev-quick-login-buttons">
+            <button type="button" class="dev-ql-btn" onclick="modalQuickLogin('admin@hpe.com')">Super Admin</button>
+            <button type="button" class="dev-ql-btn" onclick="modalQuickLogin('requester@hpe.com')">Requester</button>
+            <button type="button" class="dev-ql-btn" onclick="modalQuickLogin('approver@hpe.com')">Dept Approver</button>
+            <button type="button" class="dev-ql-btn" onclick="modalQuickLogin('procexec@hpe.com')">Proc Exec</button>
+            <button type="button" class="dev-ql-btn" onclick="modalQuickLogin('procmgr@hpe.com')">Proc Mgr</button>
+            <button type="button" class="dev-ql-btn" onclick="modalQuickLogin('receiver@hpe.com')">Stores Receiver</button>
+            <button type="button" class="dev-ql-btn" onclick="modalQuickLogin('finance@hpe.com')">Finance AP</button>
+            <button type="button" class="dev-ql-btn" onclick="modalQuickLogin('legal@hpe.com')">Legal Mgr</button>
+            <button type="button" class="dev-ql-btn" onclick="modalQuickLogin('auditor@hpe.com')">Auditor</button>
+            <button type="button" class="dev-ql-btn dev-ql-btn--vendor" onclick="modalQuickLogin('vendoruser@cisco.com')">Vendor User</button>
+          </div>
+        </div>
+        {% endif %}
+
+      </div><!-- /lm-form-wrap -->
+    </div><!-- /lm-right -->
+
+  </div><!-- /login-content-wrapper -->
+</div><!-- /login-modal -->
+
+<style>
+/* ── OVERLAY ──────────────────────────────────────────── */
+.login-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(180, 195, 220, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  padding: 20px;
+}
+.login-fullscreen-overlay.is-open {
+  display: flex !important;
+  opacity: 1 !important;
+}
+
+/* ── EXIT PILL (top-right, outside card) ──────────────── */
+.lm-exit-pill {
+  position: fixed;
+  top: 22px;
+  right: 24px;
+  z-index: 5010;
+  display: none; /* shown only when modal is open via JS-added class */
+  align-items: center;
+  gap: 7px;
+  padding: 7px 16px;
+  background: #ffffff;
+  border: 1px solid #d1d9e6;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a2540;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.10);
+  font-family: inherit;
+  transition: background 0.15s, box-shadow 0.15s;
+  letter-spacing: 0.01em;
+}
+.login-fullscreen-overlay.is-open + * .lm-exit-pill,
+.login-fullscreen-overlay.is-open ~ .lm-exit-pill { display: flex; }
+/* simpler: always keep it visible when overlay is open via sibling trick won't work — use JS class on button */
+.lm-exit-pill { display: flex; } /* always render; overlay hides the whole thing */
+.lm-exit-pill:hover {
+  background: #f5f7fb;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.13);
+}
+
+/* ── CARD ─────────────────────────────────────────────── */
+.login-content-wrapper {
+  background: #ffffff !important;
+  border-radius: 24px !important;
+  box-shadow: 0 20px 60px rgba(30,50,100,0.18) !important;
+  display: flex !important;
+  flex-direction: row !important;
+  overflow: hidden !important;
+  width: 90vw !important;
+  max-width: 960px !important;
+  min-height: 520px !important;
+  max-height: 88vh !important;
+  animation: lmSlide 0.35s cubic-bezier(0.16,1,0.3,1) !important;
+  border: 1px solid rgba(220,230,245,0.8) !important;
+}
+@keyframes lmSlide {
+  from { opacity:0; transform:scale(0.97) translateY(12px); }
+  to   { opacity:1; transform:scale(1)    translateY(0);    }
+}
+
+/* ── LEFT PANEL ───────────────────────────────────────── */
+.lm-left {
+  flex: 0 0 46%;
+  background: linear-gradient(160deg, #eef4fd 0%, #dde9f9 55%, #cddaf5 100%);
+  display: flex;
+  flex-direction: column;
+  padding: 44px 36px 0 44px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Badge */
+.lm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 14px;
+  background: rgba(210,228,255,0.85);
+  color: #2455c8;
+  border-radius: 9999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-family: 'DM Mono', monospace, sans-serif;
+  margin-bottom: 26px;
+  width: fit-content;
+  border: 1px solid rgba(180,210,255,0.6);
+}
+.lm-badge-dot {
+  width: 6px;
+  height: 6px;
+  background: #2455c8;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Headline */
+.lm-headline {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.22;
+  color: #0d1a33;
+  margin: 0 0 16px 0;
+  letter-spacing: -0.01em;
+}
+.lm-headline-blue {
+  display: block;
+  color: #2563eb;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-style: normal;
+}
+
+/* Subtext */
+.lm-sub {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: #4e6080;
+  margin: 0;
+  max-width: 340px;
+  font-family: 'DM Sans', 'Inter', sans-serif;
+}
+
+/* Person image — fills bottom of left panel like reference */
+.lm-img-wrap {
+  margin-top: auto;
+  flex-shrink: 0;
+  width: calc(100% + 80px);
+  margin-left: -44px;
+  margin-right: -36px;
+  margin-bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  line-height: 0;
+}
+.lm-img {
+  width: 122%;
+  max-width: none;
+  height: auto;
+  object-fit: contain;
+  object-position: bottom center;
+  display: block;
+  margin: 0 auto;
+  margin-bottom: -4px;
+  transition: opacity 0.25s ease;
+}
+
+/* ── RIGHT PANEL ──────────────────────────────────────── */
+.lm-right {
+  flex: 1 1 54%;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 44px 50px;
+  overflow-y: auto;
+}
+.lm-form-wrap {
+  width: 100%;
+  max-width: 360px;
+}
+
+/* Icon box */
+.lm-icon-box {
+  width: 46px;
+  height: 46px;
+  background: #edf2ff;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px auto;
+  border: 1px solid rgba(180,200,255,0.5);
+}
+
+/* Brand / headings */
+.lm-brand {
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1a2540;
+  margin: 0 0 4px 0;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: -0.005em;
+}
+.lm-brand span { color: #2455c8; }
+
+.lm-heading {
+  text-align: center;
+  font-family: 'Playfair Display', 'Georgia', serif;
+  font-size: 30px;
+  font-weight: 700;
+  color: #0d1a33;
+  margin: 0 0 5px 0;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.lm-tagline {
+  text-align: center;
+  font-size: 12.5px;
+  color: #64748b;
+  margin: 0 0 26px 0;
+  font-family: 'DM Sans', 'Inter', sans-serif;
+  line-height: 1.5;
+}
+
+/* Form */
+.lm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.lm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.lm-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  font-family: 'Inter', sans-serif;
+}
+.lm-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.lm-icon {
+  position: absolute;
+  left: 13px;
+  color: #a0aec0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+/* Override any global .login-input styles */
+.login-fullscreen-overlay .lm-input {
+  width: 100% !important;
+  padding: 11px 14px 11px 40px !important;
+  border: 1.5px solid #dde3ee !important;
+  border-radius: 10px !important;
+  font-size: 14px !important;
+  font-family: inherit !important;
+  color: #1a2540 !important;
+  background: #ffffff !important;
+  outline: none !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+  box-shadow: none !important;
+}
+.login-fullscreen-overlay .lm-input:focus {
+  border-color: #3b6fe8 !important;
+  box-shadow: 0 0 0 3px rgba(59,111,232,0.11) !important;
+}
+.login-fullscreen-overlay .lm-input::placeholder {
+  color: #b0bccc;
+  font-size: 13.5px;
+}
+
+/* Eye toggle */
+.lm-eye {
+  position: absolute;
+  right: 11px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #a0aec0;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+.lm-eye:hover { color: #64748b; }
+
+/* Remember + Forgot row */
+.lm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-top: -2px;
+}
+.lm-remember {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #475569;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px;
+}
+.lm-remember input[type="checkbox"] {
+  accent-color: #3b6fe8;
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+.lm-forgot {
+  font-size: 13px;
+  color: #3b6fe8;
+  text-decoration: none;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.lm-forgot:hover { color: #1d4ed8; text-decoration: underline; }
+
+/* Submit button */
+.login-fullscreen-overlay .lm-submit {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  padding: 13px 20px !important;
+  background: #3b6fe8 !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 10px !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  font-family: inherit !important;
+  letter-spacing: 0.01em !important;
+  transition: background 0.18s, transform 0.12s, box-shadow 0.18s !important;
+  box-shadow: 0 4px 16px rgba(59,111,232,0.30) !important;
+  margin-top: 2px !important;
+}
+.login-fullscreen-overlay .lm-submit:hover {
+  background: #2455c8 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 20px rgba(59,111,232,0.38) !important;
+}
+.login-fullscreen-overlay .lm-submit:disabled {
+  opacity: 0.65 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+.login-btn-spinner { animation: lmSpin 0.8s linear infinite; }
+@keyframes lmSpin { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+
+/* Error box */
+.login-error-msg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  border-radius: 9px;
+  padding: 11px 14px;
+  color: #dc2626;
+  font-size: 13.5px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+/* ── DEV QUICK-LOGIN (exact yellow box preserved) ─────── */
+.dev-quick-login-section {
+  margin-top: 18px;
+  padding: 13px 14px;
+  background: #fffbeb;
+  border: 1.5px solid #fde68a;
+  border-radius: 10px;
+}
+.dev-quick-login-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #92400e;
+  margin: 0 0 9px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.dev-quick-login-label code {
+  background: #fef3c7;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  font-family: 'DM Mono', monospace;
+}
+.dev-quick-login-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dev-ql-btn {
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.dev-ql-btn:hover {
+  background: #f0f4ff;
+  border-color: #3b6fe8;
+  color: #3b6fe8;
+}
+.dev-ql-btn--vendor {
+  border-color: #06b6d4;
+  color: #0e7490;
+}
+.dev-ql-btn--vendor:hover {
+  background: #ecfeff;
+  border-color: #06b6d4;
+  color: #0e7490;
+}
+
+/* ── RESPONSIVE ───────────────────────────────────────── */
+@media (max-width: 780px) {
+  .login-content-wrapper {
+    flex-direction: column !important;
+    max-height: 90vh !important;
+    max-width: 440px !important;
+  }
+  .lm-left { display: none !important; }
+  .lm-right { padding: 32px 24px !important; }
+}
+</style>

@@ -86,6 +86,7 @@ class SecurityHeadersMiddleware:
                 "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
                 "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net data:; "
                 "img-src 'self' data: https:; "
+                "media-src 'self'; "
                 "connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com;"
             )
         if request.is_secure() and "Strict-Transport-Security" not in response:

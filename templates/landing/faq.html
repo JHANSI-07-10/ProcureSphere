@@ -1,0 +1,463 @@
+{% extends 'landing/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+/* =========================================================
+   FAQ Page — Exact match to React PageLayout.tsx + FAQPage.tsx + AnimatedFAQ.tsx
+   ========================================================= */
+
+/* ── Main Page Layout ── */
+.faq-page-main {
+  padding-top: 130px;
+  overflow-x: hidden;
+  background: #ffffff;
+  min-height: 100vh;
+}
+
+/* ── Hero Section (PageLayout.tsx) ── */
+.page-hero-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 30px 24px 50px;
+  text-align: center;
+}
+.page-hero-section .eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #2563eb;
+  margin-bottom: 16px;
+}
+.page-hero-section .eyebrow-line {
+  display: inline-block;
+  width: 28px;
+  height: 1.5px;
+  background: currentColor;
+  opacity: 0.45;
+}
+.page-hero-section h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(32px, 4.5vw, 52px);
+  font-weight: 600;
+  line-height: 1.18;
+  margin: 0 0 16px 0;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+.page-hero-section p {
+  font-size: 19px;
+  color: #334155;
+  max-width: 820px;
+  margin: 0 auto;
+  line-height: 1.7;
+  font-weight: 500;
+}
+
+/* ── Body Container ── */
+.page-body-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 24px 100px;
+}
+.faq-container-inner {
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+/* ── Accordion List (AnimatedFAQ.tsx) ── */
+.faq-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.faq-item {
+  background: #ffffff;
+  border: 2px solid #cbd5e1;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(15, 27, 45, 0.1), 0 2px 8px rgba(15, 27, 45, 0.05);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.faq-item.is-open {
+  border-color: #2563eb;
+  box-shadow: 0 20px 48px rgba(37, 99, 235, 0.2), 0 4px 12px rgba(37, 99, 235, 0.1);
+}
+
+/* ── Toggle button ── */
+.faq-toggle {
+  width: 100%;
+  padding: 24px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: #0f1b2d;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-family: inherit;
+  transition: color 0.2s ease;
+}
+.faq-toggle:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: -3px;
+  border-radius: 14px;
+}
+.faq-toggle span:first-child {
+  flex: 1;
+}
+
+/* ── Plus icon circle (AnimatedFAQ.tsx: rotate 135deg on open) ── */
+.faq-icon-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 24px;
+  background: #f0f4ff;
+  color: #2962ff;
+  transform: rotate(0deg);
+  transition: transform 0.3s ease-out, background-color 0.3s ease-out, color 0.3s ease-out;
+}
+.faq-item.is-open .faq-icon-circle {
+  transform: rotate(135deg);
+  background: #2962ff;
+  color: #ffffff;
+}
+
+/* ── Answer panel: smooth 0.4s cubic-bezier(0.16, 1, 0.3, 1) height animation ── */
+.faq-answer-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.faq-item.is-open .faq-answer-wrapper {
+  grid-template-rows: 1fr;
+}
+.faq-answer-inner {
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.35s ease 0.05s;
+}
+.faq-item.is-open .faq-answer-inner {
+  opacity: 1;
+}
+.faq-answer-content {
+  padding: 0 32px 32px 32px;
+  color: #475569;
+  font-size: 17px;
+  line-height: 1.7;
+  max-width: 720px;
+}
+
+/* ── Section: Workflow & Enterprise Policy Questions (FAQPage.tsx) ── */
+.faq-extra-section {
+  margin-top: 60px;
+}
+.faq-extra-section h3 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 28px;
+  color: #0f172a;
+  margin-bottom: 24px;
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.faq-extra-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.faq-extra-card {
+  background: #ffffff;
+  border: 2px solid #cbd5e1;
+  border-radius: 18px;
+  padding: 28px 32px;
+  box-shadow: 0 12px 32px rgba(15, 27, 45, 0.12), 0 4px 10px rgba(15, 27, 45, 0.05);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.faq-extra-card h4 {
+  font-size: 20px;
+  color: #0f172a;
+  margin: 0 0 12px 0;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+.faq-extra-card p {
+  font-size: 18px;
+  color: #1e293b;
+  line-height: 1.7;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* ── Scroll Entrance Animation (Progressive Enhancement) ── */
+@media (prefers-reduced-motion: no-preference) {
+  .motion-fade-in {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .motion-fade-in.is-revealed {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Tablet Responsiveness (641px – 1024px) ── */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .faq-page-main {
+    padding-top: 110px;
+  }
+  .page-hero-section {
+    padding: 24px 20px 40px;
+  }
+  .page-body-container {
+    padding: 0 20px 80px;
+  }
+  .faq-toggle {
+    padding: 22px 28px;
+    font-size: 17.5px;
+  }
+  .faq-extra-card {
+    padding: 24px 28px;
+  }
+}
+
+/* ── Mobile Responsiveness (<= 640px) ── */
+@media (max-width: 640px) {
+  .faq-page-main {
+    padding-top: 96px;
+  }
+  .page-hero-section {
+    padding: 20px 16px 36px;
+    text-align: left;
+  }
+  .page-hero-section .eyebrow {
+    justify-content: flex-start;
+  }
+  .page-hero-section h1 {
+    font-size: clamp(26px, 7vw, 34px);
+    margin-bottom: 12px;
+  }
+  .page-hero-section p {
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+  }
+  .page-body-container {
+    padding: 0 16px 64px;
+  }
+  .faq-toggle {
+    padding: 18px 20px;
+    font-size: 16px;
+    gap: 12px;
+  }
+  .faq-icon-circle {
+    width: 32px;
+    height: 32px;
+    margin-left: 12px;
+  }
+  .faq-answer-content {
+    padding: 0 20px 24px 20px;
+    font-size: 15.5px;
+    line-height: 1.65;
+  }
+  .faq-extra-section {
+    margin-top: 48px;
+  }
+  .faq-extra-section h3 {
+    font-size: 22px;
+    text-align: left;
+    margin-bottom: 20px;
+  }
+  .faq-extra-card {
+    padding: 20px 18px;
+  }
+  .faq-extra-card h4 {
+    font-size: 17.5px;
+    margin-bottom: 8px;
+  }
+  .faq-extra-card p {
+    font-size: 15.5px;
+    line-height: 1.65;
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="site-main page-main faq-page-main">
+
+  <!-- ── Hero Section (PageLayout.tsx) ── -->
+  <section class="page-hero-section">
+    <div class="eyebrow">
+      <span class="eyebrow-line"></span>
+      FAQ
+      <span class="eyebrow-line"></span>
+    </div>
+    <h1>Frequently Asked Questions</h1>
+    <p>Clear answers about how ProcureSphere 360 brings enterprise control, structured governance, and complete financial clarity.</p>
+  </section>
+
+  <!-- ── Content Body (PageBodyContainer + AnimatedFAQ + ExtraFAQs) ── -->
+  <div class="page-body-container">
+    <div class="faq-container-inner">
+
+      <!-- Accordion FAQs — matching AnimatedFAQ.tsx (4 items, first open) -->
+      <div class="faq-accordion" role="list" id="faq-accordion-primary">
+        {% for faq in faqs %}
+        <div
+          class="faq-item motion-fade-in{% if forloop.first %} is-open{% endif %}"
+          role="listitem"
+          id="faq-card-{{ forloop.counter0 }}"
+          data-index="{{ forloop.counter0 }}"
+          style="transition-delay: {{ forloop.counter0 }}00ms;"
+        >
+          <button
+            class="faq-toggle"
+            onclick="faqPageToggle({{ forloop.counter0 }})"
+            aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}"
+            aria-controls="faq-answer-panel-{{ forloop.counter0 }}"
+            id="faq-btn-{{ forloop.counter0 }}"
+          >
+            <span>{{ faq.question }}</span>
+            <div
+              class="faq-icon-circle"
+              aria-hidden="true"
+              id="faq-icon-{{ forloop.counter0 }}"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M7 1v12M1 7h12"/>
+              </svg>
+            </div>
+          </button>
+          <div
+            class="faq-answer-wrapper"
+            role="region"
+            id="faq-answer-panel-{{ forloop.counter0 }}"
+            aria-labelledby="faq-btn-{{ forloop.counter0 }}"
+          >
+            <div class="faq-answer-inner">
+              <div class="faq-answer-content">{{ faq.answer }}</div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- "Workflow & Enterprise Policy Questions" — matching FAQPage.tsx extraFaqs -->
+      <div class="faq-extra-section">
+        <h3>Workflow &amp; Enterprise Policy Questions</h3>
+        <div class="faq-extra-grid">
+          {% for ef in extra_faqs %}
+          <div
+            class="faq-extra-card motion-fade-in"
+            style="transition-delay: {{ forloop.counter0 }}00ms;"
+          >
+            <h4>{{ ef.q }}</h4>
+            <p>{{ ef.a }}</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  'use strict';
+
+  /* ──────────────────────────────────────────────────
+     FAQ Page Accordion — single-open policy matching
+     AnimatedFAQ.tsx: onClick={() => setOpenIndex(isOpen ? null : index)}
+     - Clicking the open item closes it (null)
+     - Clicking another item opens that one and closes the others
+  ──────────────────────────────────────────────────*/
+  var TOTAL_FAQ = {{ faqs|length }};
+
+  window.faqPageToggle = function (index) {
+    var clickedCard = document.getElementById('faq-card-' + index);
+    if (!clickedCard) return;
+
+    var isCurrentlyOpen = clickedCard.classList.contains('is-open');
+
+    // Close ALL first (single-open policy)
+    for (var i = 0; i < TOTAL_FAQ; i++) {
+      var card = document.getElementById('faq-card-' + i);
+      var btn  = document.getElementById('faq-btn-' + i);
+      if (card) card.classList.remove('is-open');
+      if (btn)  btn.setAttribute('aria-expanded', 'false');
+    }
+
+    // If it was closed, open it now
+    if (!isCurrentlyOpen) {
+      clickedCard.classList.add('is-open');
+      var clickedBtn = document.getElementById('faq-btn-' + index);
+      if (clickedBtn) clickedBtn.setAttribute('aria-expanded', 'true');
+    }
+  };
+
+  /* ── Keyboard accessibility: Enter & Space activate button ── */
+  document.querySelectorAll('.faq-toggle').forEach(function (btn) {
+    btn.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        btn.click();
+      }
+    });
+  });
+
+  /* ── Smooth Scroll Entrance (matching motion whileInView) ── */
+  var motionItems = document.querySelectorAll('.motion-fade-in');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-revealed');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.05, rootMargin: '100px 0px 50px 0px' });
+
+    motionItems.forEach(function (el) {
+      var rect = el.getBoundingClientRect();
+      // If already in or near viewport on page load, reveal immediately
+      if (rect.top < window.innerHeight + 50) {
+        el.classList.add('is-revealed');
+      } else {
+        io.observe(el);
+      }
+    });
+  } else {
+    // Fallback: reveal all immediately if no IntersectionObserver
+    motionItems.forEach(function (el) {
+      el.classList.add('is-revealed');
+    });
+  }
+
+})();
+</script>
+{% endblock %}

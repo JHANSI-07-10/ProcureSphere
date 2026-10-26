@@ -1,0 +1,283 @@
+/* ==========================================================================
+   ProcureSphere 360 — Dedicated Full-Screen 404 Not Found Page
+   Full-screen 3D visual with real, copyable frontend typography and interactive buttons.
+   NO floating/tilt on the image. Solid, seamless masking covering all baked-in elements.
+   ========================================================================== */
+
+.notfound-container {
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: linear-gradient(180deg, #E0E1E3 0%, #E3E4E7 50%, #E6E6E8 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Background blend matching perimeter pixels */
+.notfound-bg-blend {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #E0E1E3 0%, #E3E4E7 50%, #E6E6E8 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* The Responsive Full-Screen Stage (Completely Static - NO Floating) */
+.notfound-exact-stage {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 2;
+  transform: none !important;
+}
+
+/* 16:9 Canvas maintaining exact subpixel mapping across all viewports */
+.notfound-canvas {
+  position: relative;
+  width: max(100vw, calc(100vh * 1.77734375));
+  height: max(100vh, calc(100vw * 0.56263736));
+  flex-shrink: 0;
+  display: block;
+}
+
+/* Original untouched high-res reference image filling canvas exactly */
+.notfound-exact-img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  display: block;
+  user-select: none;
+  pointer-events: none;
+  transform: none !important;
+}
+
+/* Warm Golden Glow pulsating behind the cracked 0 */
+.notfound-glow-overlay {
+  position: absolute;
+  top: 36%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24%;
+  height: 36%;
+  background: radial-gradient(circle, rgba(255, 195, 75, 0.45) 0%, rgba(255, 170, 50, 0.20) 45%, transparent 70%);
+  filter: blur(28px);
+  pointer-events: none;
+  z-index: 1;
+  animation: notfoundGlowPulse 4s ease-in-out infinite alternate;
+}
+
+/* Animated Flying Rocket / Paper Airplane (Smooth motion without dotted path lines) */
+.notfound-paper-plane {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  z-index: 4;
+  pointer-events: none;
+  offset-path: path("M 150,240 C 260,80 460,40 600,100 C 740,160 700,260 810,240 C 920,220 1040,80 1180,70 C 1320,60 1480,140 1620,110 C 1760,80 1800,180 1740,260 C 1680,340 1520,300 1360,230 C 1200,160 1060,300 920,320 C 780,340 640,240 500,280 C 360,320 200,290 150,240 Z");
+  offset-rotate: auto 15deg;
+  animation: notfoundPlaneLoop 14s linear infinite;
+  filter: drop-shadow(0 6px 12px rgba(15, 27, 45, 0.25));
+}
+
+/* ==========================================================================
+   Real Interactive Frontend Elements:
+   - NO background card, NO border, NO patch (100% transparent)
+   - Real selectable/copyable typography pinned right over the image text
+   - Real interactive hotspot buttons pinned right over the image buttons
+   ========================================================================== */
+
+/* Real Selectable / Copyable Heading */
+.notfound-copyable-heading {
+  position: absolute;
+  left: 31.868%;
+  top: 68.848%;
+  width: 36.264%;
+  height: 7.324%;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(24px, 2.6vw, 54px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  color: transparent !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  cursor: text;
+  z-index: 10;
+}
+
+.notfound-copyable-heading::selection {
+  background: rgba(36, 86, 214, 0.28);
+  color: #111E38;
+}
+
+/* Real Selectable / Copyable Description */
+.notfound-copyable-desc {
+  position: absolute;
+  left: 34.066%;
+  top: 77.148%;
+  width: 31.868%;
+  height: 5.371%;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  font-size: clamp(12px, 0.95vw, 17px);
+  line-height: 1.45;
+  color: transparent !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  cursor: text;
+  z-index: 10;
+}
+
+.notfound-copyable-desc::selection {
+  background: rgba(36, 86, 214, 0.28);
+  color: #5A6578;
+}
+
+/* Real Interactive Action Hotspot Buttons */
+.notfound-hotspot-btn {
+  position: absolute;
+  border-radius: 999px;
+  cursor: pointer;
+  z-index: 15;
+  background: transparent;
+  border: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease, background 0.22s ease;
+}
+
+/* 'Go to Home' Button Hotspot */
+.notfound-hotspot-home {
+  left: 37.033%;
+  top: 84.375%;
+  width: 14.505%;
+  height: 6.543%;
+}
+
+.notfound-hotspot-home:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(17, 30, 56, 0.40);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.notfound-hotspot-home:active {
+  transform: translateY(0);
+}
+
+/* 'Go Back' Button Hotspot */
+.notfound-hotspot-back {
+  left: 52.857%;
+  top: 84.375%;
+  width: 10.495%;
+  height: 6.543%;
+}
+
+.notfound-hotspot-back:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(15, 27, 45, 0.12);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.notfound-hotspot-back:active {
+  transform: translateY(0);
+}
+
+/* Discrete floating brand badge in top-left */
+.notfound-brand-anchor {
+  position: absolute;
+  top: 20px;
+  left: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: #0F1B2D;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(200, 210, 225, 0.7);
+  backdrop-filter: blur(8px);
+  z-index: 20;
+  transition: transform 0.25s ease, background 0.25s ease;
+  font-size: 13.5px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(15, 27, 45, 0.06);
+}
+
+.notfound-brand-anchor:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.notfound-brand-anchor em {
+  font-style: normal;
+  color: #2456D6;
+  margin-left: 2px;
+}
+
+/* Keyframes */
+@keyframes notfoundGlowPulse {
+  0% {
+    opacity: 0.65;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  100% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(1.06);
+  }
+}
+
+@keyframes notfoundPlaneLoop {
+  0% {
+    offset-distance: 0%;
+  }
+  100% {
+    offset-distance: 100%;
+  }
+}
+
+/* ==========================================================================
+   Mobile & Small Viewport Optimizations (max-width: 680px)
+   Keeps the 3D illustration and its text & buttons 100% in-frame without
+   horizontal clipping, while seamlessly feathering into the vertical gradient.
+   ========================================================================== */
+@media (max-width: 680px) {
+  .notfound-canvas {
+    /* Scale width so the heading text (36.26% width) fits with 16px horizontal margins */
+    width: min(calc((100vw - 32px) / 0.36264), calc(100vh * 1.77734375));
+    height: calc(min(calc((100vw - 32px) / 0.36264), calc(100vh * 1.77734375)) * 0.56263736);
+    /* Smooth feathering at the top sky and bottom floor for 0 visible boundaries */
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 2.5%, black 97.5%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 2.5%, black 97.5%, transparent 100%);
+  }
+
+  .notfound-brand-anchor {
+    top: 14px;
+    left: 14px;
+    padding: 5px 12px;
+    font-size: 12px;
+    gap: 6px;
+  }
+}
+

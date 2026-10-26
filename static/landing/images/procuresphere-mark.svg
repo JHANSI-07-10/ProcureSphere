@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ProcureSphere 360 mark">
+  <rect width="64" height="64" fill="#2456D6"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="3">
+    <circle cx="32" cy="32" r="21"/>
+    <ellipse cx="32" cy="32" rx="21" ry="9"/>
+    <path d="M11 32h42M32 11v42"/>
+  </g>
+  <circle cx="47" cy="23" r="4" fill="#FFFFFF"/>
+  <circle cx="20" cy="42" r="4" fill="#FFFFFF"/>
+</svg>
