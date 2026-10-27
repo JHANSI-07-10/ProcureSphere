@@ -123,9 +123,7 @@ def exception_detail_view(request, exception_id):
 
 @login_required(login_url="/login/")
 def resolve_exception_view(request, exception_id):
-    _enforce_internal_invoice_access(
-        request, allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, "FINANCE_AP", "SUPER_ADMIN"]
-    )
+    _enforce_internal_invoice_access(request)
     role_code = _get_user_role(request.user)
     if not (request.user.is_superuser or role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN]):
         messages.error(
@@ -168,9 +166,7 @@ def ready_for_payment_view(request):
 
 @login_required(login_url="/login/")
 def pay_invoice_view(request, invoice_id):
-    _enforce_internal_invoice_access(
-        request, allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, "FINANCE_AP", "SUPER_ADMIN"]
-    )
+    _enforce_internal_invoice_access(request)
     role_code = _get_user_role(request.user)
     if not (request.user.is_superuser or role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN]):
         messages.error(

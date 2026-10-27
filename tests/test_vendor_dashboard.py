@@ -1125,7 +1125,7 @@ def test_vendor_submit_partial_invoice(client, vendor_setup):
     assert invoice.vendor == v1
     assert invoice.po == po
     assert invoice.lines.count() == 1
-    
+
     inv_line = invoice.lines.first()
     assert inv_line.po_line == po_line1
     assert inv_line.quantity == Decimal("1")

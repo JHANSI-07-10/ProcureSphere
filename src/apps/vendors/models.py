@@ -220,20 +220,23 @@ class VendorDocument(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         # Synchronize lifecycle status with review_status and is_verified
-        if self.status == self.STATUS_VERIFIED or self.review_status == self.REVIEW_VERIFIED:
-            self.is_verified = True
-            self.status = self.STATUS_VERIFIED
-            self.review_status = self.REVIEW_VERIFIED
+        if self.status == self.STATUS_EXPIRED:
+            self.is_verified = False
+            self.review_status = self.REVIEW_PENDING
+        elif self.status == self.STATUS_CHANGES_REQUIRED:
+            self.is_verified = False
+            self.review_status = self.REVIEW_REJECTED
         elif self.status == self.STATUS_REJECTED or self.review_status == self.REVIEW_REJECTED:
             self.is_verified = False
             self.review_status = self.REVIEW_REJECTED
             if self.status not in (self.STATUS_REJECTED, self.STATUS_CHANGES_REQUIRED):
                 self.status = self.STATUS_REJECTED
-        elif self.status == self.STATUS_CHANGES_REQUIRED:
-            self.is_verified = False
-            self.review_status = self.REVIEW_REJECTED
-        elif self.status == self.STATUS_EXPIRED:
-            self.is_verified = False
+        elif self.status == self.STATUS_VERIFIED:
+            self.is_verified = True
+            self.review_status = self.REVIEW_VERIFIED
+        elif self.review_status == self.REVIEW_VERIFIED:
+            self.is_verified = True
+            self.status = self.STATUS_VERIFIED
         else:
             self.is_verified = False
             self.review_status = self.REVIEW_PENDING
@@ -248,6 +251,13 @@ class VendorDocument(TimeStampedModel):
             self.verified_at = self.reviewed_at
         elif not self.reviewed_at and self.verified_at:
             self.reviewed_at = self.verified_at
+
+        if "update_fields" in kwargs and kwargs["update_fields"] is not None:
+            fields = set(kwargs["update_fields"])
+            fields.add("review_status")
+            fields.add("status")
+            fields.add("is_verified")
+            kwargs["update_fields"] = list(fields)
 
         super().save(*args, **kwargs)
 

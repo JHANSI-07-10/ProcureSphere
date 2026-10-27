@@ -11,6 +11,7 @@ import io
 import zipfile
 from datetime import timedelta
 from decimal import Decimal
+
 import pytest
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
@@ -18,16 +19,15 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 
 from apps.accounts.models import Role, User
-from apps.organization.models import Organization, Department, CostCenter
-from apps.vendors.models import Vendor, VendorDocument
-from apps.vendors.services import upload_vendor_document_service
-from apps.sourcing.models import SourcingEvent, VendorBid, BidAttachment
-from apps.sourcing.services import upload_bid_attachment_service
 from apps.contracts.models import Contract, ContractDocument
 from apps.contracts.services import upload_contract_document_service
+from apps.core.validators import validate_file_upload, validate_pr_attachment
+from apps.organization.models import CostCenter, Department, Organization
 from apps.requisitions.services import create_purchase_requisition_service
-from apps.core.validators import validate_pr_attachment, validate_file_upload
-
+from apps.sourcing.models import BidAttachment, SourcingEvent, VendorBid
+from apps.sourcing.services import upload_bid_attachment_service
+from apps.vendors.models import Vendor, VendorDocument
+from apps.vendors.services import upload_vendor_document_service
 
 pytestmark = [pytest.mark.django_db, pytest.mark.regression]
 

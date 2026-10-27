@@ -273,7 +273,7 @@ def amend_purchase_order_service(
         item_id = item.get("id") or item.get("line_id")
         matched_line = None
         if item_id:
-            matched_line = next((l for l in existing_lines if str(l.id) == str(item_id)), None)
+            matched_line = next((line for line in existing_lines if str(line.id) == str(item_id)), None)
         if not matched_line and idx < len(existing_lines):
             candidate = existing_lines[idx]
             if candidate.id not in matched_line_ids:
@@ -281,10 +281,10 @@ def amend_purchase_order_service(
         if not matched_line:
             candidate = next(
                 (
-                    l
-                    for l in existing_lines
-                    if l.item_description == item.get("item_description")
-                    and l.id not in matched_line_ids
+                    line
+                    for line in existing_lines
+                    if line.item_description == item.get("item_description")
+                    and line.id not in matched_line_ids
                 ),
                 None,
             )

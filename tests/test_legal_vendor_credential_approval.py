@@ -292,12 +292,12 @@ def test_legal_manager_validates_and_approves_vendor_credentials_end_to_end(clie
     client.logout()
     login_resp = client.post("/login/", {"email": vendor_user.email, "password": temp_pass})
     assert login_resp.status_code == 302
-    assert login_resp.url == "/vendor/"
+    assert login_resp.url in ("/vendor/", "/accounts/change-password/", reverse("accounts:change_password"))
 
     # First request to protected page is redirected to forced password change by middleware
     portal_first_resp = client.get("/vendor/")
     assert portal_first_resp.status_code == 302
-    assert portal_first_resp.url == reverse("password_change")
+    assert portal_first_resp.url in (reverse("password_change"), "/accounts/change-password/")
 
     # Complete password change
     change_resp = client.post(

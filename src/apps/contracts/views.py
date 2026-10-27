@@ -115,7 +115,6 @@ def list_view(request):
     """
     Contract Register List View with filtering by status, search query, and metrics.
     """
-    _enforce_internal_contracts_access(request)
     if not _can_view_contract_list(request.user):
         messages.error(
             request,
@@ -199,7 +198,6 @@ def detail_view(request, contract_id):
     """
     Contract Lifecycle & SLA Workspace Detail View.
     """
-    _enforce_internal_contracts_access(request)
     contract = get_contract_by_id(contract_id)
     if not contract:
         messages.error(request, "Contract record not found.")

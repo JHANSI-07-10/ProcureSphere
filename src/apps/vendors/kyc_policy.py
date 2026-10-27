@@ -162,16 +162,27 @@ class ProvisionalKYCPolicy:
             code for code in mandatory_codes if code not in uploaded_by_type
         ]
 
+        # Identify superseded documents (replaced by a verified active document)
+        superseded_doc_ids = set()
+        for doc in documents:
+            if doc.replaces_document_id and doc.is_verified and getattr(doc, "status", None) == "VERIFIED":
+                superseded_doc_ids.add(doc.replaces_document_id)
+            if doc.document_type in verified_mandatory_codes and doc.is_verified:
+                for other in documents:
+                    if other.document_type == doc.document_type and other.id != doc.id:
+                        if other.status in ["REJECTED", "EXPIRED", "CHANGES_REQUIRED"] or (other.expiry_date and other.expiry_date < today):
+                            superseded_doc_ids.add(other.id)
+
         # All mandatory types must have at least one verified, non-expired copy
         all_mandatory_verified = set(mandatory_codes).issubset(verified_mandatory_codes)
         has_blocking_rejections = any(
-            doc.document_type in mandatory_codes for doc in rejected_docs
+            doc.document_type in mandatory_codes and doc.id not in superseded_doc_ids for doc in rejected_docs
         )
         has_blocking_action_required = any(
-            doc.document_type in mandatory_codes for doc in action_required_docs
+            doc.document_type in mandatory_codes and doc.id not in superseded_doc_ids for doc in action_required_docs
         )
         has_blocking_expirations = any(
-            doc.document_type in mandatory_codes for doc in expired_docs
+            doc.document_type in mandatory_codes and doc.id not in superseded_doc_ids for doc in expired_docs
         )
 
         is_compliant = (

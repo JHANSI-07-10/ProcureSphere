@@ -21,9 +21,15 @@ from django.utils import timezone
 
 from apps.accounts.models import Role, User
 from apps.audit.models import AuditLog
+from apps.contracts.selectors import (
+    get_pending_documents_for_review_qs,
+    get_pending_vendor_verifications_qs,
+)
 from apps.notifications.models import Notification
 from apps.sourcing.models import BidInvite, SourcingEvent, VendorBid
 from apps.sourcing.services import (
+    _assert_vendor_awardable,
+    _invite_error,
     create_sourcing_event_service,
     invite_vendors_to_event_service,
     publish_sourcing_event_service,
@@ -50,14 +56,6 @@ from apps.vendors.services import (
     scan_vendor_document_expirations_service,
     upload_vendor_document_service,
     verify_vendor_document_decision_service,
-)
-from apps.contracts.selectors import (
-    get_pending_documents_for_review_qs,
-    get_pending_vendor_verifications_qs,
-)
-from apps.sourcing.services import (
-    _assert_vendor_awardable,
-    _invite_error,
 )
 
 pytestmark = pytest.mark.django_db
@@ -739,7 +737,7 @@ def test_replacement_documents_appear_in_legal_review_queue(test_setup):
 
     # Vendor uploads replacement document
     vendor_user = dispatch.user
-    replacement_file = SimpleUploadedFile("tax_renewed.pdf", b"new data", content_type="application/pdf")
+    replacement_file = SimpleUploadedFile("tax_renewed.pdf", b"%PDF-1.4 sample replacement data", content_type="application/pdf")
     replacement_doc = upload_vendor_document_service(
         vendor=vendor,
         user=vendor_user,

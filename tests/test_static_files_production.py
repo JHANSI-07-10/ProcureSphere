@@ -1,7 +1,8 @@
-import pytest
-from django.test import Client, override_settings
-from django.conf import settings
 from pathlib import Path
+
+import pytest
+from django.conf import settings
+from django.test import Client, override_settings
 
 
 def test_static_files_production_serving():
@@ -11,7 +12,7 @@ def test_static_files_production_serving():
     correct MIME types, preventing browser strict MIME checking errors.
     """
     client = Client()
-    
+
     # 1. Test CSS delivery under production simulation (DEBUG=False)
     with override_settings(DEBUG=False):
         response_css = client.get("/static/css/style.css")
