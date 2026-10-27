@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import redirect, render
 
@@ -111,19 +112,52 @@ def approvals_inbox_view(request):
         pending_prs = pending_prs.filter(q_filter)
         history_prs = history_prs.filter(q_filter)
 
+    valid_pending_statuses = ["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]
+    valid_history_statuses = ["APPROVED", "REJECTED", "SOURCING", "PO_ISSUED"]
+
     if status_filter:
-        pending_prs = pending_prs.filter(status=status_filter)
-        history_prs = history_prs.filter(status=status_filter)
+        if tab == "history":
+            if status_filter in valid_history_statuses:
+                history_prs = history_prs.filter(status=status_filter)
+            else:
+                status_filter = ""
+        else:
+            if status_filter in valid_pending_statuses:
+                pending_prs = pending_prs.filter(status=status_filter)
+            else:
+                status_filter = ""
 
     pending_prs = pending_prs.order_by("-updated_at")
     history_prs = history_prs.order_by("-updated_at")
 
-    base_layout = _get_base_layout(role_code)
+    pending_count = pending_prs.count()
     has_budget_overrun = pending_prs.filter(status="BUDGET_REVIEW").exists()
 
+    query_params = request.GET.copy()
+    if "page" in query_params:
+        query_params.pop("page")
+    querystring = query_params.urlencode()
+
+    page_number = request.GET.get("page")
+    if tab == "history":
+        history_paginator = Paginator(history_prs, 10)
+        page_obj = history_paginator.get_page(page_number)
+        history_display = page_obj
+        pending_display = pending_prs
+    else:
+        pending_paginator = Paginator(pending_prs, 10)
+        page_obj = pending_paginator.get_page(page_number)
+        pending_display = page_obj
+        history_display = history_prs
+
+    base_layout = _get_base_layout(role_code)
+
     context = {
-        "pending_prs": pending_prs,
-        "history_prs": history_prs,
+        "pending_prs": pending_display,
+        "history_prs": history_display,
+        "page_obj": page_obj,
+        "querystring": querystring,
+        "pending_count": pending_count,
         "active_tab": tab,
         "role_code": role_code,
         "base_layout": base_layout,

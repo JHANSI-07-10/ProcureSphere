@@ -26,9 +26,13 @@
             </div>
 
             <!-- Notifications Icon -->
-            <a href="/invoices/exceptions/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Exceptions & Notifications">
+            <a href="/notifications/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Notifications">
                 <i class="fa-solid fa-bell fs-5"></i>
-                {% if metrics.pending_match_exceptions and metrics.pending_match_exceptions > 0 %}
+                {% if unread_notifications_count > 0 %}
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
+                    {{ unread_notifications_count }}
+                </span>
+                {% elif metrics.pending_match_exceptions and metrics.pending_match_exceptions > 0 %}
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
                     {{ metrics.pending_match_exceptions }}
                 </span>
@@ -49,6 +53,7 @@
                     <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 bg-dark text-white">
                         <li><a class="dropdown-item text-white py-2" href="/invoices/exceptions/"><i class="fa-solid fa-triangle-exclamation text-warning me-2"></i> Match Exceptions</a></li>
                         <li><a class="dropdown-item text-white py-2" href="/budgets/ledger/"><i class="fa-solid fa-book-journal-whills text-cyan me-2"></i> Spend Ledger</a></li>
+                        <li><a class="dropdown-item text-white py-2" href="/notifications/"><i class="fa-solid fa-bell text-warning me-2"></i> Notifications {% if unread_notifications_count > 0 %}<span class="badge bg-danger rounded-pill ms-1">{{ unread_notifications_count }}</span>{% endif %}</a></li>
                         <li><hr class="dropdown-divider border-secondary"></li>
                         <li><a class="dropdown-item text-danger py-2" href="/logout/"><i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out</a></li>
                     </ul>
@@ -132,6 +137,14 @@
                     </a>
                     <a href="/invoices/settings/tolerances/" class="vendor-navlink unified-navlink {% if request.path == '/invoices/settings/tolerances/' %}active-nav-item{% endif %}">
                         <i class="fa-solid fa-gear nav-icon text-secondary"></i>System Settings
+                    </a>
+
+                    <div class="nav-section-label">Updates &amp; Alerts</div>
+                    <a href="/notifications/" class="vendor-navlink unified-navlink d-flex align-items-center justify-content-between {% if '/notifications/' in request.path %}active-nav-item{% endif %}">
+                        <span><i class="fa-solid fa-bell nav-icon text-warning"></i>Notifications</span>
+                        {% if unread_notifications_count > 0 %}
+                        <span class="badge bg-danger rounded-pill">{{ unread_notifications_count }}</span>
+                        {% endif %}
                     </a>
                 </nav>
 

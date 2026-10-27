@@ -24,7 +24,7 @@
     <!-- Navigation Pills for Tabs -->
     <div class="nav nav-pills bg-white p-1 rounded-pill shadow-sm border flex-nowrap w-100 w-md-auto justify-content-center">
         <a href="/approvals/inbox/" class="nav-link rounded-pill px-2 px-sm-4 py-2 fw-semibold text-nowrap flex-grow-1 flex-md-grow-0 text-center small d-inline-flex align-items-center justify-content-center {% if active_tab != 'history' %}active bg-primary text-white shadow-sm{% else %}text-secondary{% endif %}" style="height: 38px;">
-            <i class="fa-solid fa-square-check me-2"></i> Pending ({{ pending_prs.count }})
+            <i class="fa-solid fa-square-check me-2"></i> Pending ({{ pending_count|default:pending_prs.count }})
         </a>
         <a href="/approvals/inbox/?tab=history" class="nav-link rounded-pill px-2 px-sm-4 py-2 fw-semibold text-nowrap flex-grow-1 flex-md-grow-0 text-center small d-inline-flex align-items-center justify-content-center {% if active_tab == 'history' %}active bg-primary text-white shadow-sm{% else %}text-secondary{% endif %}" style="height: 38px;">
             <i class="fa-solid fa-clock-rotate-left me-2"></i> Evaluated History
@@ -67,19 +67,24 @@
                 </div>
             </div>
             <div class="col-12 col-sm-8 col-md-4 col-lg-3">
-                <select name="status" class="form-select text-secondary fw-medium" onchange="this.form.submit()">
+                <select name="status" class="form-select text-secondary fw-medium">
                     <option value="">All Statuses</option>
+                    {% if active_tab == 'history' %}
+                    <option value="APPROVED" {% if status_filter == 'APPROVED' %}selected{% endif %}>Approved</option>
+                    <option value="REJECTED" {% if status_filter == 'REJECTED' %}selected{% endif %}>Rejected</option>
+                    {% else %}
                     <option value="SUBMITTED" {% if status_filter == 'SUBMITTED' %}selected{% endif %}>Submitted</option>
                     <option value="MANAGER_REVIEW" {% if status_filter == 'MANAGER_REVIEW' %}selected{% endif %}>Manager Review</option>
                     <option value="BUDGET_REVIEW" {% if status_filter == 'BUDGET_REVIEW' %}selected{% endif %}>Budget Review</option>
-                    <option value="APPROVED" {% if status_filter == 'APPROVED' %}selected{% endif %}>Approved</option>
-                    <option value="REJECTED" {% if status_filter == 'REJECTED' %}selected{% endif %}>Rejected</option>
+                    {% endif %}
                 </select>
             </div>
             <div class="col-12 col-sm-4 col-md-2 col-lg-2 d-flex gap-2">
                 <button type="submit" class="btn btn-primary w-100 rounded-3 text-nowrap"><i class="fa-solid fa-filter me-1"></i> Filter</button>
                 {% if search_q or status_filter %}
-                    <a href="{% if active_tab == 'history' %}?tab=history{% else %}/approvals/inbox/{% endif %}" class="btn btn-outline-secondary rounded-3" title="Clear Filters"><i class="fa-solid fa-xmark"></i></a>
+                    <a href="{% if active_tab == 'history' %}?tab=history{% else %}/approvals/inbox/{% endif %}" class="btn btn-outline-secondary rounded-3 text-nowrap d-inline-flex align-items-center" title="Clear Filters">
+                        <i class="fa-solid fa-xmark me-1"></i> Reset
+                    </a>
                 {% endif %}
             </div>
         </form>
@@ -175,6 +180,7 @@
                     </tbody>
                 </table>
             </div>
+            {% include 'partials/pagination.html' %}
             {% else %}
             <div class="text-center py-5">
                 <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
@@ -304,7 +310,7 @@
                             </td>
                             <td class="pe-4 text-end" style="white-space: nowrap !important; min-width: 190px;">
                                 <a href="{% url 'requisition_detail' pr.pk %}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm text-nowrap d-inline-flex align-items-center" style="height: 34px;">
-                                    <i class="fa-solid fa-arrow-right me-1"></i> Review &amp; Decision
+                                    <i class="fa-solid fa-arrow-right me-1.5"></i> Review &amp; Decision
                                 </a>
                             </td>
                         </tr>
@@ -312,6 +318,7 @@
                     </tbody>
                 </table>
             </div>
+            {% include 'partials/pagination.html' %}
             {% else %}
             <div class="text-center py-5">
                 <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">

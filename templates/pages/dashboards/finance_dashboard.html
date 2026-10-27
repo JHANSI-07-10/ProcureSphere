@@ -42,6 +42,28 @@
 </div>
 {% endif %}
 
+<!-- Unread Notifications Alert -->
+{% if unread_notifications_count > 0 %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-warning border-0 shadow-sm rounded-4 d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between p-3 mb-0 gap-3" role="alert">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px;">
+                    <i class="fa-solid fa-bell fs-5"></i>
+                </div>
+                <div>
+                    <div class="fw-bold text-dark">You have {{ unread_notifications_count }} unread notification{{ unread_notifications_count|pluralize }}</div>
+                    <div class="text-secondary small">Review budget alerts, invoice match exceptions, and approval escalations.</div>
+                </div>
+            </div>
+            <a href="/notifications/" class="btn btn-warning btn-sm rounded-pill px-3 py-1.5 fw-bold text-dark text-nowrap align-self-sm-center">
+                View Notifications <i class="fa-solid fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Welcome Header & Quick Actions (Vendor Design Standard) -->
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
     <div>

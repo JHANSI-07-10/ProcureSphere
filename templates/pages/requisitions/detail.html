@@ -36,12 +36,9 @@
             <a href="{% url 'requisition_edit' pr.pk %}" class="btn btn-outline-secondary rounded-pill px-4 fw-semibold flex-grow-1 flex-md-grow-0 text-center">
                 <i class="fa-solid fa-pen me-2"></i>Edit
             </a>
-            <form method="POST" action="{% url 'requisition_submit' pr.pk %}" class="flex-grow-1 flex-md-grow-0">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-success rounded-pill shadow-sm px-4 fw-semibold w-100">
-                    <i class="fa-solid fa-paper-plane me-2"></i>Submit for Approval
-                </button>
-            </form>
+            <button type="button" class="btn btn-success rounded-pill shadow-sm px-4 fw-semibold flex-grow-1 flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#submitConfirmModal">
+                <i class="fa-solid fa-paper-plane me-2"></i>Submit for Approval
+            </button>
             {% endif %}
             {% if pr.status in 'DRAFT,SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' %}
             <button type="button" class="btn btn-outline-danger rounded-pill px-4 fw-semibold flex-grow-1 flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#cancelConfirmModal">
@@ -664,6 +661,42 @@
             </div>
         </div>
 
+    </div>
+</div>
+
+<!-- User-Friendly Submit Confirmation Modal -->
+<div class="modal fade" id="submitConfirmModal" tabindex="-1" aria-labelledby="submitConfirmModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom-0 bg-success text-white rounded-top-4 p-4">
+                <h5 class="modal-title fw-bold" id="submitConfirmModalLabel">
+                    <i class="fa-solid fa-paper-plane me-2"></i> Confirm Requisition Submission
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
+                    style="width: 64px; height: 64px;">
+                    <i class="fa-solid fa-check fs-2"></i>
+                </div>
+                <h5 class="fw-bold text-dark mb-2">Submit Requisition {{ pr.pr_number }}?</h5>
+                <p class="text-muted mb-0">
+                    Are you ready to submit this purchase requisition for approval? Once submitted, it will be locked for editing and routed to your Department Approver.
+                </p>
+            </div>
+            <div class="modal-footer border-top-0 p-4 justify-content-center gap-2">
+                <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">
+                    Keep Editing
+                </button>
+                <form method="POST" action="{% url 'requisition_submit' pr.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
+                        <i class="fa-solid fa-paper-plane me-2"></i>Yes, Submit PR
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 

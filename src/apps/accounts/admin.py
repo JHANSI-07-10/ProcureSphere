@@ -18,6 +18,7 @@ class UserAdmin(BaseUserAdmin):
         "last_name",
         "role",
         "department",
+        "cost_center",
         "vendor",
         "is_staff",
         "is_superuser",
@@ -29,6 +30,7 @@ class UserAdmin(BaseUserAdmin):
         "is_superuser",
         "is_active",
         "department",
+        "cost_center",
     )
     search_fields = ("email", "first_name", "last_name")
     ordering = ("email",)
@@ -41,7 +43,7 @@ class UserAdmin(BaseUserAdmin):
         ),
         (
             "Organization & Scoping",
-            {"fields": ("role", "department", "vendor")},
+            {"fields": ("role", "department", "cost_center", "vendor")},
         ),
         (
             "Permissions",

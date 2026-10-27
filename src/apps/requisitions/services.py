@@ -339,6 +339,17 @@ def approve_purchase_requisition_service(
     )
 
     if requisition.status == PurchaseRequisition.STATUS_APPROVED:
+        if requisition.requester:
+            try:
+                Notification.objects.create(
+                    recipient=requisition.requester,
+                    notification_type=Notification.TYPE_APPROVAL_REQUIRED,
+                    title=f"Requisition Approved: {requisition.pr_number}",
+                    message=f"Your requisition {requisition.pr_number} has been fully approved and is progressing to sourcing/PO execution.",
+                    target_url=f"/requisitions/{requisition.id}/",
+                )
+            except Exception:
+                pass
         try:
             proc_execs = User.objects.filter(role__code=Role.PROC_EXEC, is_active=True)
             for pe in proc_execs:
@@ -411,5 +422,17 @@ def reject_purchase_requisition_service(
         new_state=requisition.status,
         comments=comments,
     )
+
+    if requisition.requester:
+        try:
+            Notification.objects.create(
+                recipient=requisition.requester,
+                notification_type=Notification.TYPE_APPROVAL_REQUIRED,
+                title=f"Requisition Rejected: {requisition.pr_number}",
+                message=f"Your requisition {requisition.pr_number} was rejected by {approver.email}. Reason: {comments}",
+                target_url=f"/requisitions/{requisition.id}/",
+            )
+        except Exception:
+            pass
 
     return requisition
