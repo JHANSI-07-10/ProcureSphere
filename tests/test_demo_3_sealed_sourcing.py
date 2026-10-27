@@ -48,6 +48,8 @@ def test_demo_3_sealed_sourcing_event_and_award_workflow(db_roles):
         address="San Jose CA",
     )
     vendor1.status = Vendor.STATUS_ACTIVE
+    vendor1.is_event_eligible = True
+    vendor1.event_eligibility_status = Vendor.ELIGIBILITY_ELIGIBLE
     vendor1.save()
 
     vendor2 = register_vendor_service(
@@ -58,6 +60,8 @@ def test_demo_3_sealed_sourcing_event_and_award_workflow(db_roles):
         address="Austin TX",
     )
     vendor2.status = Vendor.STATUS_ACTIVE
+    vendor2.is_event_eligible = True
+    vendor2.event_eligibility_status = Vendor.ELIGIBILITY_ELIGIBLE
     vendor2.save()
 
     vendor3 = register_vendor_service(
@@ -68,6 +72,8 @@ def test_demo_3_sealed_sourcing_event_and_award_workflow(db_roles):
         address="Seattle WA",
     )
     vendor3.status = Vendor.STATUS_ACTIVE
+    vendor3.is_event_eligible = True
+    vendor3.event_eligibility_status = Vendor.ELIGIBILITY_ELIGIBLE
     vendor3.save()
 
     vendor_user1 = User.objects.create_user(

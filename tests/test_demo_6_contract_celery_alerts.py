@@ -9,7 +9,9 @@ from apps.contracts.services import (
     activate_contract_service,
     add_contract_milestone_service,
     add_contract_obligation_service,
+    approve_legal_review_service,
     create_contract_service,
+    submit_for_legal_review_service,
 )
 from apps.contracts.tasks import scan_contract_expirations_and_milestones_task
 from apps.notifications.models import Notification
@@ -24,8 +26,14 @@ def test_demo_6_contract_milestone_and_celery_alerts():
     Create a contract with milestone/renewal/obligation dates -> show scheduled Celery Beat notification execution evidence.
     """
     legal_role, _ = Role.objects.get_or_create(code=Role.LEGAL_MGR, defaults={"name": "Legal"})
+    proc_role, _ = Role.objects.get_or_create(
+        code=Role.PROC_MGR, defaults={"name": "Procurement Manager"}
+    )
     contract_owner = User.objects.create_user(
         email="legal.d6@hpe.com", password="password123", role=legal_role
+    )
+    proc_user = User.objects.create_user(
+        email="proc.d6@hpe.com", password="password123", role=proc_role
     )
 
     category = VendorCategory.objects.create(name="Logistics D6", code="CAT-LOG-D6")
@@ -65,8 +73,12 @@ def test_demo_6_contract_milestone_and_celery_alerts():
         due_date=today + timezone.timedelta(days=4),
     )
 
-    # Activate Contract
-    contract = activate_contract_service(contract=contract, user=contract_owner)
+    # Activate Contract through mandatory legal review and business approval
+    submit_for_legal_review_service(contract=contract, user=contract_owner)
+    approve_legal_review_service(
+        contract=contract, user=contract_owner, notes="Legal terms verified"
+    )
+    contract = activate_contract_service(contract=contract, user=proc_user)
     assert contract.status == Contract.STATUS_ACTIVE
 
     # Trigger scheduled Celery Beat Task

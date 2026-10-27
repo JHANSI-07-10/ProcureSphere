@@ -1055,15 +1055,62 @@ def get_stores_dashboard_data(user=None):
         "pending_vendor_returns_count": pending_vendor_returns_count,
         "stock_handoffs_count": stock_handoffs_count,
         "pending_stock_handoff_grns": pending_stock_handoff_grns,
+        "pending_stock_handoffs": pending_stock_handoff_grns,
         "completed_stock_handoff_grns": completed_stock_handoff_grns,
         "quantity_corrections_count": quantity_corrections_count,
     }
 
     recent_grns = all_grns[:10]
 
+    # 1. Pending Deliveries: POs issued or in partial receipt awaiting dock receiving
+    pending_deliveries_items = list(
+        PurchaseOrder.objects.filter(
+            status__in=[
+                PurchaseOrder.STATUS_ISSUED,
+                PurchaseOrder.STATUS_ACKNOWLEDGED,
+                PurchaseOrder.STATUS_PARTIAL_RECEIPT,
+            ]
+        )
+        .select_related("vendor", "cost_center")
+        .prefetch_related("lines")
+        .order_by("-created_at")[:15]
+    )
+
+    # 2. Pending Inspections: GRNs received at the dock awaiting quality inspection
+    pending_inspections_items = [g for g in all_grns if g.overall_inspection_status == "PENDING"][
+        :15
+    ]
+
+    # 3. Pending Stock Handoffs: Inspected GRNs with accepted quantities awaiting transfer to warehouse stock
+    pending_handoffs_items = [
+        g
+        for g in eligible_handoff_grns
+        if g.stock_handoff_status in ["PENDING_HANDOFF", "PARTIALLY_HANDED_OFF"]
+    ][:15]
+
+    # 4. Rejections & Returns: Receipt lines rejected during quality inspection
+    pending_rejections_items = list(
+        ReceiptLine.objects.filter(
+            Q(quantity_rejected__gt=Decimal("0.00")) | Q(rejections__isnull=False)
+        )
+        .select_related(
+            "receipt__po__vendor",
+            "receipt__received_by",
+            "po_line",
+            "inspection__inspected_by",
+        )
+        .prefetch_related("rejections")
+        .distinct()
+        .order_by("-receipt__received_date")[:15]
+    )
+
     return {
         "metrics": metrics,
         "recent_grns": recent_grns,
+        "pending_deliveries": pending_deliveries_items,
+        "pending_inspections": pending_inspections_items,
+        "pending_handoffs": pending_handoffs_items,
+        "pending_rejections": pending_rejections_items,
     }
 
 
@@ -1099,6 +1146,10 @@ def receipt_dashboard_view(request):
         {
             "metrics": data["metrics"],
             "recent_grns": data["recent_grns"],
+            "pending_deliveries": data.get("pending_deliveries", []),
+            "pending_inspections": data.get("pending_inspections", []),
+            "pending_handoffs": data.get("pending_handoffs", []),
+            "pending_rejections": data.get("pending_rejections", []),
         },
     )
 

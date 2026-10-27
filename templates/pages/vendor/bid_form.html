@@ -191,7 +191,7 @@
                                 <span class="fw-semibold text-dark">{{ att.title }}</span>
                                 <span class="badge bg-secondary ms-2">{{ att.get_document_type_display }}</span>
                             </div>
-                            <a href="{% url 'vendor_document_download' doc_type='bid' doc_id=att.id %}" class="btn btn-sm btn-link text-decoration-none">
+                            <a href="{% url 'vendor_portal_document_download' doc_type='bid' doc_id=att.id %}" class="btn btn-sm btn-link text-decoration-none">
                                 <i class="fa-solid fa-download me-1"></i> Download
                             </a>
                         </div>

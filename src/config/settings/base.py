@@ -31,7 +31,8 @@ _is_test_env = (
     or any(arg == "test" for arg in sys.argv)
 )
 if env_file.exists() and not _is_test_env:
-    env.read_env(str(env_file))
+    is_docker = os.environ.get("DB_HOST") == "db" or os.path.exists("/.dockerenv")
+    env.read_env(str(env_file), overwrite=not is_docker)
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env("DJANGO_DEBUG")
@@ -249,6 +250,10 @@ CELERY_BEAT_SCHEDULE = {
     "scan-overdue-approvals-and-escalate": {
         "task": "notifications.tasks.scan_overdue_approvals_and_escalate",
         "schedule": 3600.0,  # hourly scan for approvals exceeding SLA turnaround
+    },
+    "scan-vendor-document-expirations": {
+        "task": "apps.vendors.tasks.scan_vendor_document_expirations_task",
+        "schedule": 86400.0,  # daily scan (runs every 24h)
     },
 }
 

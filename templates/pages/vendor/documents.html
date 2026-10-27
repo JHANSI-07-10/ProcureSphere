@@ -26,7 +26,48 @@
         </div>
     </div>
 
+    <!-- Compliance & Event Eligibility Banner -->
+    {% if vendor.is_event_eligible %}
+        <div class="alert alert-success border-0 shadow-sm d-flex align-items-center py-3 px-3 mb-4 rounded-3">
+            <i class="fa-solid fa-circle-check text-success fs-4 me-3"></i>
+            <div>
+                <div class="fw-bold text-dark">Profile Legally Approved &amp; Eligible for Sourcing Events</div>
+                <div class="small text-muted">
+                    Your KYC documentation has been reviewed and approved by Legal Compliance. Your account is fully eligible to participate in RFQ and RFP sourcing events.
+                </div>
+            </div>
+        </div>
+    {% elif vendor.event_eligibility_status == 'EXPIRED' or vendor.event_eligibility_status == 'SUSPENDED' %}
+        <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center py-3 px-3 mb-4 rounded-3">
+            <i class="fa-solid fa-triangle-exclamation text-danger fs-4 me-3"></i>
+            <div>
+                <div class="fw-bold text-dark">Compliance Action Required — Event Eligibility Suspended</div>
+                <div class="small text-muted">
+                    One or more mandatory compliance documents have expired or require renewal. Sourcing event participation is temporarily restricted until renewed documents are uploaded and verified.
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center py-3 px-3 mb-4 rounded-3">
+            <i class="fa-solid fa-hourglass-half text-warning fs-4 me-3"></i>
+            <div>
+                <div class="fw-bold text-dark">KYC Verification &amp; Legal Approval Pending</div>
+                <div class="small text-muted">
+                    Your compliance documents are currently under review by Legal Compliance. Event eligibility will be granted once all mandatory documents are verified.
+                </div>
+            </div>
+        </div>
+    {% endif %}
 
+    <!-- Security notice banner -->
+    <div class="alert alert-dark border-0 shadow-sm d-flex align-items-center py-2 px-3 mb-4 rounded-3 bg-dark text-white">
+        <i class="fa-solid fa-shield-halved text-info fs-5 me-3"></i>
+        <div class="small">
+            <span class="badge bg-info text-dark fw-bold me-2 text-uppercase tracking-wider">Security</span>
+            <strong class="text-white fw-bolder fs-6">Strict Backend Authorization Enforced:</strong>
+            <span class="text-light ms-1">All documents are secured behind object-level authorization gates. Direct URL tampering or cross-vendor file access is strictly blocked and audited.</span>
+        </div>
+    </div>
 
     <!-- Filter Tabs -->
     <div class="card glass-card border-0 shadow-sm mb-4">
@@ -86,26 +127,49 @@
                                 {{ doc.file.name|slice:":35" }}
                             </td>
                             <td>
-                                {% if doc.is_verified %}
-                                <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 rounded-pill px-2 py-1 small">
+                                {% if doc.status == 'VERIFIED' or doc.is_verified %}
+                                <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 rounded-pill px-2 py-1 small fw-bold">
                                     <i class="fa-solid fa-circle-check me-1"></i> Verified
                                 </span>
+                                {% elif doc.status == 'CHANGES_REQUIRED' %}
+                                <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-50 rounded-pill px-2 py-1 small fw-bold">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Action Required
+                                </span>
+                                {% if doc.reviewer_notes %}
+                                    <div class="small text-danger mt-1"><em>Feedback:</em> {{ doc.reviewer_notes }}</div>
+                                {% endif %}
+                                {% elif doc.status == 'REJECTED' %}
+                                <span class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25 rounded-pill px-2 py-1 small fw-bold">
+                                    <i class="fa-solid fa-ban me-1"></i> Rejected
+                                </span>
+                                {% if doc.reviewer_notes %}
+                                    <div class="small text-danger mt-1"><em>Reason:</em> {{ doc.reviewer_notes }}</div>
+                                {% endif %}
+                                {% elif doc.status == 'EXPIRED' or doc.is_expired %}
+                                <span class="badge bg-dark bg-opacity-25 text-dark border border-dark border-opacity-25 rounded-pill px-2 py-1 small fw-bold">
+                                    <i class="fa-solid fa-calendar-xmark me-1"></i> Expired
+                                </span>
                                 {% else %}
-                                <span class="badge bg-warning bg-opacity-25 text-dark border border-warning border-opacity-50 rounded-pill px-2 py-1 small">
+                                <span class="badge bg-info bg-opacity-25 text-dark border border-info border-opacity-50 rounded-pill px-2 py-1 small fw-bold">
                                     <i class="fa-solid fa-clock me-1"></i> Pending Verification
                                 </span>
                                 {% endif %}
                             </td>
-                            <td class="small text-muted">
+                            <td class="small">
                                 {% if doc.expiry_date %}
-                                    {{ doc.expiry_date|date:"M d, Y" }}
+                                    <span class="{% if doc.is_expired %}text-danger fw-bold{% else %}text-muted{% endif %}">
+                                        {{ doc.expiry_date|date:"M d, Y" }}
+                                    </span>
+                                    {% if doc.is_expired %}
+                                        <div class="badge bg-danger text-white rounded-pill px-2 py-0 mt-1" style="font-size:0.65rem;">Expired</div>
+                                    {% endif %}
                                 {% else %}
                                     <span class="text-muted fst-italic">No expiration</span>
                                 {% endif %}
                             </td>
                             <td class="small text-muted">{{ doc.created_at|date:"M d, Y H:i" }}</td>
                             <td class="text-end pe-4">
-                                <a href="{% url 'vendor_document_download' doc_type='kyc' doc_id=doc.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm">
+                                <a href="{% url 'vendor_portal_document_download' doc_type='kyc' doc_id=doc.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm">
                                     <i class="fa-solid fa-cloud-arrow-down me-1"></i> Download
                                 </a>
                             </td>
@@ -176,7 +240,7 @@
                             </td>
                             <td class="small text-muted">{{ att.created_at|date:"M d, Y H:i" }}</td>
                             <td class="text-end pe-4">
-                                <a href="{% url 'vendor_document_download' doc_type='bid' doc_id=att.id %}" class="btn btn-outline-info btn-sm rounded-pill px-3 shadow-sm">
+                                <a href="{% url 'vendor_portal_document_download' doc_type='bid' doc_id=att.id %}" class="btn btn-outline-info btn-sm rounded-pill px-3 shadow-sm">
                                     <i class="fa-solid fa-cloud-arrow-down me-1"></i> Download
                                 </a>
                             </td>
