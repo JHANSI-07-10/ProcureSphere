@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.models import User
+from apps.accounts.models import Role, User
 from apps.audit.models import AuditLog
 from apps.budgets.models import Budget, SpendLedger
 from apps.organization.models import CostCenter
@@ -160,6 +160,19 @@ def amend_purchase_order_service(
     if not reason:
         raise ValidationError("Amendment justification reason is required.")
 
+    role_code = getattr(requested_by_user, "role_code", None) or (
+        requested_by_user.role.code
+        if getattr(requested_by_user, "role", None)
+        else None
+    )
+    if not (
+        getattr(requested_by_user, "is_superuser", False)
+        or role_code in (Role.PROC_EXEC, Role.PROC_MGR, Role.SUPER_ADMIN)
+    ):
+        raise ValidationError(
+            "Permission Denied: Only procurement roles or Super Admin can amend purchase orders."
+        )
+
     # 1. Take JSON snapshot of previous version
     snapshot = {
         "po_number": po.po_number,
@@ -170,8 +183,10 @@ def amend_purchase_order_service(
         "status": po.status,
         "lines": [
             {
+                "id": str(line.id),
                 "description": line.item_description,
                 "quantity": str(line.quantity),
+                "quantity_received": str(line.quantity_received),
                 "unit_price": str(line.unit_price),
                 "line_total": str(line.line_total),
             }
@@ -188,20 +203,76 @@ def amend_purchase_order_service(
         requested_by=requested_by_user,
     )
 
-    # 2. Update PO version and line items
+    # 2. Update PO version and line items in-place to preserve line history and FK integrity
     po.version += 1
-    po.lines.all().delete()
 
+    existing_lines = list(po.lines.all().order_by("id"))
+    matched_line_ids = set()
     subtotal = Decimal("0.00")
-    for item in updated_line_items:
-        line = POLine.objects.create(
-            po=po,
-            item_description=item["item_description"],
-            quantity=Decimal(str(item["quantity"])),
-            unit_price=Decimal(str(item["unit_price"])),
-            unit_of_measure=item.get("unit_of_measure", "EA"),
-        )
-        subtotal += line.line_total
+
+    for idx, item in enumerate(updated_line_items):
+        item_id = item.get("id") or item.get("line_id")
+        matched_line = None
+        if item_id:
+            matched_line = next((l for l in existing_lines if str(l.id) == str(item_id)), None)
+        if not matched_line and idx < len(existing_lines):
+            candidate = existing_lines[idx]
+            if candidate.id not in matched_line_ids:
+                matched_line = candidate
+        if not matched_line:
+            candidate = next(
+                (
+                    l
+                    for l in existing_lines
+                    if l.item_description == item.get("item_description")
+                    and l.id not in matched_line_ids
+                ),
+                None,
+            )
+            if candidate:
+                matched_line = candidate
+
+        qty = Decimal(str(item["quantity"]))
+        unit_price = Decimal(str(item["unit_price"]))
+        desc = item.get("item_description", "").strip()
+        uom = item.get("unit_of_measure", "EA")
+
+        if matched_line:
+            matched_line_ids.add(matched_line.id)
+            if qty < matched_line.quantity_received:
+                raise ValidationError(
+                    f"Amended quantity ({qty}) for '{matched_line.item_description}' cannot be less than "
+                    f"quantity already received ({matched_line.quantity_received})."
+                )
+            if desc:
+                matched_line.item_description = desc
+            matched_line.quantity = qty
+            matched_line.unit_price = unit_price
+            matched_line.unit_of_measure = uom
+            matched_line.save()
+            subtotal += matched_line.line_total
+        else:
+            new_line = POLine.objects.create(
+                po=po,
+                item_description=desc or f"Line Item {idx + 1}",
+                quantity=qty,
+                unit_price=unit_price,
+                unit_of_measure=uom,
+            )
+            subtotal += new_line.line_total
+
+    # Guard against removing lines referenced by receipts
+    for line in existing_lines:
+        if line.id not in matched_line_ids:
+            has_receipts = (
+                line.quantity_received > Decimal("0.00")
+                or line.receipt_lines.exists()
+            )
+            if has_receipts:
+                raise ValidationError(
+                    f"Cannot delete line '{line.item_description}' referenced by goods receipts."
+                )
+            line.delete()
 
     tax = subtotal * tax_rate
     total = subtotal + tax
