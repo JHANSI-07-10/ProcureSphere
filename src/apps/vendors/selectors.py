@@ -1,35 +1,54 @@
 from datetime import timedelta
 
+from django.db.models import Q
 from django.utils import timezone
 
 from .models import Vendor, VendorDocument
 
 
-def get_all_vendors():
-    return Vendor.objects.select_related("category").order_by("-created_at")
+def scope_vendors_queryset(qs, user=None):
+    if not user:
+        return qs
+    scoped_org = getattr(user, "effective_organization", None)
+    if scoped_org:
+        return qs.filter(
+            Q(organization=scoped_org)
+            | Q(created_by__organization=scoped_org)
+            | Q(created_by__department__organization=scoped_org)
+        )
+    if user.is_superuser:
+        return qs
+    return qs.none()
 
 
-def get_all_active_vendors():
-    return (
+def get_all_vendors(user=None):
+    qs = Vendor.objects.select_related("category").order_by("-created_at")
+    return scope_vendors_queryset(qs, user)
+
+
+def get_all_active_vendors(user=None):
+    qs = (
         Vendor.objects.select_related("category")
         .filter(status=Vendor.STATUS_ACTIVE)
         .order_by("legal_name")
     )
+    return scope_vendors_queryset(qs, user)
 
 
-def get_vendor_by_id(vendor_id):
-    return (
+def get_vendor_by_id(vendor_id, user=None):
+    qs = (
         Vendor.objects.select_related("category")
         .prefetch_related("documents", "contacts", "risk_records")
         .filter(id=vendor_id)
-        .first()
     )
+    return scope_vendors_queryset(qs, user).first()
 
 
-def get_vendors_by_status(status_code):
-    return (
+def get_vendors_by_status(status_code, user=None):
+    qs = (
         Vendor.objects.select_related("category").filter(status=status_code).order_by("-created_at")
     )
+    return scope_vendors_queryset(qs, user)
 
 
 def get_vendor_documents(vendor_id):
@@ -152,20 +171,23 @@ def get_vendor_dashboard_metrics(vendor, user=None):
 # ==============================================================================
 
 
-def get_governance_vendor_queryset():
+def get_governance_vendor_queryset(user=None):
     from .filters import annotate_governance
 
-    return annotate_governance(Vendor.objects.select_related("category")).order_by("-updated_at")
+    qs = annotate_governance(Vendor.objects.select_related("category")).order_by("-updated_at")
+    return scope_vendors_queryset(qs, user)
 
 
-def get_governance_metrics() -> dict:
+def get_governance_metrics(user=None) -> dict:
     """Database-backed governance KPIs (single aggregate query + two subquery counts)."""
     from django.db.models import Count, Q
 
     from .filters import PERFORMANCE_ISSUE_THRESHOLD, annotate_governance
     from .models import VendorRiskRecord
 
-    counts = Vendor.objects.aggregate(
+    base_qs = scope_vendors_queryset(Vendor.objects.all(), user)
+
+    counts = base_qs.aggregate(
         total=Count("id"),
         active=Count("id", filter=Q(status=Vendor.STATUS_ACTIVE)),
         pending_review=Count(
@@ -181,18 +203,18 @@ def get_governance_metrics() -> dict:
         on_hold=Count("id", filter=Q(status=Vendor.STATUS_ON_HOLD)),
         suspended=Count("id", filter=Q(status=Vendor.STATUS_SUSPENDED)),
     )
-    annotated = annotate_governance(Vendor.objects.all())
+    annotated = annotate_governance(base_qs)
     high_risk = annotated.filter(latest_risk_level=VendorRiskRecord.RISK_LEVEL_HIGH)
     perf_issues = annotated.filter(latest_composite_score__lt=PERFORMANCE_ISSUE_THRESHOLD)
     today = timezone.now().date()
-    expired_docs = Vendor.objects.filter(
+    expired_docs = base_qs.filter(
         status=Vendor.STATUS_ACTIVE, documents__expiry_date__lt=today
     )
     attention_ids = (
         set(high_risk.values_list("id", flat=True))
         | set(perf_issues.values_list("id", flat=True))
         | set(expired_docs.values_list("id", flat=True))
-        | set(Vendor.objects.filter(status=Vendor.STATUS_ON_HOLD).values_list("id", flat=True))
+        | set(base_qs.filter(status=Vendor.STATUS_ON_HOLD).values_list("id", flat=True))
     )
     counts.update(
         {

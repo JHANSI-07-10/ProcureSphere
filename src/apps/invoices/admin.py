@@ -33,6 +33,12 @@ class SupplierInvoiceAdmin(RoleBasedModelAdmin):
     )
     inlines = [InvoiceLineInline, MatchExceptionInline]
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            return qs.filter(po__cost_center__department__organization=request.user.effective_organization)
+        return qs
+
 
 class MatchExceptionAdmin(RoleBasedModelAdmin):
     list_display = (
@@ -46,7 +52,14 @@ class MatchExceptionAdmin(RoleBasedModelAdmin):
     list_filter = ("status", "exception_type")
     search_fields = ("invoice__invoice_number", "description")
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            return qs.filter(invoice__po__cost_center__department__organization=request.user.effective_organization)
+        return qs
+
 
 register_model(SupplierInvoice, SupplierInvoiceAdmin)
 register_model(InvoiceLine)
 register_model(MatchException, MatchExceptionAdmin)
+

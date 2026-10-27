@@ -1,6 +1,6 @@
 {% extends 'layouts/superadmin_base.html' %}
 
-{% block title %}User Management — Super Admin{% endblock %}
+{% block title %}User Management — Admin{% endblock %}
 
 {% block content %}
 {% include 'partials/messages.html' %}
@@ -17,10 +17,52 @@
     </div>
 </div>
 
+<!-- Filter & Search Toolbar -->
+<div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+    <div class="card-body p-3">
+        <form method="GET" action="/superadmin/users/" class="row g-2 align-items-center" id="userFilterForm">
+            <div class="col-12 col-md-5 col-lg-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0 text-muted">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="search" name="q" id="userSearchInput" class="form-control bg-light border-start-0"
+                        placeholder="Search by email, role, department, cost center..." value="{{ q|default:'' }}" autocomplete="off">
+                </div>
+            </div>
+            <div class="col-6 col-md-3 col-lg-3">
+                <select name="role" id="roleFilterSelect" class="form-select bg-light">
+                    <option value="">All Roles</option>
+                    {% for r in roles %}
+                    <option value="{{ r.code }}" {% if role_filter == r.code %}selected{% endif %}>{% if r.code == 'SUPER_ADMIN' %}Admin{% else %}{{ r.name }}{% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2 col-lg-2">
+                <select name="status" id="statusFilterSelect" class="form-select bg-light">
+                    <option value="">All Statuses</option>
+                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                    <option value="disabled" {% if status_filter == 'disabled' %}selected{% endif %}>Disabled</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-2 col-lg-2 d-flex gap-2 justify-content-md-end">
+                <button type="submit" class="btn btn-info text-white fw-semibold rounded-pill px-3 shadow-sm">
+                    <i class="fa-solid fa-filter me-1"></i> Filter
+                </button>
+                {% if q or role_filter or status_filter %}
+                <a href="/superadmin/users/" class="btn btn-outline-secondary rounded-pill px-3" title="Clear Filters">
+                    <i class="fa-solid fa-xmark me-1"></i> Clear
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card border-0 shadow-sm rounded-4">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0" id="usersTable">
                 <thead class="table-light">
                     <tr>
                         <th class="ps-4">Email / User</th>
@@ -31,9 +73,9 @@
                         <th class="text-end pe-4" style="width: 240px;">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="usersTableBody">
                     {% for u in users %}
-                    <tr>
+                    <tr data-user-row data-role="{{ u.role.code|default:'' }}" data-status="{% if u.is_active %}active{% else %}disabled{% endif %}">
                         <td class="ps-4 fw-bold text-dark">
                             {{ u.email }}
                             {% if u.must_change_password %}
@@ -42,7 +84,7 @@
                             </span>
                             {% endif %}
                         </td>
-                        <td><span class="badge bg-secondary">{{ u.role.name|default:"No Role" }}</span></td>
+                        <td><span class="badge bg-secondary">{% if u.role.code == 'SUPER_ADMIN' %}Admin{% else %}{{ u.role.name|default:"No Role" }}{% endif %}</span></td>
                         <td>
                             {{ u.department.name|default:"-" }}
                             {% if u.cost_center %}
@@ -71,9 +113,57 @@
                         <td colspan="6" class="text-center py-5 text-muted">No users found in the system.</td>
                     </tr>
                     {% endfor %}
+                    <tr id="noFilterResultsRow" style="display: none;">
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-user-slash me-2 text-secondary fs-4 d-block mb-2"></i>
+                            No users match the search filter.
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        const searchInput = document.getElementById('userSearchInput');
+        const roleSelect = document.getElementById('roleFilterSelect');
+        const statusSelect = document.getElementById('statusFilterSelect');
+        const rows = document.querySelectorAll('#usersTableBody tr[data-user-row]');
+        const noResultsRow = document.getElementById('noFilterResultsRow');
+
+        function filterUsers() {
+            const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+            const selectedRole = (roleSelect ? roleSelect.value : '').toLowerCase().trim();
+            const selectedStatus = (statusSelect ? statusSelect.value : '').toLowerCase().trim();
+            let visibleCount = 0;
+
+            rows.forEach(function (row) {
+                const text = row.textContent.toLowerCase();
+                const rowRole = (row.getAttribute('data-role') || '').toLowerCase();
+                const rowStatus = (row.getAttribute('data-status') || '').toLowerCase();
+
+                const matchesQuery = !query || text.includes(query);
+                const matchesRole = !selectedRole || rowRole === selectedRole;
+                const matchesStatus = !selectedStatus || rowStatus === selectedStatus;
+
+                if (matchesQuery && matchesRole && matchesStatus) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            if (noResultsRow) {
+                noResultsRow.style.display = (visibleCount === 0 && rows.length > 0) ? '' : 'none';
+            }
+        }
+
+        if (searchInput) searchInput.addEventListener('input', filterUsers);
+        if (roleSelect) roleSelect.addEventListener('change', filterUsers);
+        if (statusSelect) statusSelect.addEventListener('change', filterUsers);
+    })();
+</script>
 {% endblock %}

@@ -104,7 +104,7 @@ class Command(BaseCommand):
             roles[code] = role
 
         # 2. Seed Users
-        self.get_or_create_user(
+        admin_hpe = self.get_or_create_user(
             "admin@hpe.com", roles[Role.SUPER_ADMIN], is_superuser=True, password="Password123!"
         )
         self.get_or_create_user(
@@ -217,6 +217,10 @@ class Command(BaseCommand):
         org, _ = Organization.objects.get_or_create(
             code="HPE-GLOBAL", defaults={"name": "Hewlett Packard Enterprise"}
         )
+        org.admin_user = admin_hpe
+        org.save(update_fields=["admin_user"])
+        admin_hpe.organization = org
+        admin_hpe.save(update_fields=["organization"])
         dept_it, _ = Department.objects.get_or_create(
             organization=org, code="IT-OPS", defaults={"name": "IT Infrastructure Operations"}
         )
@@ -314,6 +318,9 @@ class Command(BaseCommand):
             submit_vendor_kyc_service(vendor=vendor1, user=proc_exec)
             verify_vendor_document_service(document=kyc_doc, verifier=legal_user)
             approve_vendor_service(vendor=vendor1, manager=proc_mgr, notes="Verified & Approved")
+        else:
+            vendor1.status = Vendor.STATUS_ACTIVE
+            vendor1.save(update_fields=["status"])
 
         vendor_user.vendor = vendor1
         vendor_user.save(update_fields=["vendor"])

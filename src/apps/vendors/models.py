@@ -56,6 +56,14 @@ class Vendor(TimeStampedModel):
     registration_number = models.CharField(max_length=100, blank=True)
 
     category = models.ForeignKey(VendorCategory, on_delete=models.PROTECT, related_name="vendors")
+    organization = models.ForeignKey(
+        "organization.Organization",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="vendors",
+        help_text="Organization to which this vendor belongs",
+    )
     status = models.CharField(
         max_length=50, choices=STATUS_CHOICES, default=STATUS_DRAFT, db_index=True
     )

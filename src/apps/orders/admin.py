@@ -42,6 +42,12 @@ class PurchaseOrderAdmin(admin.ModelAdmin):
     inlines = [POLineInline, DeliveryScheduleInline, POAmendmentInline]
     readonly_fields = ("created_at", "updated_at")
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            return qs.filter(cost_center__department__organization=request.user.effective_organization)
+        return qs
+
 
 @admin.register(POLine)
 class POLineAdmin(admin.ModelAdmin):
@@ -54,11 +60,23 @@ class POLineAdmin(admin.ModelAdmin):
     )
     search_fields = ("po__po_number", "item_description")
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            return qs.filter(po__cost_center__department__organization=request.user.effective_organization)
+        return qs
+
 
 @admin.register(POAmendment)
 class POAmendmentAdmin(admin.ModelAdmin):
     list_display = ("po", "amendment_number", "reason", "created_at")
     search_fields = ("po__po_number", "reason")
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            return qs.filter(po__cost_center__department__organization=request.user.effective_organization)
+        return qs
 
 
 @admin.register(DeliverySchedule)
@@ -72,3 +90,9 @@ class DeliveryScheduleAdmin(admin.ModelAdmin):
     )
     list_filter = ("status",)
     search_fields = ("po__po_number", "po_line__item_description")
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            return qs.filter(po__cost_center__department__organization=request.user.effective_organization)
+        return qs

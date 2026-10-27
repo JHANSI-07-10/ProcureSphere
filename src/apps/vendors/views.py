@@ -72,6 +72,23 @@ def _require_kyc_review(user):
         raise PermissionDenied("Your role cannot review KYC documents.")
 
 
+def _get_scoped_vendor_or_404(request, vendor_id, select_category=False):
+    from django.db.models import Q
+    qs = Vendor.objects.all()
+    if select_category:
+        qs = qs.select_related("category")
+    scoped_org = getattr(request.user, "effective_organization", None)
+    if scoped_org:
+        qs = qs.filter(
+            Q(organization=scoped_org)
+            | Q(created_by__organization=scoped_org)
+            | Q(created_by__department__organization=scoped_org)
+        )
+    elif not request.user.is_superuser:
+        raise Http404("Vendor not found.")
+    return get_object_or_404(qs, pk=vendor_id)
+
+
 def _run_kyc_action(request, vendor, kyc_action):
     """
     Executes one KYC action via the transactional services and returns a success message.
@@ -135,7 +152,7 @@ def _performance_band(score):
 
 def _vendor_register(request, *, mode):
     _require_governance_view(request.user)
-    queryset = get_governance_vendor_queryset()
+    queryset = get_governance_vendor_queryset(user=request.user)
     if mode == "onboarding":
         queryset = queryset.filter(status__in=APPROVAL_STAGE_STATUSES)
     vendor_filter = VendorFilter(request.GET or None, queryset=queryset)
@@ -160,7 +177,7 @@ def _vendor_register(request, *, mode):
         "filter": vendor_filter,
         "querystring": query_params.urlencode(),
         "caps": governance_capabilities(request.user),
-        "metrics": get_governance_metrics() if mode == "governance" else None,
+        "metrics": get_governance_metrics(user=request.user) if mode == "governance" else None,
     }
     return render(request, "pages/vendors/list.html", context)
 
@@ -189,7 +206,11 @@ def vendor_create_view(request):
     form = VendorRegistrationForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         try:
-            vendor = register_vendor_service(**form.cleaned_data, created_by_user=request.user)
+            vendor = register_vendor_service(
+                **form.cleaned_data,
+                created_by_user=request.user,
+                organization=getattr(request.user, "effective_organization", None),
+            )
         except ValidationError as exc:
             form.add_error(None, exc)
         else:
@@ -202,7 +223,7 @@ def vendor_create_view(request):
 def vendor_detail_view(request, vendor_id):
     """Governance detail: master data, status, risk, performance, documents, history."""
     _require_governance_view(request.user)
-    vendor = get_object_or_404(Vendor.objects.select_related("category"), pk=vendor_id)
+    vendor = _get_scoped_vendor_or_404(request, vendor_id, select_category=True)
 
     risk_records = list(vendor.risk_records.select_related("assessed_by")[:20])
     scorecards = list(vendor.scorecards.select_related("evaluated_by").order_by("-created_at")[:12])
@@ -251,7 +272,7 @@ def _form_errors(form):
 @require_POST
 def vendor_status_change_view(request, vendor_id):
     _require_governance_operate(request.user)
-    vendor = get_object_or_404(Vendor, pk=vendor_id)
+    vendor = _get_scoped_vendor_or_404(request, vendor_id)
     form = GovernanceStatusForm(request.POST)
     if not form.is_valid():
         messages.error(request, f"Status change rejected — {_form_errors(form)}")
@@ -284,7 +305,7 @@ def vendor_status_change_view(request, vendor_id):
 @require_POST
 def vendor_risk_assess_view(request, vendor_id):
     _require_governance_operate(request.user)
-    vendor = get_object_or_404(Vendor, pk=vendor_id)
+    vendor = _get_scoped_vendor_or_404(request, vendor_id)
     form = RiskAssessmentForm(request.POST)
     if not form.is_valid():
         messages.error(request, f"Risk assessment rejected — {_form_errors(form)}")
@@ -307,7 +328,7 @@ def vendor_risk_assess_view(request, vendor_id):
 @require_POST
 def vendor_kyc_action_view(request, vendor_id, kyc_action):
     """KYC review actions: start review, verify/reject document, request changes, activate."""
-    vendor = get_object_or_404(Vendor, pk=vendor_id)
+    vendor = _get_scoped_vendor_or_404(request, vendor_id)
     try:
         messages.success(request, _run_kyc_action(request, vendor, kyc_action))
     except ValidationError as exc:
@@ -321,7 +342,8 @@ def vendor_kyc_action_view(request, vendor_id, kyc_action):
 def vendor_document_download_view(request, vendor_id, doc_id):
     """Authorised internal download; files are never linked by their storage URL."""
     _require_governance_view(request.user)
-    doc = get_object_or_404(VendorDocument, pk=doc_id, vendor_id=vendor_id)
+    vendor = _get_scoped_vendor_or_404(request, vendor_id)
+    doc = get_object_or_404(VendorDocument, pk=doc_id, vendor=vendor)
     try:
         return FileResponse(doc.file.open("rb"), as_attachment=True)
     except (FileNotFoundError, ValueError):
@@ -344,7 +366,7 @@ def vendor_qualification_tab_view(request):
     """HTMX tab: vendors in SUBMITTED or KYC_REVIEW status awaiting qualification."""
     _require_governance_view(request.user)
     queue = (
-        get_governance_vendor_queryset()
+        get_governance_vendor_queryset(user=request.user)
         .filter(status__in=[Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW])
         .prefetch_related("documents", "risk_records")[:50]
     )
@@ -371,7 +393,7 @@ def vendor_qualification_tab_view(request):
 def vendor_documents_modal_view(request, vendor_id):
     """HTMX modal: review a vendor's VendorDocument (KYC) records + verify actions."""
     _require_governance_view(request.user)
-    vendor = get_object_or_404(Vendor.objects.select_related("category"), pk=vendor_id)
+    vendor = _get_scoped_vendor_or_404(request, vendor_id, select_category=True)
     documents = vendor.documents.select_related("verified_by").order_by("-created_at")
     return render(
         request,
@@ -389,7 +411,7 @@ def vendor_documents_modal_view(request, vendor_id):
 def vendor_risk_modal_view(request, vendor_id):
     """HTMX modal: GET shows risk form; POST records via record_vendor_risk_assessment_service."""
     _require_governance_operate(request.user)
-    vendor = get_object_or_404(Vendor, pk=vendor_id)
+    vendor = _get_scoped_vendor_or_404(request, vendor_id)
     form = RiskAssessmentForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         try:
@@ -448,7 +470,7 @@ def vendor_risk_modal_view(request, vendor_id):
 @require_POST
 def vendor_kyc_htmx_view(request, vendor_id, kyc_action):
     """HTMX KYC transitions; same shared handler and RBAC as vendor_kyc_action_view."""
-    vendor = get_object_or_404(Vendor, pk=vendor_id)
+    vendor = _get_scoped_vendor_or_404(request, vendor_id)
     try:
         detail = _run_kyc_action(request, vendor, kyc_action)
     except ValidationError as exc:
@@ -486,7 +508,11 @@ def vendor_register_modal_view(request):
     form = VendorRegistrationForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         try:
-            vendor = register_vendor_service(**form.cleaned_data, created_by_user=request.user)
+            vendor = register_vendor_service(
+                **form.cleaned_data,
+                created_by_user=request.user,
+                organization=getattr(request.user, "effective_organization", None),
+            )
         except ValidationError as exc:
             form.add_error(None, exc)
         else:
@@ -508,7 +534,7 @@ def vendor_register_modal_view(request):
 def vendor_issue_credentials_view(request, vendor_id):
     """Creates/resets the vendor login and emails credentials + portal link(s)."""
     _require_governance_operate(request.user)
-    vendor = get_object_or_404(Vendor, pk=vendor_id)
+    vendor = _get_scoped_vendor_or_404(request, vendor_id)
     error = None
     dispatch = None
     try:
@@ -538,7 +564,7 @@ def vendor_issue_credentials_view(request, vendor_id):
 def vendor_edit_view(request, vendor_id):
     """GET: renders edit form in an HTMX modal. POST: saves via update_vendor_service."""
     _require_governance_operate(request.user)
-    vendor = get_object_or_404(Vendor.objects.select_related("category"), pk=vendor_id)
+    vendor = _get_scoped_vendor_or_404(request, vendor_id, select_category=True)
 
     initial = {
         "legal_name": vendor.legal_name,
@@ -594,7 +620,7 @@ def vendor_edit_view(request, vendor_id):
 def vendor_delete_view(request, vendor_id):
     """Permanently deletes a DRAFT or REJECTED vendor after business-rule checks."""
     _require_governance_operate(request.user)
-    vendor = get_object_or_404(Vendor, pk=vendor_id)
+    vendor = _get_scoped_vendor_or_404(request, vendor_id)
     vendor_label = f"{vendor.vendor_number} — {vendor.legal_name}"
     try:
         delete_vendor_service(vendor=vendor, actor=request.user)

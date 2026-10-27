@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db.models import Q
 
 from apps.contracts.models import (
     Contract,
@@ -39,6 +40,17 @@ class ContractAdmin(admin.ModelAdmin):
     )
     inlines = [ContractVersionInline, ContractMilestoneInline]
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            org = request.user.effective_organization
+            return qs.filter(
+                Q(contract_owner__organization=org)
+                | Q(contract_owner__department__organization=org)
+                | Q(po__cost_center__department__organization=org)
+            )
+        return qs
+
 
 @admin.register(ContractAlert)
 class ContractAlertAdmin(admin.ModelAdmin):
@@ -50,6 +62,17 @@ class ContractAlertAdmin(admin.ModelAdmin):
     )
     list_filter = ("alert_type", "is_processed")
     search_fields = ("contract__contract_number", "message")
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            org = request.user.effective_organization
+            return qs.filter(
+                Q(contract__contract_owner__organization=org)
+                | Q(contract__contract_owner__department__organization=org)
+                | Q(contract__po__cost_center__department__organization=org)
+            )
+        return qs
 
 
 admin.site.register(ContractVersion)

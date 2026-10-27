@@ -29,7 +29,30 @@ class PurchaseRequisitionAdmin(RoleBasedModelAdmin):
     search_fields = ("pr_number", "title", "requester__email")
     inlines = [PRLineInline, PRAttachmentInline]
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            return qs.filter(department__organization=request.user.effective_organization)
+        return qs
+
+
+class PRLineAdmin(RoleBasedModelAdmin):
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            return qs.filter(requisition__department__organization=request.user.effective_organization)
+        return qs
+
+
+class PRAttachmentAdmin(RoleBasedModelAdmin):
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            return qs.filter(requisition__department__organization=request.user.effective_organization)
+        return qs
+
 
 register_model(PurchaseRequisition, PurchaseRequisitionAdmin)
-register_model(PRLine)
-register_model(PRAttachment)
+register_model(PRLine, PRLineAdmin)
+register_model(PRAttachment, PRAttachmentAdmin)
+

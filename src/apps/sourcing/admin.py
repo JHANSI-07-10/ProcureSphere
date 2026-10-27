@@ -34,6 +34,12 @@ class SourcingEventAdmin(admin.ModelAdmin):
     search_fields = ("event_number", "title", "description")
     inlines = [BidInviteInline]
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            return qs.filter(requisition__department__organization=request.user.effective_organization)
+        return qs
+
 
 class BidLineInline(admin.TabularInline):
     model = BidLine
@@ -76,6 +82,12 @@ class VendorBidAdmin(admin.ModelAdmin):
     )
     inlines = [BidLineInline, BidVersionInline, BidAttachmentInline]
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            return qs.filter(event__requisition__department__organization=request.user.effective_organization)
+        return qs
+
 
 @admin.register(Clarification)
 class ClarificationAdmin(admin.ModelAdmin):
@@ -94,6 +106,12 @@ class ClarificationAdmin(admin.ModelAdmin):
         "vendor__legal_name",
     )
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            return qs.filter(event__requisition__department__organization=request.user.effective_organization)
+        return qs
+
 
 @admin.register(BidEvaluation)
 class BidEvaluationAdmin(admin.ModelAdmin):
@@ -105,6 +123,12 @@ class BidEvaluationAdmin(admin.ModelAdmin):
         "created_at",
     )
     search_fields = ("event__event_number", "bid__bid_number")
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            return qs.filter(event__requisition__department__organization=request.user.effective_organization)
+        return qs
 
 
 @admin.register(AwardDecision)
@@ -120,3 +144,9 @@ class AwardDecisionAdmin(admin.ModelAdmin):
         "winning_bid__bid_number",
         "award_reason",
     )
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser and getattr(request.user, "effective_organization", None):
+            return qs.filter(event__requisition__department__organization=request.user.effective_organization)
+        return qs

@@ -1,17 +1,19 @@
 {% extends 'layouts/superadmin_base.html' %}
 
-{% block title %}Organizations & Cost Centers — Super Admin{% endblock %}
+{% block title %}Organizations & Cost Centers — Admin{% endblock %}
 
 {% block content %}
 <div class="row mb-4">
     <div class="col-12 d-flex justify-content-between align-items-center">
         <div>
             <h3 class="fw-bold text-dark mb-1"><i class="fa-solid fa-sitemap text-primary me-2"></i> Master Data: Organizations</h3>
-            <p class="text-muted mb-0">View all legal entities, departments, and cost centers.</p>
+            <p class="text-muted mb-0">{% if scoped_org %}View organization details, departments, and cost centers for {{ scoped_org.name }}.{% else %}View all legal entities, departments, and cost centers.{% endif %}</p>
         </div>
+        {% if is_superuser and not scoped_org %}
         <button hx-get="/superadmin/organizations/create/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-primary text-white fw-bold rounded-pill px-4 shadow-sm">
             <i class="fa-solid fa-plus me-2"></i> Add Organization
         </button>
+        {% endif %}
     </div>
 </div>
 
@@ -28,8 +30,9 @@
                         <tr>
                             <th class="ps-4">Code</th>
                             <th>Name</th>
+                            <th>Administrator</th>
                             <th>Status</th>
-                            <th></th>
+                            <th class="pe-4 text-end">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -38,6 +41,13 @@
                             <td class="ps-4 fw-bold text-primary">{{ org.code }}</td>
                             <td>{{ org.name }}</td>
                             <td>
+                                {% if org.admin_user %}
+                                <span class="badge bg-primary bg-opacity-10 text-primary fw-medium"><i class="fa-solid fa-user-shield me-1"></i>{{ org.admin_user.email }}</span>
+                                {% else %}
+                                <span class="text-muted small">Unassigned</span>
+                                {% endif %}
+                            </td>
+                            <td>
                                 {% if org.is_active %}
                                 <span class="badge bg-success bg-opacity-10 text-success">Active</span>
                                 {% else %}
@@ -45,11 +55,13 @@
                                 {% endif %}
                             </td>
                             <td class="pe-4 text-end">
-                                <button hx-get="/superadmin/organizations/{{ org.pk }}/edit/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Edit</button>
+                                <button hx-get="/superadmin/organizations/{{ org.pk }}/edit/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                                    <i class="fa-solid fa-pen-to-square me-1"></i> Edit
+                                </button>
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="3" class="text-center py-4 text-muted">No organizations defined.</td></tr>
+                        <tr><td colspan="5" class="text-center py-4 text-muted">No organizations defined.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

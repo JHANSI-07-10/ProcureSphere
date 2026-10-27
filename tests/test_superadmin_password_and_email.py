@@ -322,3 +322,104 @@ def test_existing_users_login_without_password_change_prompt():
     login_res = client.post("/login/", {"email": user.email, "password": pwd})
     assert login_res.status_code == 302
     assert login_res.url == "/"
+
+
+@pytest.mark.django_db
+def test_user_edit_with_custom_password_sends_email(superadmin_client, sample_roles_and_departments):
+    """Verifies that updating a user's password in user_edit_view sends that exact typed password via email."""
+    client, _ = superadmin_client
+    _, role_app, dept_hr, _ = sample_roles_and_departments
+    mail.outbox.clear()
+
+    user = User.objects.create_user(
+        email="test_edit_user@example.com",
+        password="InitialPassword123!",
+        role=role_app,
+        department=dept_hr,
+        organization=dept_hr.organization,
+    )
+
+    custom_new_password = "MyCustomPassword#2026!"
+    response = client.post(
+        reverse("superadmin:user_edit", kwargs={"user_id": user.id}),
+        {
+            "email": user.email,
+            "role": str(role_app.pk),
+            "department": str(dept_hr.pk),
+            "password": custom_new_password,
+            "is_active": "on",
+        },
+    )
+    assert response.status_code == 200
+
+    user.refresh_from_db()
+    assert check_password(custom_new_password, user.password) is True
+
+    # Email verification
+    assert len(mail.outbox) == 1
+    sent = mail.outbox[0]
+    assert sent.to == [user.email]
+    all_content = sent.body
+    if hasattr(sent, "alternatives"):
+        for alt_body, _ in sent.alternatives:
+            all_content += alt_body
+    assert custom_new_password in all_content
+
+
+@pytest.mark.django_db
+def test_org_edit_with_custom_password_sends_email(superadmin_client):
+    """Verifies that entering a custom admin password in org_edit_view sends that exact password to the admin."""
+    client, admin = superadmin_client
+    mail.outbox.clear()
+
+    org = Organization.objects.create(name="Delta Tech", code="DELTA-TECH", is_active=True)
+    admin_user = User.objects.create_user(
+        email="delta_admin@delta.local",
+        password="DeltaOldPassword123!",
+        role=admin.role,
+        organization=org,
+        is_staff=True,
+    )
+    org.admin_user = admin_user
+    org.save()
+
+    custom_admin_pwd = "DeltaAdminSecurePass#999!"
+    response = client.post(
+        reverse("superadmin:org_edit", kwargs={"org_id": org.id}),
+        {
+            "name": org.name,
+            "code": org.code,
+            "is_active": "on",
+            "admin_email": admin_user.email,
+            "admin_password": custom_admin_pwd,
+        },
+    )
+    assert response.status_code == 200
+
+    admin_user.refresh_from_db()
+    assert check_password(custom_admin_pwd, admin_user.password) is True
+
+    assert len(mail.outbox) == 1
+    sent = mail.outbox[0]
+    assert sent.to == [admin_user.email]
+    all_content = sent.body
+    if hasattr(sent, "alternatives"):
+        for alt_body, _ in sent.alternatives:
+            all_content += alt_body
+    assert custom_admin_pwd in all_content
+
+
+@pytest.mark.django_db
+def test_superadmin_sidebar_profile_alignment_and_non_clipping_signout(superadmin_client):
+    """Verifies that the Superadmin sidebar profile container includes the circular sign out button and truncation."""
+    client, _ = superadmin_client
+    response = client.get(reverse("superadmin:home"))
+    assert response.status_code == 200
+    html = response.content.decode("utf-8")
+
+    # Check for non-clipping circular button and min-width constraints
+    assert "rounded-circle flex-shrink-0 d-inline-flex align-items-center justify-content-center" in html
+    assert "min-width: 0" in html
+    assert "text-truncate" in html
+    assert "title=" in html
+

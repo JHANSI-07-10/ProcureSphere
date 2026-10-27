@@ -334,6 +334,15 @@ class VendorViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(id=user.vendor.id)
             else:
                 return qs.none()
+        elif not user.is_superuser:
+            scoped_org = getattr(user, "effective_organization", None)
+            if not scoped_org:
+                return qs.none()
+            qs = qs.filter(
+                Q(organization=scoped_org)
+                | Q(created_by__organization=scoped_org)
+                | Q(created_by__department__organization=scoped_org)
+            )
 
         filterset = VendorFilter(self.request.query_params, queryset=qs)
         if not filterset.is_valid():
@@ -388,7 +397,9 @@ class VendorViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        vendor = serializer.save()
+        user = self.request.user if self.request.user.is_authenticated else None
+        scoped_org = getattr(user, "effective_organization", None) if user and not user.is_superuser else None
+        vendor = serializer.save(created_by=user, organization=scoped_org)
         from apps.audit.models import AuditLog
 
         AuditLog.objects.create(

@@ -149,19 +149,20 @@ class User(AbstractUser):
 
 
     # Scoping relations
-
-    department = models.ForeignKey(
-
-        "organization.Department",
-
+    organization = models.ForeignKey(
+        "organization.Organization",
         on_delete=models.SET_NULL,
-
         null=True,
-
         blank=True,
-
+        related_name="org_users",
+        help_text="Organization to which this user belongs",
+    )
+    department = models.ForeignKey(
+        "organization.Department",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="users",
-
     )
 
     cost_center = models.ForeignKey(
@@ -235,8 +236,14 @@ class User(AbstractUser):
 
 
     @property
-
     def is_vendor(self):
-
         return self.role_code == Role.VENDOR_USER
+
+    @property
+    def effective_organization(self):
+        if self.organization_id:
+            return self.organization
+        if self.department_id and self.department:
+            return self.department.organization
+        return None
 
