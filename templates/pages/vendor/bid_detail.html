@@ -222,7 +222,7 @@
                                 <span class="fw-semibold text-dark small text-truncate">{{ att.title }}</span>
                                 <span class="badge bg-secondary ms-1 d-inline-block" style="font-size: 0.65rem;">{{ att.get_document_type_display }}</span>
                             </div>
-                            <a href="{% url 'vendor_document_download' doc_type='bid' doc_id=att.id %}" class="btn btn-sm btn-link text-decoration-none p-0">
+                            <a href="{% url 'vendor_portal_document_download' doc_type='bid' doc_id=att.id %}" class="btn btn-sm btn-link text-decoration-none p-0">
                                 <i class="fa-solid fa-download me-1"></i> Download
                             </a>
                         </div>

@@ -21,6 +21,7 @@ GOVERNANCE_READ_ROLES = {
 }
 GOVERNANCE_OPERATE_ROLES = {Role.SUPER_ADMIN, Role.PROC_EXEC, Role.PROC_MGR}
 GOVERNANCE_SUSPEND_ROLES = {Role.SUPER_ADMIN, Role.PROC_MGR}
+LEGAL_VERIFY_ROLES = {Role.SUPER_ADMIN, Role.LEGAL_MGR}
 
 
 def _role(user):
@@ -45,11 +46,17 @@ def can_suspend_vendor(user) -> bool:
     return _role(user) in GOVERNANCE_SUSPEND_ROLES
 
 
+def can_legal_verify_vendor(user) -> bool:
+    """Validate, approve or reject vendor credentials and portal access (Legal Manager)."""
+    return _role(user) in LEGAL_VERIFY_ROLES
+
+
 def governance_capabilities(user) -> dict:
     return {
         "can_view": can_view_governance(user),
         "can_operate": can_operate_governance(user),
         "can_suspend": can_suspend_vendor(user),
+        "can_legal_verify": can_legal_verify_vendor(user),
     }
 
 

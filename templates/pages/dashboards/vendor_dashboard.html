@@ -42,6 +42,28 @@
     </div>
     {% endif %}
 
+    {% if vendor.is_event_eligible %}
+    <div class="alert alert-success border-success shadow-sm rounded-4 p-3 mb-4 d-flex align-items-center gap-3">
+        <div class="fs-3 text-success"><i class="fa-solid fa-circle-check"></i></div>
+        <div class="flex-grow-1">
+            <h6 class="fw-bold text-dark mb-0">Legal Compliance Approved &bull; Eligible for Sourcing Events</h6>
+            <p class="mb-0 text-muted small mt-1">
+                Your vendor profile and compliance documents have been verified and approved by the Legal Manager. You are eligible to participate in RFQ/RFP sourcing events.
+            </p>
+        </div>
+    </div>
+    {% elif vendor.event_eligibility_status == 'EXPIRED' or vendor.event_eligibility_status == 'SUSPENDED' %}
+    <div class="alert alert-danger border-danger shadow-sm rounded-4 p-3 mb-4 d-flex align-items-center gap-3">
+        <div class="fs-3 text-danger"><i class="fa-solid fa-ban"></i></div>
+        <div class="flex-grow-1">
+            <h6 class="fw-bold text-dark mb-0">Compliance Action Required &bull; Event Eligibility Suspended</h6>
+            <p class="mb-0 text-muted small mt-1">
+                One or more mandatory compliance documents have expired or require renewal. Please visit your <a href="/vendor/documents/" class="text-danger fw-bold">Documents Vault</a> to upload renewed documents.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Step-by-Step Onboarding Progress Checklist Widget -->
     <div class="card glass-card border-0 shadow-sm mb-4">
         <div class="card-body p-4">

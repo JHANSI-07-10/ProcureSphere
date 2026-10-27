@@ -3,16 +3,52 @@
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
 <div class="modal-body">
-    <div class="mb-2 small text-muted">Status: {% include 'partials/vendor_status_badge.html' with status=vendor.status label=vendor.get_status_display %}</div>
+    <div class="mb-2 small text-muted d-flex align-items-center gap-2 flex-wrap">
+        <span>Status: {% include 'partials/vendor_status_badge.html' with status=vendor.status label=vendor.get_status_display %}</span>
+        <span>&bull;</span>
+        <span>Event Eligibility: 
+            {% if vendor.is_event_eligible %}
+                <span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i> Eligible</span>
+            {% elif vendor.event_eligibility_status == 'EXPIRED' or vendor.event_eligibility_status == 'SUSPENDED' %}
+                <span class="badge bg-danger"><i class="fa-solid fa-ban me-1"></i> {{ vendor.get_event_eligibility_status_display }}</span>
+            {% else %}
+                <span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i> {{ vendor.get_event_eligibility_status_display }}</span>
+            {% endif %}
+        </span>
+    </div>
     <div class="table-responsive"><table class="table table-sm align-middle small mb-3">
-        <thead><tr><th>Type</th><th>Title</th><th>Expiry</th><th>Verified</th><th class="text-end">Actions</th></tr></thead>
+        <thead><tr><th>Type</th><th>Title</th><th>Expiry</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
         <tbody>
         {% for doc in documents %}
             <tr>
                 <td>{{ doc.get_document_type_display }}</td>
-                <td>{{ doc.title }}</td>
-                <td>{{ doc.expiry_date|date:"Y-m-d"|default:"—" }}</td>
-                <td>{% if doc.is_verified %}<span class="badge bg-success">Verified</span>{% else %}<span class="badge bg-secondary">Pending</span>{% endif %}</td>
+                <td>
+                    <div class="fw-semibold">{{ doc.title }}</div>
+                    {% if doc.reviewer_notes %}
+                        <div class="text-danger small">Notes: {{ doc.reviewer_notes }}</div>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if doc.expiry_date %}
+                        <span class="{% if doc.is_expired %}text-danger fw-bold{% endif %}">{{ doc.expiry_date|date:"Y-m-d" }}</span>
+                        {% if doc.is_expired %}<span class="badge bg-danger ms-1">Expired</span>{% endif %}
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if doc.status == 'VERIFIED' or doc.is_verified %}
+                        <span class="badge bg-success">Verified</span>
+                    {% elif doc.status == 'CHANGES_REQUIRED' %}
+                        <span class="badge bg-warning text-dark">Action Required</span>
+                    {% elif doc.status == 'REJECTED' %}
+                        <span class="badge bg-danger">Rejected</span>
+                    {% elif doc.status == 'EXPIRED' or doc.is_expired %}
+                        <span class="badge bg-dark">Expired</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Pending</span>
+                    {% endif %}
+                </td>
                 <td class="text-end text-nowrap">
                     <a class="btn btn-sm btn-outline-secondary" href="{% url 'vendor_document_download' vendor.id doc.id %}">Download</a>
                     {% if caps.can_operate and not doc.is_verified %}
