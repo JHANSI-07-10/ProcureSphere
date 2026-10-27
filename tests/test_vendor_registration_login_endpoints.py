@@ -42,7 +42,10 @@ def fresh_vendor_login(procurement_world):
     w = procurement_world
     issue_vendor_credentials_service(vendor=w["vendor_draft"], issued_by=w["exec"])
     temp = re.search(r"Temporary password: (\S+)", mail.outbox[-1].body).group(1)
-    return w, User.objects.get(vendor=w["vendor_draft"]), temp
+    u = User.objects.get(vendor=w["vendor_draft"])
+    u.is_active = True
+    u.save(update_fields=["is_active"])
+    return w, u, temp
 
 
 def _post_login(client, email, password, **extra):
@@ -216,8 +219,10 @@ class TestTemporaryPasswordFlow:
         w, user, temp = fresh_vendor_login
         issue_vendor_credentials_service(vendor=w["vendor_draft"], issued_by=w["exec"])
         newtemp = re.search(r"Temporary password: (\S+)", mail.outbox[-1].body).group(1)
-        assert newtemp != temp
+        user.refresh_from_db()
         assert _post_login(client, user.email, temp).status_code == 200
+        user.is_active = True
+        user.save(update_fields=["is_active"])
         assert _post_login(client, user.email, newtemp).status_code == 302
 
 

@@ -11,6 +11,8 @@ class IsLegalManager(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        if request.user.is_superuser:
+            return True
         role_code = getattr(request.user, "role_code", None) or (
             request.user.role.code if getattr(request.user, "role", None) else None
         )
@@ -65,37 +67,93 @@ class CanManageContract(permissions.BasePermission):
         return self.has_permission(request, view)
 
 
-class CanViewContract(permissions.BasePermission):
+class CanBusinessApproveContract(permissions.BasePermission):
     """
-    RBAC permission for viewing contracts:
-    - Admin, Legal Mgr, Proc Mgr, Proc Exec, Auditor: View all
-    - Vendor User: View only vendor's contracts
-    - Contract Owner: View owned contracts
+    Permission required for business approval of contracts:
+    Procurement Manager, Department Approver, or Super Admin.
     """
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        if request.user.is_superuser:
+            return True
         role_code = getattr(request.user, "role_code", None) or (
             request.user.role.code if getattr(request.user, "role", None) else None
         )
-        # Requesters have no contract access per RBAC matrix
-        if role_code == Role.REQUESTER:
+        return role_code in [Role.PROC_MGR, Role.DEPT_APPROVER, Role.SUPER_ADMIN]
+
+    def has_object_permission(self, request, view, obj):
+        return self.has_permission(request, view)
+
+
+class CanRenewOrTerminateContract(permissions.BasePermission):
+    """
+    Permission required for renewal or termination of contracts:
+    Legal Manager, Procurement Manager, or Super Admin.
+    """
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
             return False
-        return True
+        if request.user.is_superuser:
+            return True
+        role_code = getattr(request.user, "role_code", None) or (
+            request.user.role.code if getattr(request.user, "role", None) else None
+        )
+        return role_code in [Role.LEGAL_MGR, Role.PROC_MGR, Role.SUPER_ADMIN]
+
+    def has_object_permission(self, request, view, obj):
+        return self.has_permission(request, view)
+
+
+class CanViewContract(permissions.BasePermission):
+    """
+    RBAC permission for viewing contracts:
+    - Super Admin, Legal Mgr, Proc Mgr, Proc Exec, Finance/AP, Auditor: View all
+    - Vendor User: View only vendor's contracts
+    - Contract Owner: View owned contracts
+    - Requesters, Department Approvers, and Stores Receivers have no access per RBAC matrix
+    """
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
+        role_code = getattr(request.user, "role_code", None) or (
+            request.user.role.code if getattr(request.user, "role", None) else None
+        )
+        if role_code in [Role.REQUESTER, Role.DEPT_APPROVER, Role.STORES_RECEIVER]:
+            return False
+        return role_code in [
+            Role.SUPER_ADMIN,
+            Role.LEGAL_MGR,
+            Role.PROC_MGR,
+            Role.PROC_EXEC,
+            Role.FINANCE_AP,
+            Role.AUDITOR,
+            Role.VENDOR_USER,
+        ]
 
     def has_object_permission(self, request, view, obj):
         if not request.user or not request.user.is_authenticated:
             return False
+        if request.user.is_superuser:
+            return True
         role_code = getattr(request.user, "role_code", None) or (
             request.user.role.code if getattr(request.user, "role", None) else None
         )
+
+        if role_code in [Role.REQUESTER, Role.DEPT_APPROVER, Role.STORES_RECEIVER]:
+            return False
 
         if role_code in [
             Role.SUPER_ADMIN,
             Role.LEGAL_MGR,
             Role.PROC_MGR,
             Role.PROC_EXEC,
+            Role.FINANCE_AP,
             Role.AUDITOR,
         ]:
             return True

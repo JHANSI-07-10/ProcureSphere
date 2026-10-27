@@ -188,10 +188,13 @@ def test_contract_milestones_and_obligations(contract_setup):
 def test_contract_renewal_and_termination(contract_setup):
     contract = contract_setup["contract"]
     legal_user = contract_setup["legal_user"]
+    proc_user = contract_setup["proc_user"]
     today = timezone.now().date()
 
-    # Activate contract first
-    contract = activate_contract_service(contract=contract, user=legal_user)
+    # Activate contract through mandatory legal review and business approval
+    submit_for_legal_review_service(contract=contract, user=legal_user)
+    approve_legal_review_service(contract=contract, user=legal_user, notes="Legal terms verified")
+    contract = activate_contract_service(contract=contract, user=proc_user)
     assert contract.status == Contract.STATUS_ACTIVE
 
     # Renew
@@ -412,8 +415,10 @@ def test_contract_expiry_renewal_and_notification_routing(client, contract_setup
     proc_user = contract_setup["proc_user"]
     today = timezone.now().date()
 
-    # 1. Activate contract
-    contract = activate_contract_service(contract=contract, user=legal_user)
+    # 1. Activate contract through legal review and business approval
+    submit_for_legal_review_service(contract=contract, user=legal_user)
+    approve_legal_review_service(contract=contract, user=legal_user, notes="Legal review approved")
+    contract = activate_contract_service(contract=contract, user=proc_user)
     assert contract.status == Contract.STATUS_ACTIVE
 
     # 2. Renew contract -> dispatches TYPE_CONTRACT_EXPIRATION notification
@@ -1568,7 +1573,9 @@ def test_day25_scheduled_contract_renewal_expiry_notifications_and_history(clien
         activate_contract_service,
         add_contract_milestone_service,
         add_contract_obligation_service,
+        approve_legal_review_service,
         create_contract_service,
+        submit_for_legal_review_service,
     )
     from apps.contracts.tasks import scan_contract_expirations_and_milestones_task
     from apps.notifications.models import Notification
@@ -1577,6 +1584,11 @@ def test_day25_scheduled_contract_renewal_expiry_notifications_and_history(clien
     proc_user = contract_setup["proc_user"]
     vendor = contract_setup["vendor"]
     today = timezone.now().date()
+
+    def _activate_contract(c):
+        submit_for_legal_review_service(contract=c, user=legal_user)
+        approve_legal_review_service(contract=c, user=legal_user, notes="Legal approved")
+        return activate_contract_service(contract=c, user=proc_user)
 
     # 1. Setup Contracts in different expiry/renewal & milestone/obligation stages
     # Contract 1: End date in 10 days, renewal notice period 30 days -> RENEWAL_DUE
@@ -1589,7 +1601,7 @@ def test_day25_scheduled_contract_renewal_expiry_notifications_and_history(clien
         renewal_notice_days=30,
         contract_owner=legal_user,
     )
-    activate_contract_service(contract=c_renewal, user=legal_user)
+    c_renewal = _activate_contract(c_renewal)
 
     # Contract 2: End date passed yesterday -> EXPIRED
     c_expired = create_contract_service(
@@ -1601,11 +1613,11 @@ def test_day25_scheduled_contract_renewal_expiry_notifications_and_history(clien
         renewal_notice_days=15,
         contract_owner=legal_user,
     )
-    activate_contract_service(contract=c_expired, user=legal_user)
+    c_expired = _activate_contract(c_expired)
 
     # Contract 3: Active with upcoming milestone and obligation
     c_active = contract_setup["contract"]
-    activate_contract_service(contract=c_active, user=legal_user)
+    c_active = _activate_contract(c_active)
 
     m_due = add_contract_milestone_service(
         contract=c_active,
@@ -1764,6 +1776,7 @@ def test_day26_validate_renewal_expiry_and_termination_scenarios(client, contrac
     from apps.contracts.models import Contract, ContractAlert, ContractVersion
     from apps.contracts.services import (
         activate_contract_service,
+        approve_legal_review_service,
         create_contract_service,
         renew_contract_service,
         submit_for_legal_review_service,
@@ -1773,8 +1786,14 @@ def test_day26_validate_renewal_expiry_and_termination_scenarios(client, contrac
     from apps.notifications.models import Notification
 
     legal_user = contract_setup["legal_user"]
+    proc_user = contract_setup["proc_user"]
     vendor = contract_setup["vendor"]
     today = timezone.now().date()
+
+    def _activate_contract(c):
+        submit_for_legal_review_service(contract=c, user=legal_user)
+        approve_legal_review_service(contract=c, user=legal_user, notes="Legal approved")
+        return activate_contract_service(contract=c, user=proc_user)
 
     # -------------------------------------------------------------
     # 1. RENEWAL SCENARIOS & VALIDATION GUARDS
@@ -1787,7 +1806,7 @@ def test_day26_validate_renewal_expiry_and_termination_scenarios(client, contrac
         end_date=today + timezone.timedelta(days=200),
         contract_owner=legal_user,
     )
-    activate_contract_service(contract=contract_active, user=legal_user)
+    contract_active = _activate_contract(contract_active)
     assert contract_active.status == Contract.STATUS_ACTIVE
 
     # a. Cannot renew DRAFT contract
@@ -1881,7 +1900,7 @@ def test_day26_validate_renewal_expiry_and_termination_scenarios(client, contrac
         end_date=today - timezone.timedelta(days=2),
         contract_owner=legal_user,
     )
-    activate_contract_service(contract=c_expiry_test, user=legal_user)
+    c_expiry_test = _activate_contract(c_expiry_test)
 
     # Run scheduled Celery Beat scan task
     scan_output_1 = scan_contract_expirations_and_milestones_task()
@@ -1908,7 +1927,7 @@ def test_day26_validate_renewal_expiry_and_termination_scenarios(client, contrac
         end_date=today + timezone.timedelta(days=180),
         contract_owner=legal_user,
     )
-    activate_contract_service(contract=c_term, user=legal_user)
+    c_term = _activate_contract(c_term)
 
     # a. Empty termination reason block
     with pytest.raises(ValidationError, match="Termination reason is required"):
@@ -2009,16 +2028,24 @@ def test_day27_validate_document_vault_and_contract_document_access(
     from apps.contracts.models import Contract, ContractDocument, ContractVersion
     from apps.contracts.services import (
         activate_contract_service,
+        approve_legal_review_service,
         create_contract_service,
         create_contract_version_service,
+        submit_for_legal_review_service,
         upload_contract_document_service,
     )
 
     legal_user = contract_setup["legal_user"]
+    proc_user = contract_setup["proc_user"]
     auditor_role = _get_or_create_role(Role.AUDITOR, "Compliance Auditor")
     auditor_user = _get_or_create_user("auditor.day27@hpe.com", "Password123!", auditor_role)
     vendor = contract_setup["vendor"]
     today = timezone.now().date()
+
+    def _activate_contract(c):
+        submit_for_legal_review_service(contract=c, user=legal_user)
+        approve_legal_review_service(contract=c, user=legal_user, notes="Legal approved")
+        return activate_contract_service(contract=c, user=proc_user)
 
     contract_a = create_contract_service(
         title="Day 27 Document Vault Contract A",
@@ -2028,7 +2055,7 @@ def test_day27_validate_document_vault_and_contract_document_access(
         end_date=today + timezone.timedelta(days=365),
         contract_owner=legal_user,
     )
-    activate_contract_service(contract=contract_a, user=legal_user)
+    contract_a = _activate_contract(contract_a)
 
     contract_b = create_contract_service(
         title="Day 27 Document Vault Contract B",
@@ -2038,7 +2065,7 @@ def test_day27_validate_document_vault_and_contract_document_access(
         end_date=today + timezone.timedelta(days=180),
         contract_owner=legal_user,
     )
-    activate_contract_service(contract=contract_b, user=legal_user)
+    contract_b = _activate_contract(contract_b)
 
     # -------------------------------------------------------------
     # 1. UPLOAD VALIDATION GUARDS

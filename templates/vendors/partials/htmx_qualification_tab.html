@@ -5,7 +5,24 @@
     {% for r in rows %}
         <tr>
             <td><a href="{% url 'vendor_detail' r.vendor.id %}">{{ r.vendor.legal_name }}</a><div class="text-muted small">{{ r.vendor.vendor_number }} · {{ r.vendor.category.name }}</div></td>
-            <td>{% include 'partials/vendor_status_badge.html' with status=r.vendor.status label=r.vendor.get_status_display %}</td>
+            <td>
+                {% include 'partials/vendor_status_badge.html' with status=r.vendor.status label=r.vendor.get_status_display %}
+                <div class="mt-1">
+                    {% if r.vendor.is_event_eligible %}
+                        <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 rounded-pill px-2 py-0" style="font-size:0.65rem;">
+                            <i class="fa-solid fa-circle-check me-1"></i> Eligible
+                        </span>
+                    {% elif r.vendor.event_eligibility_status == 'EXPIRED' or r.vendor.event_eligibility_status == 'SUSPENDED' %}
+                        <span class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25 rounded-pill px-2 py-0" style="font-size:0.65rem;">
+                            <i class="fa-solid fa-ban me-1"></i> {{ r.vendor.get_event_eligibility_status_display }}
+                        </span>
+                    {% else %}
+                        <span class="badge bg-warning bg-opacity-25 text-dark border border-warning border-opacity-25 rounded-pill px-2 py-0" style="font-size:0.65rem;">
+                            <i class="fa-solid fa-clock me-1"></i> {{ r.vendor.get_event_eligibility_status_display }}
+                        </span>
+                    {% endif %}
+                </div>
+            </td>
             <td><span class="badge bg-light text-dark border">{{ r.doc_verified }}/{{ r.doc_total }} verified</span></td>
             <td>{% if r.latest_risk %}<span class="badge {% if r.latest_risk.risk_level == 'HIGH' %}bg-danger{% elif r.latest_risk.risk_level == 'MEDIUM' %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ r.latest_risk.get_risk_level_display }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
             <td class="text-end text-nowrap">

@@ -100,6 +100,10 @@ def home_view(request):  # noqa: C901
             {
                 "metrics": data["metrics"],
                 "recent_grns": data["recent_grns"],
+                "pending_deliveries": data.get("pending_deliveries", []),
+                "pending_inspections": data.get("pending_inspections", []),
+                "pending_handoffs": data.get("pending_handoffs", []),
+                "pending_rejections": data.get("pending_rejections", []),
             },
         )
 

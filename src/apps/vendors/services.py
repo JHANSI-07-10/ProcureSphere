@@ -1,7 +1,8 @@
-from datetime import timedelta
 import logging
 import secrets
 import string
+import uuid
+from datetime import timedelta
 
 try:
     import requests
@@ -28,18 +29,20 @@ from apps.core.validators import (
     validate_pan_number,
 )
 from apps.notifications.models import Notification
-from apps.notifications.services import notify_vendor_users
+from apps.notifications.services import notify_users, notify_vendor_users
 
 from .brevo_email import build_credentials_html
+from .kyc_policy import ProvisionalKYCPolicy
 from .models import (
     Vendor,
     VendorCategory,
     VendorContact,
     VendorCredentialDispatch,
     VendorDocument,
+    VendorDocumentReviewHistory,
     VendorRiskRecord,
 )
-from .permissions import can_operate_governance
+from .permissions import can_legal_verify_vendor, can_operate_governance
 
 logger = logging.getLogger(__name__)
 
@@ -352,89 +355,202 @@ def _lock_reviewable_document(document: VendorDocument, reviewer: User) -> Vendo
     return document
 
 
+
+def verify_vendor_document_decision_service(
+    *,
+    document: VendorDocument = None,
+    document_id=None,
+    reviewer: User,
+    decision: str,
+    notes: str = "",
+    reviewer_notes: str = "",
+) -> VendorDocument:
+    """
+    Records a document-level decision by Legal Manager or Super Admin:
+    - VERIFY: Marks document verified and updates verification timestamp.
+    - REJECT: Marks document rejected with reviewer comments.
+    - REQUEST_CORRECTION: Marks document correction required with reviewer feedback.
+    Appends to VendorDocumentReviewHistory and logs AuditLog.
+    Re-evaluates vendor event eligibility if a mandatory document status changes.
+    """
+    if document is None:
+        if document_id is None:
+            raise ValidationError("Either document or document_id is required.")
+        document = VendorDocument.objects.select_for_update().get(pk=document_id)
+
+    if not can_legal_verify_vendor(reviewer) and not can_operate_governance(reviewer):
+        raise PermissionDenied("You do not have permission to verify or review KYC documents.")
+
+    resolved_notes = (notes or reviewer_notes or "").strip()
+    valid_decisions = {
+        "VERIFY": (VendorDocument.STATUS_VERIFIED, AuditLog.ACTION_VERIFY),
+        "REJECT": (VendorDocument.STATUS_REJECTED, AuditLog.ACTION_REJECT),
+        "REQUEST_CORRECTION": (VendorDocument.STATUS_CHANGES_REQUIRED, AuditLog.ACTION_UPDATE),
+    }
+    if decision not in valid_decisions:
+        raise ValidationError(
+            f"Invalid decision '{decision}'. Must be one of: {list(valid_decisions.keys())}"
+        )
+
+    if decision in ["REJECT", "REQUEST_CORRECTION"] and not resolved_notes:
+        raise ValidationError(
+            "Reviewer notes are mandatory when rejecting or requesting corrections on a document."
+        )
+
+    new_status, audit_action = valid_decisions[decision]
+    previous_status = document.status
+    previous_is_verified = document.is_verified
+
+    document.status = new_status
+    document.is_verified = bool(new_status == VendorDocument.STATUS_VERIFIED)
+    document.verified_by = reviewer
+    if decision == "VERIFY":
+        document.verified_at = timezone.now()
+    document.reviewer_notes = resolved_notes
+    document.save(
+        update_fields=[
+            "status",
+            "is_verified",
+            "verified_by",
+            "verified_at",
+            "reviewer_notes",
+            "updated_at",
+        ]
+    )
+
+    VendorDocumentReviewHistory.objects.create(
+        document=document,
+        reviewer=reviewer,
+        action=decision,
+        notes=resolved_notes,
+        previous_status=previous_status,
+        new_status=new_status,
+    )
+
+    create_audit_log_service(
+        actor=reviewer,
+        action=audit_action,
+        target_model="VendorDocument",
+        target_object_id=str(document.id),
+        previous_state={
+            "status": previous_status,
+            "is_verified": previous_is_verified,
+            "document_type": document.document_type,
+            "vendor": document.vendor.legal_name,
+        },
+        new_state={
+            "status": new_status,
+            "is_verified": document.is_verified,
+            "decision": decision,
+            "notes": resolved_notes,
+            "vendor": document.vendor.legal_name,
+        },
+    )
+
+    vendor = document.vendor
+    eval_result = ProvisionalKYCPolicy.evaluate_vendor_kyc_compliance(vendor)
+    if not eval_result["is_compliant"] and vendor.is_event_eligible:
+        previous_eligibility = vendor.event_eligibility_status
+        vendor.is_event_eligible = False
+        vendor.event_eligibility_status = Vendor.ELIGIBILITY_INELIGIBLE
+        vendor.save(update_fields=["is_event_eligible", "event_eligibility_status", "updated_at"])
+        create_audit_log_service(
+            actor=reviewer,
+            action=AuditLog.ACTION_UPDATE,
+            target_model="Vendor",
+            target_object_id=str(vendor.id),
+            previous_state={"is_event_eligible": True, "event_eligibility_status": previous_eligibility},
+            new_state={
+                "is_event_eligible": False,
+                "event_eligibility_status": Vendor.ELIGIBILITY_INELIGIBLE,
+                "reason": f"Document compliance failure ({document.title} marked {new_status})",
+            },
+        )
+    elif eval_result["is_compliant"] and not vendor.is_event_eligible and vendor.status == Vendor.STATUS_ACTIVE:
+        previous_eligibility = vendor.event_eligibility_status
+        vendor.is_event_eligible = True
+        vendor.event_eligibility_status = Vendor.ELIGIBILITY_ELIGIBLE
+        vendor.save(update_fields=["is_event_eligible", "event_eligibility_status", "updated_at"])
+        create_audit_log_service(
+            actor=reviewer,
+            action=AuditLog.ACTION_UPDATE,
+            target_model="Vendor",
+            target_object_id=str(vendor.id),
+            previous_state={"is_event_eligible": False, "event_eligibility_status": previous_eligibility},
+            new_state={
+                "is_event_eligible": True,
+                "event_eligibility_status": Vendor.ELIGIBILITY_ELIGIBLE,
+                "reason": "All KYC compliance documents verified and valid; eligibility reinstated",
+            },
+        )
+        notify_vendor_users(
+            vendor=vendor,
+            notification_type=Notification.TYPE_KYC_REQUEST,
+            title="Event Participation Eligibility Restored",
+            message=(
+                f"All mandatory KYC documents for {vendor.legal_name} have been reviewed and verified. "
+                "Your event participation eligibility has been restored."
+            ),
+            target_url="/vendor/documents/",
+        )
+        pe_user = vendor.created_by
+        if pe_user and pe_user.is_active:
+            notify_users(
+                users=[pe_user],
+                notification_type=Notification.TYPE_KYC_REQUEST,
+                title=f"Vendor Reinstated: {vendor.legal_name} is Event-Eligible",
+                message=(
+                    f"Replacement/renewed KYC documents for vendor '{vendor.legal_name}' have been verified by Legal. "
+                    "Event eligibility has been restored."
+                ),
+                target_url=f"/vendors/{vendor.id}/",
+            )
+
+    if decision in ["REJECT", "REQUEST_CORRECTION"]:
+        notify_vendor_users(
+            vendor=vendor,
+            notification_type=Notification.TYPE_KYC_REQUEST,
+            title=f"KYC Document Feedback: {document.title}",
+            message=(
+                f"Document '{document.title}' ({document.get_document_type_display()}) status: "
+                f"{document.get_status_display()}. Reviewer feedback: {document.reviewer_notes}. "
+                "Please upload a corrected or replacement document in your vendor portal."
+            ),
+            target_url="/vendor/documents/",
+        )
+
+    return document
+
+
 @transaction.atomic
 def verify_vendor_document_service(
     *, document: VendorDocument, verifier: User, notes: str = ""
 ) -> VendorDocument:
-    """Marks a pending KYC document as verified (Legal / Procurement KYC reviewers)."""
-    document = _lock_reviewable_document(document, verifier)
-    document.is_verified = True
-    document.verified_by = verifier
-    document.review_status = VendorDocument.REVIEW_VERIFIED
-    document.review_notes = (notes or "").strip()
-    document.reviewed_at = timezone.now()
-    document.save(
-        update_fields=[
-            "is_verified",
-            "verified_by",
-            "review_status",
-            "review_notes",
-            "reviewed_at",
-            "updated_at",
-        ]
+    """Marks a KYC document as verified (delegates to verify_vendor_document_decision_service)."""
+    if document.is_verified:
+        raise ValidationError("Document is already verified.")
+    return verify_vendor_document_decision_service(
+        document=document,
+        reviewer=verifier,
+        decision="VERIFY",
+        notes=notes or "Verified by governance reviewer.",
     )
-    create_audit_log_service(
-        actor=verifier,
-        action=AuditLog.ACTION_VERIFY,
-        target_model="VendorDocument",
-        target_object_id=document.id,
-        previous_state={"review_status": VendorDocument.REVIEW_PENDING, "is_verified": False},
-        new_state={
-            "review_status": document.review_status,
-            "is_verified": True,
-            "vendor": document.vendor.legal_name,
-            "document_type": document.document_type,
-            "notes": document.review_notes,
-        },
-    )
-    return document
 
 
 @transaction.atomic
 def reject_vendor_document_service(
     *, document: VendorDocument, reviewer: User, reason: str
 ) -> VendorDocument:
-    """Rejects a pending KYC document with a mandatory reason; the vendor may upload a replacement."""
+    """Rejects a pending KYC document with a mandatory reason (delegates to verify_vendor_document_decision_service)."""
     reason = (reason or "").strip()
     if not reason:
         raise ValidationError("A reason is required to reject a document.")
-    document = _lock_reviewable_document(document, reviewer)
-    document.is_verified = False
-    document.verified_by = None
-    document.review_status = VendorDocument.REVIEW_REJECTED
-    document.review_notes = reason
-    document.reviewed_at = timezone.now()
-    document.save(
-        update_fields=[
-            "is_verified",
-            "verified_by",
-            "review_status",
-            "review_notes",
-            "reviewed_at",
-            "updated_at",
-        ]
+    return verify_vendor_document_decision_service(
+        document=document,
+        reviewer=reviewer,
+        decision="REJECT",
+        notes=reason,
     )
-    create_audit_log_service(
-        actor=reviewer,
-        action=AuditLog.ACTION_REJECT,
-        target_model="VendorDocument",
-        target_object_id=document.id,
-        previous_state={"review_status": VendorDocument.REVIEW_PENDING},
-        new_state={
-            "review_status": document.review_status,
-            "vendor": document.vendor.legal_name,
-            "document_type": document.document_type,
-            "reason": reason,
-        },
-    )
-    notify_vendor_users(
-        vendor=document.vendor,
-        notification_type=Notification.TYPE_KYC_REQUEST,
-        title=f"KYC document rejected: {document.title}",
-        message=reason[:500],
-        target_url="/vendor/profile/",
-    )
-    return document
 
 
 @transaction.atomic
@@ -734,6 +850,8 @@ def upload_vendor_document_service(
     document_type: str,
     title: str = "",
     expiry_date=None,
+    replaces_document: VendorDocument = None,
+    replaces_document_id=None,
 ) -> VendorDocument:
     """
     Uploads a KYC or compliance document for a vendor with:
@@ -742,6 +860,8 @@ def upload_vendor_document_service(
     3. File validation (0-byte rejection, size limit, extension & magic-byte check).
     4. Concurrency-safe per-vendor document count quota (max 25).
     5. Concurrency-safe per-vendor total storage quota (max 50MB).
+    6. Links replaces_document if specified (or automatically associates prior document of same type).
+    7. Calculates document version. Never auto-verifies on upload.
     """
     # 1. Rate limiting
     rate_limit_key = f"user_{user.pk}" if (user and user.pk) else f"vendor_{vendor.pk}"
@@ -778,13 +898,30 @@ def upload_vendor_document_service(
     if not title or not title.strip():
         title = getattr(file, "name", "Vendor Document")
 
+    if not replaces_document and replaces_document_id:
+        replaces_document = VendorDocument.objects.filter(pk=replaces_document_id, vendor=vendor).first()
+
+    if not replaces_document:
+        replaces_document = (
+            VendorDocument.objects.filter(vendor=vendor, document_type=document_type)
+            .order_by("-created_at")
+            .first()
+        )
+
+    version = 1
+    if replaces_document:
+        version = (replaces_document.version or 1) + 1
+
     doc = VendorDocument.objects.create(
         vendor=locked_vendor,
         document_type=document_type,
         title=title.strip(),
         file=file,
         expiry_date=expiry_date,
+        status=VendorDocument.STATUS_PENDING,
         is_verified=False,
+        version=version,
+        replaces_document=replaces_document,
     )
 
     AuditLog.objects.create(
@@ -796,6 +933,8 @@ def upload_vendor_document_service(
             "vendor": locked_vendor.legal_name,
             "document_type": doc.document_type,
             "title": doc.title,
+            "version": version,
+            "replaces_document_id": str(replaces_document.id) if replaces_document else None,
         },
     )
     return doc
@@ -839,11 +978,15 @@ def _credentials_email_body(*, vendor: Vendor, email: str, password: str) -> str
 
 
 def issue_vendor_credentials_service(
-    *, vendor: Vendor, issued_by: User
+    *, vendor: Vendor, issued_by: User, auto_activate: bool = False
 ) -> VendorCredentialDispatch:
     """
     Creates (or resets) the vendor's portal login with a temporary password and emails the
     credentials plus portal login link(s) to the vendor's registered email.
+
+    By default (auto_activate=False), the account is created in an inactive state (is_active=False)
+    and the dispatch is placed in the Legal Manager's verification queue (legal_verification_status=PENDING).
+    Upon Legal Manager verification & approval, the user account is activated and vendor status set to ACTIVE.
 
     The password exists only in memory for the email; it is never stored or audited.
     Raises ValidationError on rule violations or if the email could not be delivered
@@ -871,23 +1014,46 @@ def issue_vendor_credentials_service(
         if existing:
             existing.set_password(password)
             existing.must_change_password = True
-            existing.is_active = True
+            existing.is_active = auto_activate
             existing.save(update_fields=["password", "must_change_password", "is_active"])
             user, action = existing, "credentials_reset"
         else:
             user = User.objects.create_user(
-                email, password, role=role, vendor=vendor, must_change_password=True
+                email,
+                password,
+                role=role,
+                vendor=vendor,
+                must_change_password=True,
+                is_active=auto_activate,
             )
             action = "credentials_created"
+
+        legal_status = (
+            VendorCredentialDispatch.LEGAL_STATUS_APPROVED
+            if auto_activate
+            else VendorCredentialDispatch.LEGAL_STATUS_PENDING
+        )
         dispatch = VendorCredentialDispatch.objects.create(
-            vendor=vendor, user=user, sent_to=email, created_by=issued_by
+            vendor=vendor,
+            user=user,
+            sent_to=email,
+            created_by=issued_by,
+            legal_verification_status=legal_status,
+            legal_verified_by=issued_by if auto_activate else None,
+            legal_verified_at=timezone.now() if auto_activate else None,
         )
         create_audit_log_service(
             actor=issued_by,
             action=AuditLog.ACTION_UPDATE,
             target_model="Vendor",
             target_object_id=str(vendor.id),
-            new_state={"event": action, "login_id": email, "vendor_number": vendor.vendor_number},
+            new_state={
+                "event": action,
+                "login_id": email,
+                "vendor_number": vendor.vendor_number,
+                "legal_verification_status": legal_status,
+                "user_active": auto_activate,
+            },
         )
 
     try:
@@ -949,6 +1115,496 @@ def issue_vendor_credentials_service(
     dispatch.sent_at = timezone.now()
     dispatch.save(update_fields=["status", "sent_at", "updated_at"])
     return dispatch
+
+
+@transaction.atomic
+def legal_validate_vendor_credentials_service(
+    *, dispatch_id: str | uuid.UUID, legal_user: User, notes: str = ""
+) -> VendorCredentialDispatch:
+    """
+    Validates and approves the vendor credentials dispatch as Legal Manager.
+    Activates the vendor's user account, marks vendor as ACTIVE and EVENT ELIGIBLE.
+    Verifies valid unverified KYC documents with audit records.
+    Dispatches notifications to both Vendor and registering Procurement Executive.
+    Records an immutable AuditLog entry.
+    """
+    if not can_legal_verify_vendor(legal_user):
+        raise PermissionDenied(
+            "Permission Denied: Only Legal Managers and Super Admins can verify and approve vendor portal credentials."
+        )
+
+    dispatch = (
+        VendorCredentialDispatch.objects.select_for_update()
+        .select_related("vendor", "user")
+        .filter(pk=dispatch_id)
+        .first()
+    )
+    if not dispatch:
+        raise ValidationError("Vendor credential dispatch record not found.")
+
+    if dispatch.legal_verification_status != VendorCredentialDispatch.LEGAL_STATUS_PENDING:
+        raise ValidationError(
+            f"Only pending credential dispatches can be approved. Current status: {dispatch.legal_verification_status}."
+        )
+
+    vendor = dispatch.vendor
+    user = dispatch.user
+
+    if vendor.status in CREDENTIAL_ISSUE_BLOCKED or vendor.status in [
+        Vendor.STATUS_SUSPENDED,
+        Vendor.STATUS_REJECTED,
+        Vendor.STATUS_ON_HOLD,
+    ]:
+        raise ValidationError(
+            f"Cannot approve credentials for a {vendor.get_status_display()} vendor."
+        )
+
+    eval_result = ProvisionalKYCPolicy.evaluate_vendor_kyc_compliance(vendor)
+    if not eval_result["is_compliant"]:
+        reasons = []
+        if eval_result.get("missing_mandatory_types"):
+            reasons.append(
+                f"Missing mandatory documents: {', '.join(eval_result['missing_mandatory_types'])}"
+            )
+        if eval_result.get("unverified_mandatory_types"):
+            reasons.append(
+                f"Unverified mandatory documents: {', '.join(eval_result['unverified_mandatory_types'])}"
+            )
+        if eval_result.get("expired_documents_count"):
+            reasons.append(f"{eval_result['expired_documents_count']} document(s) expired")
+        if eval_result.get("rejected_count"):
+            reasons.append(f"{eval_result['rejected_count']} document(s) rejected")
+        if eval_result.get("action_required_count"):
+            reasons.append(f"{eval_result['action_required_count']} document(s) require changes")
+        detail = "; ".join(reasons) if reasons else "Mandatory compliance criteria not met."
+        raise ValidationError(
+            f"Cannot approve vendor credentials: KYC compliance requirements not met. {detail}"
+        )
+
+    previous_dispatch_status = dispatch.legal_verification_status
+
+    # Update dispatch verification record
+    dispatch.legal_verification_status = VendorCredentialDispatch.LEGAL_STATUS_APPROVED
+    dispatch.legal_verified_by = legal_user
+    dispatch.legal_verified_at = timezone.now()
+    dispatch.legal_notes = (notes or "").strip()
+    dispatch.save(
+        update_fields=[
+            "legal_verification_status",
+            "legal_verified_by",
+            "legal_verified_at",
+            "legal_notes",
+            "updated_at",
+        ]
+    )
+
+    # Activate User
+    if user:
+        user.is_active = True
+        user.save(update_fields=["is_active"])
+
+    # Transition vendor to ACTIVE and ELIGIBLE if not suspended/blocked
+    previous_vendor_status = vendor.status
+    if vendor.status in [
+        Vendor.STATUS_DRAFT,
+        Vendor.STATUS_SUBMITTED,
+        Vendor.STATUS_KYC_REVIEW,
+        Vendor.STATUS_CHANGES_REQUIRED,
+    ]:
+        vendor.status = Vendor.STATUS_ACTIVE
+        if notes:
+            vendor.status_notes = notes.strip()
+
+    vendor.is_event_eligible = True
+    vendor.event_eligibility_status = Vendor.ELIGIBILITY_ELIGIBLE
+    vendor.legal_approved_by = legal_user
+    vendor.legal_approved_at = timezone.now()
+    if notes:
+        vendor.legal_approval_notes = notes.strip()
+
+    vendor.save(
+        update_fields=[
+            "status",
+            "status_notes",
+            "is_event_eligible",
+            "event_eligibility_status",
+            "legal_approved_by",
+            "legal_approved_at",
+            "legal_approval_notes",
+            "updated_at",
+        ]
+    )
+
+    # Audit trail
+    create_audit_log_service(
+        actor=legal_user,
+        action=AuditLog.ACTION_APPROVE,
+        target_model="VendorCredentialDispatch",
+        target_object_id=str(dispatch.id),
+        previous_state={
+            "legal_verification_status": previous_dispatch_status,
+            "vendor_status": previous_vendor_status,
+            "user_active": False,
+            "is_event_eligible": False,
+        },
+        new_state={
+            "legal_verification_status": VendorCredentialDispatch.LEGAL_STATUS_APPROVED,
+            "vendor_status": vendor.status,
+            "user_active": True,
+            "is_event_eligible": True,
+            "event_eligibility_status": Vendor.ELIGIBILITY_ELIGIBLE,
+            "notes": dispatch.legal_notes,
+        },
+    )
+
+    # 1. Notify Vendor: profile approved and eligible for events
+    notify_vendor_users(
+        vendor=vendor,
+        notification_type=Notification.TYPE_KYC_REQUEST,
+        title="Profile Legally Approved & Eligible for Events",
+        message=(
+            "Your vendor profile and KYC compliance documents have been reviewed and approved by the Legal Manager. "
+            "Your account is activated and you are eligible to participate in applicable procurement events, "
+            "subject to continuing compliance and document validity."
+        ),
+        target_url="/vendor/overview/",
+    )
+
+    # Email notification to vendor
+    vendor_email = (user and user.email) or vendor.email
+    if vendor_email:
+        try:
+            send_mail(
+                subject="ProcureSphere 360 - Profile Legally Approved & Event Eligible",
+                message=(
+                    f"Dear {vendor.legal_name},\n\n"
+                    "Your vendor profile and compliance documents have been reviewed and approved by Legal Manager.\n"
+                    "Your portal account is active, and you are eligible to participate in applicable procurement events.\n\n"
+                    "ProcureSphere 360 Procurement Team"
+                ),
+                from_email=None,
+                recipient_list=[vendor_email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
+    # 2. Notify Procurement Executive who registered vendor
+    pe_user = vendor.created_by or dispatch.created_by
+    if pe_user and pe_user.is_active:
+        notify_users(
+            users=[pe_user],
+            notification_type=Notification.TYPE_KYC_REQUEST,
+            title=f"Vendor Approved: {vendor.legal_name} is Event-Eligible",
+            message=(
+                f"Vendor '{vendor.legal_name}' ({vendor.vendor_number}) has been legally verified and approved by {legal_user.get_full_name() or legal_user.email}. "
+                "The vendor is now ACTIVE and eligible to participate in sourcing events."
+            ),
+            target_url=f"/vendors/{vendor.id}/",
+        )
+        if pe_user.email:
+            try:
+                send_mail(
+                    subject=f"ProcureSphere 360 - Vendor Approved: {vendor.legal_name}",
+                    message=(
+                        f"Dear {pe_user.get_full_name() or 'Procurement Executive'},\n\n"
+                        f"Vendor '{vendor.legal_name}' ({vendor.vendor_number}) has been verified and approved by Legal Manager.\n"
+                        "The vendor is now ACTIVE and eligible to participate in sourcing events.\n\n"
+                        "ProcureSphere 360 System"
+                    ),
+                    from_email=None,
+                    recipient_list=[pe_user.email],
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
+
+    return dispatch
+
+
+@transaction.atomic
+def legal_reject_vendor_credentials_service(
+    *, dispatch_id: str | uuid.UUID, legal_user: User, notes: str
+) -> VendorCredentialDispatch:
+    """
+    Rejects the vendor credentials dispatch as Legal Manager.
+    Keeps user account deactivated (is_active=False), revokes event eligibility,
+    and transitions vendor to CHANGES_REQUIRED.
+    Requires reviewer notes. Dispatches notifications to Vendor and Procurement Executive.
+    Records an immutable AuditLog entry.
+    """
+    if not can_legal_verify_vendor(legal_user):
+        raise PermissionDenied(
+            "Permission Denied: Only Legal Managers and Super Admins can verify vendor credentials."
+        )
+
+    if not (notes or "").strip():
+        raise ValidationError("Reviewer notes are mandatory when rejecting vendor credentials.")
+
+    dispatch = (
+        VendorCredentialDispatch.objects.select_for_update()
+        .select_related("vendor", "user")
+        .filter(pk=dispatch_id)
+        .first()
+    )
+    if not dispatch:
+        raise ValidationError("Vendor credential dispatch record not found.")
+
+    if dispatch.legal_verification_status != VendorCredentialDispatch.LEGAL_STATUS_PENDING:
+        raise ValidationError(
+            f"Only pending credential dispatches can be rejected. Current status: {dispatch.legal_verification_status}."
+        )
+
+    vendor = dispatch.vendor
+    user = dispatch.user
+
+    previous_dispatch_status = dispatch.legal_verification_status
+
+    dispatch.legal_verification_status = VendorCredentialDispatch.LEGAL_STATUS_REJECTED
+    dispatch.legal_verified_by = legal_user
+    dispatch.legal_verified_at = timezone.now()
+    dispatch.legal_notes = notes.strip()
+    dispatch.save(
+        update_fields=[
+            "legal_verification_status",
+            "legal_verified_by",
+            "legal_verified_at",
+            "legal_notes",
+            "updated_at",
+        ]
+    )
+
+    # Ensure user is inactive
+    if user:
+        user.is_active = False
+        user.save(update_fields=["is_active"])
+
+    previous_vendor_status = vendor.status
+    vendor.status = Vendor.STATUS_CHANGES_REQUIRED
+    vendor.is_event_eligible = False
+    vendor.event_eligibility_status = Vendor.ELIGIBILITY_INELIGIBLE
+    vendor.status_notes = notes.strip()
+    vendor.save(
+        update_fields=[
+            "status",
+            "status_notes",
+            "is_event_eligible",
+            "event_eligibility_status",
+            "updated_at",
+        ]
+    )
+
+    # Audit trail
+    create_audit_log_service(
+        actor=legal_user,
+        action=AuditLog.ACTION_REJECT,
+        target_model="VendorCredentialDispatch",
+        target_object_id=str(dispatch.id),
+        previous_state={
+            "legal_verification_status": previous_dispatch_status,
+            "vendor_status": previous_vendor_status,
+            "is_event_eligible": False,
+        },
+        new_state={
+            "legal_verification_status": VendorCredentialDispatch.LEGAL_STATUS_REJECTED,
+            "vendor_status": vendor.status,
+            "is_event_eligible": False,
+            "event_eligibility_status": Vendor.ELIGIBILITY_INELIGIBLE,
+            "notes": notes.strip(),
+        },
+    )
+
+    # 1. Notify Vendor: changes required with specific feedback
+    if user:
+        Notification.objects.create(
+            recipient=user,
+            notification_type=Notification.TYPE_KYC_REQUEST,
+            title="Vendor Profile Review: Action Required",
+            message=(
+                f"Your vendor portal registration was reviewed by Legal Manager. Status: Changes Required. "
+                f"Reviewer notes: {notes.strip()}. Please address the requested changes to proceed with event eligibility."
+            ),
+            target_url="/vendor/documents/",
+        )
+
+    other_users = [
+        u for u in User.objects.filter(vendor=vendor, is_active=True) if not user or u.id != user.id
+    ]
+    if other_users:
+        notify_users(
+            users=other_users,
+            notification_type=Notification.TYPE_KYC_REQUEST,
+            title="Vendor Profile Review: Action Required",
+            message=(
+                f"Your vendor portal registration was reviewed by Legal Manager. Status: Changes Required. "
+                f"Reviewer notes: {notes.strip()}. Please address the requested changes to proceed with event eligibility."
+            ),
+            target_url="/vendor/documents/",
+        )
+
+    # 2. Notify Procurement Executive
+    pe_user = vendor.created_by or dispatch.created_by
+    if pe_user and pe_user.is_active:
+        notify_users(
+            users=[pe_user],
+            notification_type=Notification.TYPE_KYC_REQUEST,
+            title=f"Vendor Verification Rejected: {vendor.legal_name}",
+            message=(
+                f"Vendor '{vendor.legal_name}' was rejected by Legal Manager {legal_user.get_full_name() or legal_user.email}. "
+                f"Feedback: {notes.strip()}."
+            ),
+            target_url=f"/vendors/{vendor.id}/",
+        )
+
+    return dispatch
+
+
+def scan_vendor_document_expirations_service(now=None) -> dict:
+    """
+    Idempotent scanner for vendor KYC document expirations and renewal reminders.
+    - Documents with expiry_date < today: marked EXPIRED, is_verified=False.
+      If mandatory, vendor event eligibility is suspended (is_event_eligible=False).
+      Notifications dispatched to Vendor, Procurement Executive, and Legal Manager.
+    - Documents expiring in 30, 15, or 7 days: renewal reminders dispatched.
+    """
+    today = (now or timezone.now()).date()
+    expired_count = 0
+    reminders_sent = 0
+    newly_suspended_count = 0
+
+    # 1. Process passed expirations
+    expired_docs = (
+        VendorDocument.objects.filter(expiry_date__lt=today)
+        .exclude(status=VendorDocument.STATUS_EXPIRED)
+        .select_related("vendor", "vendor__created_by")
+    )
+
+    for doc in expired_docs:
+        with transaction.atomic():
+            previous_status = doc.status
+            doc.status = VendorDocument.STATUS_EXPIRED
+            doc.is_verified = False
+            doc.save(update_fields=["status", "is_verified", "updated_at"])
+
+            VendorDocumentReviewHistory.objects.create(
+                document=doc,
+                reviewer=None,
+                action="EXPIRED",
+                notes=f"Document expired on {doc.expiry_date.isoformat()}.",
+                previous_status=previous_status,
+                new_status=VendorDocument.STATUS_EXPIRED,
+            )
+
+            create_audit_log_service(
+                actor=None,
+                action=AuditLog.ACTION_UPDATE,
+                target_model="VendorDocument",
+                target_object_id=str(doc.id),
+                previous_state={"status": previous_status, "is_verified": True},
+                new_state={
+                    "status": VendorDocument.STATUS_EXPIRED,
+                    "is_verified": False,
+                    "reason": "Passed validity expiry date",
+                },
+            )
+
+            vendor = doc.vendor
+            mandatory_codes = ProvisionalKYCPolicy.get_mandatory_doc_types(vendor)
+            if doc.document_type in mandatory_codes and vendor.is_event_eligible:
+                vendor.is_event_eligible = False
+                vendor.event_eligibility_status = Vendor.ELIGIBILITY_EXPIRED
+                vendor.save(
+                    update_fields=["is_event_eligible", "event_eligibility_status", "updated_at"]
+                )
+                newly_suspended_count += 1
+
+                create_audit_log_service(
+                    actor=None,
+                    action=AuditLog.ACTION_UPDATE,
+                    target_model="Vendor",
+                    target_object_id=str(vendor.id),
+                    previous_state={
+                        "is_event_eligible": True,
+                        "event_eligibility_status": Vendor.ELIGIBILITY_ELIGIBLE,
+                    },
+                    new_state={
+                        "is_event_eligible": False,
+                        "event_eligibility_status": Vendor.ELIGIBILITY_EXPIRED,
+                        "reason": f"Mandatory document '{doc.title}' expired",
+                    },
+                )
+
+                # Notifications
+                notify_vendor_users(
+                    vendor=vendor,
+                    notification_type=Notification.TYPE_KYC_REQUEST,
+                    title=f"KYC Document Expired: {doc.title}",
+                    message=(
+                        f"Mandatory document '{doc.title}' ({doc.get_document_type_display()}) expired on {doc.expiry_date}. "
+                        "Your event participation eligibility has been temporarily suspended. Please upload a renewed document."
+                    ),
+                    target_url="/vendor/documents/",
+                )
+
+                if vendor.created_by and vendor.created_by.is_active:
+                    notify_users(
+                        users=[vendor.created_by],
+                        notification_type=Notification.TYPE_KYC_REQUEST,
+                        title=f"Compliance Alert: Document Expired for {vendor.legal_name}",
+                        message=f"Mandatory KYC document '{doc.title}' for vendor '{vendor.legal_name}' has expired. Event eligibility suspended.",
+                        target_url=f"/vendors/{vendor.id}/",
+                    )
+
+                legal_users = User.objects.filter(role__code=Role.LEGAL_MGR, is_active=True)
+                if legal_users.exists():
+                    notify_users(
+                        users=legal_users,
+                        notification_type=Notification.TYPE_KYC_REQUEST,
+                        title=f"KYC Expiry: {vendor.legal_name}",
+                        message=f"Vendor '{vendor.legal_name}' mandatory document '{doc.title}' expired. Eligibility revoked.",
+                        target_url="/contracts/dashboard/",
+                    )
+
+            expired_count += 1
+
+    # 2. Upcoming expiry reminders (30, 15, 7 days)
+    for reminder_days in ProvisionalKYCPolicy.EXPIRY_REMINDER_DAYS:
+        target_date = today + timezone.timedelta(days=reminder_days)
+        upcoming_docs = VendorDocument.objects.filter(
+            expiry_date=target_date,
+            status=VendorDocument.STATUS_VERIFIED,
+        ).select_related("vendor", "vendor__created_by")
+
+        for doc in upcoming_docs:
+            vendor = doc.vendor
+            already_notified = Notification.objects.filter(
+                recipient__in=User.objects.filter(vendor=vendor),
+                notification_type=Notification.TYPE_KYC_REQUEST,
+                title__contains=f"Renewal Warning ({reminder_days} Days): {doc.title}",
+                created_at__date=today,
+            ).exists()
+            if not already_notified:
+                notify_vendor_users(
+                    vendor=vendor,
+                    notification_type=Notification.TYPE_KYC_REQUEST,
+                    title=f"Renewal Warning ({reminder_days} Days): {doc.title}",
+                    message=f"Document '{doc.title}' expires in {reminder_days} days ({doc.expiry_date}). Please prepare and submit renewal documentation.",
+                    target_url="/vendor/documents/",
+                )
+                reminders_sent += 1
+
+    total_suspended_vendors = Vendor.objects.filter(
+        event_eligibility_status__in=[Vendor.ELIGIBILITY_EXPIRED, Vendor.ELIGIBILITY_SUSPENDED],
+        documents__status=VendorDocument.STATUS_EXPIRED,
+    ).distinct().count()
+
+    return {
+        "expired_documents": expired_count,
+        "expired_count": expired_count,
+        "reminders_sent": reminders_sent,
+        "suspended_vendors": newly_suspended_count,
+        "total_suspended_vendors": total_suspended_vendors,
+    }
 
 
 @transaction.atomic
