@@ -42,10 +42,13 @@ class CanManageSupplierInvoice(BasePermission):
             or getattr(request.user, "role_code", None) == Role.VENDOR_USER
         )
 
-        if view.action in ["pay_invoice", "pay"]:
+        if view.action in ["pay_invoice", "pay", "resolve_exception", "resolve"]:
             if is_vendor or getattr(request.user, "role_code", None) == Role.AUDITOR:
                 return False
-            return request.user.is_superuser or request.user.role_code in [
+            user_role = getattr(request.user, "role_code", None) or (
+                request.user.role.code if getattr(request.user, "role", None) else None
+            )
+            return request.user.is_superuser or user_role in [
                 Role.SUPER_ADMIN,
                 Role.FINANCE_AP,
             ]

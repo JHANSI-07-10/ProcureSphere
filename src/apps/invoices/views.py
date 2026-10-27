@@ -34,6 +34,14 @@ def _enforce_internal_invoice_access(request, allowed_roles=None):
         raise PermissionDenied("Permission denied: insufficient role privileges for this invoice operation.")
 
 
+def _get_user_role(user):
+    if not user or not user.is_authenticated:
+        return None
+    return getattr(user, "role_code", None) or (
+        user.role.code if getattr(user, "role", None) else None
+    )
+
+
 @login_required(login_url="/login/")
 def list_view(request):
     _enforce_internal_invoice_access(request)
@@ -115,19 +123,12 @@ def exception_detail_view(request, exception_id):
 
 @login_required(login_url="/login/")
 def resolve_exception_view(request, exception_id):
-    _enforce_internal_invoice_access(
-        request, allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, "FINANCE_AP", "SUPER_ADMIN"]
-    )
-
-    role_code = getattr(request.user, "role_code", None) or (
-        request.user.role.code
-        if hasattr(request.user, "role") and request.user.role
-        else Role.SUPER_ADMIN
-    )
-    if role_code == Role.AUDITOR:
+    _enforce_internal_invoice_access(request)
+    role_code = _get_user_role(request.user)
+    if not (request.user.is_superuser or role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN]):
         messages.error(
             request,
-            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot resolve invoice match exceptions.",
+            "Permission Denied: Only Finance / AP personnel can resolve invoice match exceptions.",
         )
         return redirect("exceptions_list")
 
@@ -165,9 +166,14 @@ def ready_for_payment_view(request):
 
 @login_required(login_url="/login/")
 def pay_invoice_view(request, invoice_id):
-    _enforce_internal_invoice_access(
-        request, allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, "FINANCE_AP", "SUPER_ADMIN"]
-    )
+    _enforce_internal_invoice_access(request)
+    role_code = _get_user_role(request.user)
+    if not (request.user.is_superuser or role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN]):
+        messages.error(
+            request,
+            "Permission Denied: Only Finance / AP personnel can execute invoice payments.",
+        )
+        return redirect("ready_list")
     if request.method == "POST":
         invoice = get_object_or_404(SupplierInvoice, id=invoice_id)
         try:

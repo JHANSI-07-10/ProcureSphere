@@ -1,4 +1,5 @@
 import csv
+from functools import wraps
 
 import openpyxl
 from django.contrib import messages
@@ -32,6 +33,20 @@ def _is_super_admin(user):
         or getattr(user, "role_code", None) == Role.SUPER_ADMIN
         or (hasattr(user, "role") and user.role and user.role.code == Role.SUPER_ADMIN)
     )
+
+
+def super_admin_required(view_func):
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if not _is_super_admin(request.user):
+            return HttpResponse(
+                "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+                status=403,
+            )
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped
+
 
 
 @login_required
@@ -238,8 +253,6 @@ def cost_center_options_view(request):
         {"cost_centers": cost_centers},
     )
 
-
-@login_required
 def org_list_view(request):
     if not _is_super_admin(request.user):
         return HttpResponse(
@@ -280,6 +293,7 @@ def org_list_view(request):
 
 
 @login_required
+@super_admin_required
 def org_create_view(request):
     if not _is_super_admin(request.user):
         return HttpResponse(
@@ -298,6 +312,7 @@ def org_create_view(request):
 
 
 @login_required
+@super_admin_required
 def org_edit_view(request, org_id):
     if not _is_super_admin(request.user):
         return HttpResponse(
@@ -498,6 +513,7 @@ def cost_center_edit_view(request, cc_id):
 
 
 @login_required
+@super_admin_required
 def budget_list_view(request):
     if not _is_super_admin(request.user):
         return HttpResponse(
@@ -509,6 +525,7 @@ def budget_list_view(request):
 
 
 @login_required
+@super_admin_required
 def policy_list_view(request):
     if not _is_super_admin(request.user):
         return HttpResponse(
@@ -520,6 +537,7 @@ def policy_list_view(request):
 
 
 @login_required
+@super_admin_required
 def audit_list_view(request):
     if not _is_super_admin(request.user):
         return HttpResponse(
@@ -536,6 +554,7 @@ def audit_list_view(request):
 
 
 @login_required
+@super_admin_required
 def budget_create_view(request):
     if not _is_super_admin(request.user):
         return HttpResponse(
@@ -554,6 +573,7 @@ def budget_create_view(request):
 
 
 @login_required
+@super_admin_required
 def budget_edit_view(request, budget_id):
     if not _is_super_admin(request.user):
         return HttpResponse(
@@ -573,6 +593,7 @@ def budget_edit_view(request, budget_id):
 
 
 @login_required
+@super_admin_required
 def policy_create_view(request):
     if not _is_super_admin(request.user):
         return HttpResponse(
@@ -591,6 +612,7 @@ def policy_create_view(request):
 
 
 @login_required
+@super_admin_required
 def policy_edit_view(request, policy_id):
     if not _is_super_admin(request.user):
         return HttpResponse(
@@ -610,6 +632,7 @@ def policy_edit_view(request, policy_id):
 
 
 @login_required
+@super_admin_required
 def audit_export_view(request):
     if not _is_super_admin(request.user):
         return HttpResponse(

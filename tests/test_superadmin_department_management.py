@@ -221,3 +221,25 @@ def test_non_superadmin_access_denied(client, db_roles):
         {"organization": str(org.id), "name": "Modified Legal", "code": "LEG"},
     )
     assert res_post_edit.status_code == 403
+
+
+@pytest.mark.django_db
+def test_non_superadmin_user_and_org_management_denied(client, db_roles):
+    """
+    Non-Super Admin users cannot list, create, or edit users or organizations.
+    """
+    org = Organization.objects.create(name="HPE Global", code="HPE-GL", is_active=True)
+    requester = User.objects.create_user(
+        email="req.tester@hpe.com", password="Password123!", role=db_roles[Role.REQUESTER]
+    )
+
+    client.force_login(requester)
+
+    assert client.get(reverse("superadmin:users")).status_code == 403
+    assert client.get(reverse("superadmin:user_create")).status_code == 403
+    assert client.post(reverse("superadmin:user_create"), {"email": "bad@hpe.com"}).status_code == 403
+    assert client.get(reverse("superadmin:user_edit", kwargs={"user_id": requester.id})).status_code == 403
+    assert client.get(reverse("superadmin:organizations")).status_code == 403
+    assert client.get(reverse("superadmin:org_create")).status_code == 403
+    assert client.post(reverse("superadmin:org_create"), {"name": "Bad Org", "code": "BAD"}).status_code == 403
+    assert client.get(reverse("superadmin:org_edit", kwargs={"org_id": org.id})).status_code == 403

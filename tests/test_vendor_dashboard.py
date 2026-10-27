@@ -58,6 +58,8 @@ def vendor_setup(db_roles):
         address="100 Technology Way, San Jose, CA",
     )
     vendor_a.status = Vendor.STATUS_ACTIVE
+    vendor_a.is_event_eligible = True
+    vendor_a.event_eligibility_status = Vendor.ELIGIBILITY_ELIGIBLE
     vendor_a.save()
 
     user_vendor_a = User.objects.create_user(
@@ -76,6 +78,8 @@ def vendor_setup(db_roles):
         address="500 Enterprise Blvd, Austin, TX",
     )
     vendor_b.status = Vendor.STATUS_ACTIVE
+    vendor_b.is_event_eligible = True
+    vendor_b.event_eligibility_status = Vendor.ELIGIBILITY_ELIGIBLE
     vendor_b.save()
 
     user_vendor_b = User.objects.create_user(
@@ -1121,7 +1125,7 @@ def test_vendor_submit_partial_invoice(client, vendor_setup):
     assert invoice.vendor == v1
     assert invoice.po == po
     assert invoice.lines.count() == 1
-    
+
     inv_line = invoice.lines.first()
     assert inv_line.po_line == po_line1
     assert inv_line.quantity == Decimal("1")

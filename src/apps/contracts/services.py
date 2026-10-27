@@ -20,6 +20,14 @@ from .models import (
 )
 
 
+def _get_user_role_code(user):
+    if not user:
+        return None
+    return getattr(user, "role_code", None) or (
+        user.role.code if getattr(user, "role", None) else None
+    )
+
+
 @transaction.atomic
 def create_contract_service(
     *,
@@ -140,6 +148,12 @@ def approve_legal_review_service(*, contract: Contract, user: User, notes: str =
     """
     Approves legal review, moving contract to BUSINESS_APPROVAL state.
     """
+    role_code = _get_user_role_code(user)
+    if not (getattr(user, "is_superuser", False) or role_code in [Role.LEGAL_MGR, Role.SUPER_ADMIN]):
+        raise ValidationError(
+            "Permission Denied: Only Legal Managers or Super Admins can approve legal reviews."
+        )
+
     if contract.status != Contract.STATUS_LEGAL_REVIEW:
         raise ValidationError(
             f"Cannot perform legal approval on contract in status '{contract.status}'."
@@ -181,6 +195,12 @@ def reject_legal_review_service(*, contract: Contract, user: User, reason: str) 
     """
     Rejects legal review, returning contract to DRAFT state for corrections.
     """
+    role_code = _get_user_role_code(user)
+    if not (getattr(user, "is_superuser", False) or role_code in [Role.LEGAL_MGR, Role.SUPER_ADMIN]):
+        raise ValidationError(
+            "Permission Denied: Only Legal Managers or Super Admins can reject legal reviews."
+        )
+
     if not reason or not str(reason).strip():
         raise ValidationError("Rejection reason is required.")
     if contract.status != Contract.STATUS_LEGAL_REVIEW:
@@ -222,6 +242,15 @@ def approve_business_service(*, contract: Contract, user: User, notes: str = "")
             f"Cannot activate contract: Vendor '{contract.vendor.legal_name}' is suspended."
         )
 
+    role_code = _get_user_role_code(user)
+    if not (
+        getattr(user, "is_superuser", False)
+        or role_code in [Role.PROC_MGR, Role.DEPT_APPROVER, Role.SUPER_ADMIN]
+    ):
+        raise ValidationError(
+            "Permission Denied: Only Procurement Managers, Department Approvers, or Super Admins can perform business approval."
+        )
+
     if contract.status != Contract.STATUS_BUSINESS_APPROVAL:
         raise ValidationError(
             f"Cannot perform business approval on contract in status '{contract.status}'. Mandatory legal review must be completed first."
@@ -254,22 +283,15 @@ def approve_business_service(*, contract: Contract, user: User, notes: str = "")
 @transaction.atomic
 def activate_contract_service(*, contract: Contract, user: User) -> Contract:
     """
-    Activates contract state from DRAFT / LEGAL_REVIEW to ACTIVE directly.
+    Activates contract state after verifying mandatory workflow approvals.
+    Direct activation from DRAFT or LEGAL_REVIEW without completing legal and business approval is forbidden.
     """
-    previous_status = contract.status
-    contract.status = Contract.STATUS_ACTIVE
-    contract.save(update_fields=["status", "updated_at"])
-
-    AuditLog.objects.create(
-        actor=user,
-        action=AuditLog.ACTION_APPROVE,
-        target_model="Contract",
-        target_object_id=str(contract.id),
-        previous_state={"status": previous_status},
-        new_state={"status": contract.status},
-    )
-
-    return contract
+    if contract.status != Contract.STATUS_BUSINESS_APPROVAL:
+        raise ValidationError(
+            f"Cannot activate contract in status '{contract.status}'. "
+            f"Mandatory legal review and business approval must be completed first."
+        )
+    return approve_business_service(contract=contract, user=user)
 
 
 @transaction.atomic
@@ -286,6 +308,15 @@ def create_contract_version_service(
     Amends contract by incrementing version number, preserving prior version values,
     and updating active contract values.
     """
+    role_code = _get_user_role_code(user)
+    if not (
+        getattr(user, "is_superuser", False)
+        or role_code in [Role.LEGAL_MGR, Role.PROC_MGR, Role.SUPER_ADMIN]
+    ):
+        raise ValidationError(
+            "Permission Denied: Only Legal Managers, Procurement Managers, or Super Admins can amend contracts."
+        )
+
     if not amendment_summary or not str(amendment_summary).strip():
         raise ValidationError("Amendment summary is required.")
     if end_date and start_date and end_date < start_date:
@@ -553,6 +584,15 @@ def renew_contract_service(
     """
     Renews an active or renewal-due contract, creating a new version.
     """
+    role_code = _get_user_role_code(user)
+    if not (
+        getattr(user, "is_superuser", False)
+        or role_code in [Role.LEGAL_MGR, Role.PROC_MGR, Role.SUPER_ADMIN]
+    ):
+        raise ValidationError(
+            "Permission Denied: Only Legal Managers, Procurement Managers, or Super Admins can renew contracts."
+        )
+
     if contract.status not in [
         Contract.STATUS_ACTIVE,
         Contract.STATUS_RENEWED,
@@ -624,6 +664,15 @@ def terminate_contract_service(*, contract: Contract, user: User, reason: str) -
     """
     Terminates a contract.
     """
+    role_code = _get_user_role_code(user)
+    if not (
+        getattr(user, "is_superuser", False)
+        or role_code in [Role.LEGAL_MGR, Role.PROC_MGR, Role.SUPER_ADMIN]
+    ):
+        raise ValidationError(
+            "Permission Denied: Only Legal Managers, Procurement Managers, or Super Admins can terminate contracts."
+        )
+
     if not reason or not str(reason).strip():
         raise ValidationError("Termination reason is required.")
     if contract.status == Contract.STATUS_TERMINATED:

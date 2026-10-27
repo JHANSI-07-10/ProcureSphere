@@ -40,9 +40,7 @@ def _resolve_base_layout(role_code):
         return "layouts/superadmin_base.html"
     if role_code in ("AUDITOR", "COMPLIANCE_AUDITOR", "AUDIT"):
         return "audit/base_auditor.html"
-    if role_code in ("PROCUREMENT_MANAGER", "PROC_MGR", "MANAGER"):
-        return "manager/base_manager.html"
-    if role_code in ("LEGAL_MGR", "LEGAL"):
+    if role_code in ("LEGAL_MGR", "LEGAL_MANAGER", "LEGAL"):
         return "layouts/legal_base.html"
     if role_code in ("STORES_RECEIVER", "STORES"):
         return "layouts/stores_base.html"
@@ -50,6 +48,8 @@ def _resolve_base_layout(role_code):
         return "layouts/approver_base.html"
     if role_code in ("REQUESTER",):
         return "layouts/requester_base.html"
+    if role_code in ("PROCUREMENT_MANAGER", "PROC_MGR", "MANAGER"):
+        return "manager/base_manager.html"
     if role_code in ("VENDOR_USER", "VENDOR"):
         return "layouts/vendor_base.html"
     return "layouts/finance_base.html"

@@ -3,6 +3,8 @@ Tests for Vendor PAN and GSTIN fields, validations, data migration backfill, and
 Part of Step 6: Add Separate PAN and GSTIN Fields Safely.
 """
 
+import importlib
+
 import pytest
 from django.core.exceptions import ValidationError
 from django.urls import reverse
@@ -18,17 +20,16 @@ from apps.core.validators import (
     validate_pan_number,
 )
 from apps.vendors.forms import VendorProfileUpdateForm, VendorRegistrationForm
-import importlib
-
-migration_0008 = importlib.import_module(
-    "apps.vendors.migrations.0008_vendor_pan_number_vendor_gstin_and_backfill"
-)
-backfill_pan_and_gstin = migration_0008.backfill_pan_and_gstin
 from apps.vendors.models import Vendor, VendorCategory
 from apps.vendors.services import (
     register_vendor_service,
     update_vendor_profile_service,
 )
+
+migration_0008 = importlib.import_module(
+    "apps.vendors.migrations.0008_vendor_pan_number_vendor_gstin_and_backfill"
+)
+backfill_pan_and_gstin = migration_0008.backfill_pan_and_gstin
 
 pytestmark = [pytest.mark.django_db, pytest.mark.regression]
 

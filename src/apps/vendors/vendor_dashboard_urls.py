@@ -76,7 +76,7 @@ urlpatterns = [
     path(
         "documents/download/<str:doc_type>/<uuid:doc_id>/",
         views.vendor_document_download_view,
-        name="vendor_document_download",
+        name="vendor_portal_document_download",
     ),
     # Notifications
     path("notifications/", views.vendor_notifications_view, name="vendor_notifications"),

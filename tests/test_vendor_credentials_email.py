@@ -10,8 +10,11 @@ from django.urls import reverse
 
 from apps.accounts.models import Role, User
 from apps.audit.models import AuditLog
-from apps.vendors.models import Vendor, VendorCredentialDispatch
-from apps.vendors.services import issue_vendor_credentials_service
+from apps.vendors.models import Vendor, VendorCredentialDispatch, VendorDocument
+from apps.vendors.services import (
+    issue_vendor_credentials_service,
+    legal_validate_vendor_credentials_service,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -76,6 +79,7 @@ def test_register_via_dashboard_modal_then_issue_credentials(client, procurement
     dispatch = VendorCredentialDispatch.objects.get(vendor=vendor)
     assert dispatch.status == VendorCredentialDispatch.STATUS_SENT
     assert dispatch.created_by == w["exec"]
+    assert dispatch.legal_verification_status == VendorCredentialDispatch.LEGAL_STATUS_PENDING
     # the temporary password must never be persisted in audit evidence
     pwd = _temp_password(msg.body)
     assert not any(pwd in str(a.new_state) for a in AuditLog.objects.filter(target_model="Vendor"))
@@ -83,9 +87,39 @@ def test_register_via_dashboard_modal_then_issue_credentials(client, procurement
 
 def test_vendor_logs_in_and_is_forced_to_change_password(client, procurement_world):
     w = procurement_world
-    issue_vendor_credentials_service(vendor=w["vendor_draft"], issued_by=w["exec"])
+    dispatch = issue_vendor_credentials_service(vendor=w["vendor_draft"], issued_by=w["exec"])
     temp = _temp_password(mail.outbox[0].body)
     vendor_user = User.objects.get(vendor=w["vendor_draft"])
+
+    # Attempting login before legal approval is blocked with warning message
+    blocked_resp = client.post("/login/", {"email": vendor_user.email, "password": temp})
+    assert blocked_resp.status_code == 200
+    assert "pending Legal Manager verification and approval" in blocked_resp.content.decode()
+
+    # Attach mandatory verified KYC documents so legal validation passes compliance checks
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    dummy_pdf = SimpleUploadedFile("doc.pdf", b"%PDF-1.4 dummy", content_type="application/pdf")
+    for doc_type, title in [
+        (VendorDocument.DOC_TYPE_CERT, "Certificate of Incorporation"),
+        (VendorDocument.DOC_TYPE_TAX, "Tax Clearance Certificate"),
+        (VendorDocument.DOC_TYPE_BANK, "Bank Verification Document"),
+    ]:
+        VendorDocument.objects.create(
+            vendor=w["vendor_draft"],
+            document_type=doc_type,
+            title=title,
+            file=dummy_pdf,
+            status=VendorDocument.STATUS_VERIFIED,
+            is_verified=True,
+        )
+
+    # Legal Manager validates and approves credentials
+    legal_mgr = User.objects.create_user(
+        email="legal.mgr@test.local",
+        password="Password123!",
+        role=Role.objects.get(code=Role.LEGAL_MGR),
+    )
+    legal_validate_vendor_credentials_service(dispatch_id=dispatch.id, legal_user=legal_mgr)
 
     _login(client, vendor_user, temp)
     resp = client.get("/")

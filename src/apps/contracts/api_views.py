@@ -11,7 +11,14 @@ from rest_framework.response import Response
 from apps.audit.models import AuditLog
 
 from .models import Contract, ContractDocument, ContractMilestone, ContractObligation
-from .permissions import CanManageContract, CanViewContract, IsLegalManager, IsNotAuditor
+from .permissions import (
+    CanBusinessApproveContract,
+    CanManageContract,
+    CanRenewOrTerminateContract,
+    CanViewContract,
+    IsLegalManager,
+    IsNotAuditor,
+)
 from .selectors import get_contracts_qs
 from .serializers import (
     ContractDocumentSerializer,
@@ -140,7 +147,12 @@ class ContractViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-    @action(detail=True, methods=["post"], url_path="business-approve")
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="business-approve",
+        permission_classes=[IsAuthenticated, CanBusinessApproveContract],
+    )
     def business_approve(self, request, pk=None):
         contract = self.get_object()
         notes = request.data.get("notes", "")
@@ -316,7 +328,12 @@ class ContractViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
-    @action(detail=True, methods=["post"], url_path="renew")
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="renew",
+        permission_classes=[IsAuthenticated, CanRenewOrTerminateContract],
+    )
     def renew(self, request, pk=None):
         contract = self.get_object()
         new_end_date = request.data.get("new_end_date")
@@ -342,7 +359,12 @@ class ContractViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-    @action(detail=True, methods=["post"], url_path="terminate")
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="terminate",
+        permission_classes=[IsAuthenticated, CanRenewOrTerminateContract],
+    )
     def terminate(self, request, pk=None):
         contract = self.get_object()
         reason = request.data.get("reason", "")

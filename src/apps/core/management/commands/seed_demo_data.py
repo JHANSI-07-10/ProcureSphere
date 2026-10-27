@@ -11,7 +11,9 @@ from apps.contracts.models import Contract, ContractAlert, ContractMilestone
 from apps.contracts.services import (
     activate_contract_service,
     add_contract_milestone_service,
+    approve_legal_review_service,
     create_contract_service,
+    submit_for_legal_review_service,
 )
 from apps.invoices.models import InvoiceLine, MatchException, SupplierInvoice
 from apps.invoices.services import (
@@ -442,7 +444,9 @@ class Command(BaseCommand):
             renewal_notice_days=30,
             contract_owner=legal_user,
         )
-        activate_contract_service(contract=contract, user=legal_user)
+        submit_for_legal_review_service(contract=contract, user=legal_user, notes="Initial submission for demo.")
+        approve_legal_review_service(contract=contract, user=legal_user, notes="Legal terms reviewed and approved.")
+        activate_contract_service(contract=contract, user=proc_mgr)
         add_contract_milestone_service(
             contract=contract,
             title="Quarterly SLA Audit",

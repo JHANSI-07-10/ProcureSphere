@@ -1,4 +1,4 @@
-﻿services:
+services:
   db:
     image: postgres:15-alpine
     container_name: procuresphere_db
@@ -39,8 +39,9 @@
       - .env
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.dev
-      - DATABASE_URL=
+      - DATABASE_URL=postgresql://${DB_USER:-procure_user}:${DB_PASSWORD:-procure_password}@db:5432/${DB_NAME:-procuresphere_db}
       - DB_HOST=db
+      - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -60,8 +61,9 @@
       - .env
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.dev
-      - DATABASE_URL=
+      - DATABASE_URL=postgresql://${DB_USER:-procure_user}:${DB_PASSWORD:-procure_password}@db:5432/${DB_NAME:-procuresphere_db}
       - DB_HOST=db
+      - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -81,8 +83,9 @@
       - .env
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.dev
-      - DATABASE_URL=
+      - DATABASE_URL=postgresql://${DB_USER:-procure_user}:${DB_PASSWORD:-procure_password}@db:5432/${DB_NAME:-procuresphere_db}
       - DB_HOST=db
+      - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
