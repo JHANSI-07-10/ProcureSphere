@@ -304,12 +304,20 @@ def _invitation_errors(event: SourcingEvent) -> list:
     invites = list(event.invitations.select_related("vendor"))
     if not invites:
         return ["Invite at least one eligible vendor before publishing."]
-    return [
-        f"Invited vendor '{invite.vendor.legal_name}' is no longer eligible "
-        f"(status {invite.vendor.status}); remove the invitation."
-        for invite in invites
-        if invite.vendor.status not in ELIGIBLE_VENDOR_STATUSES
-    ]
+    errors = []
+    for invite in invites:
+        v = invite.vendor
+        if v.status not in ELIGIBLE_VENDOR_STATUSES:
+            errors.append(
+                f"Invited vendor '{v.legal_name}' is no longer eligible "
+                f"(status {v.status}); remove the invitation."
+            )
+        elif not bool(getattr(v, "is_event_eligible", False)):
+            errors.append(
+                f"Invited vendor '{v.legal_name}' is not legally eligible for events "
+                f"(eligibility: {getattr(v, 'event_eligibility_status', 'INELIGIBLE')}); remove the invitation."
+            )
+    return errors
 
 
 def _notify_invited_vendor(event: SourcingEvent, vendor: Vendor):
@@ -416,6 +424,11 @@ def _invite_error(event: SourcingEvent, vendor_id, vendor):
         return (
             f"Vendor '{vendor.legal_name}' is not eligible for invitation "
             f"(status: {vendor.get_status_display()})."
+        )
+    if not bool(getattr(vendor, "is_event_eligible", False)):
+        return (
+            f"Vendor '{vendor.legal_name}' is not legally eligible to participate in events "
+            f"(eligibility: {getattr(vendor, 'event_eligibility_status', 'INELIGIBLE')})."
         )
     if BidInvite.objects.filter(event=event, vendor=vendor).exists():
         return f"Vendor '{vendor.legal_name}' is already invited to this event."
@@ -593,6 +606,11 @@ def validate_bid_service(*, bid: VendorBid) -> dict:
             "Vendor account is currently suspended and cannot participate in procurement."
         )
 
+    if not bool(getattr(bid.vendor, "is_event_eligible", False)):
+        errors.append(
+            f"Vendor account is not legally eligible to participate in events (Status: {getattr(bid.vendor, 'event_eligibility_status', 'INELIGIBLE')})."
+        )
+
     if not bid.technical_proposal.strip() and not bid.proposal_summary.strip():
         errors.append("Technical response or proposal summary must be provided.")
 
@@ -661,6 +679,11 @@ def save_draft_bid_service(
 
     if vendor.status == Vendor.STATUS_SUSPENDED:
         raise ValidationError(f"Vendor '{vendor.legal_name}' is suspended and cannot prepare bids.")
+
+    if not bool(getattr(vendor, "is_event_eligible", False)):
+        raise ValidationError(
+            f"Vendor '{vendor.legal_name}' is not legally eligible to participate in events."
+        )
 
     if not BidInvite.objects.filter(event=event, vendor=vendor).exists():
         raise ValidationError("Vendor does not have a valid invitation to this sourcing event.")
@@ -753,6 +776,11 @@ def submit_vendor_bid_service(
 
     if vendor.status == Vendor.STATUS_SUSPENDED:
         raise ValidationError(f"Vendor '{vendor.legal_name}' is suspended and cannot submit bids.")
+
+    if not bool(getattr(vendor, "is_event_eligible", False)):
+        raise ValidationError(
+            f"Vendor '{vendor.legal_name}' is not legally eligible to participate in events."
+        )
 
     # Verify vendor has invitation
     if not BidInvite.objects.filter(event=event, vendor=vendor).exists():
@@ -1283,6 +1311,10 @@ def _assert_vendor_awardable(vendor: Vendor):
     if vendor.status != Vendor.STATUS_ACTIVE:
         raise ValidationError(
             f"Vendor '{vendor.legal_name}' is {vendor.get_status_display()} and cannot be awarded."
+        )
+    if not bool(getattr(vendor, "is_event_eligible", False)):
+        raise ValidationError(
+            f"Vendor '{vendor.legal_name}' is not legally eligible to participate in events."
         )
 
 

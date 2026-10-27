@@ -27,12 +27,22 @@ def _get_role_code(user):
 
 
 def _resolve_base_layout(role_code):
-    """Procurement executive workspace must never fall back to the finance layout."""
+    """Resolve correct workspace application shell per user role."""
     if role_code in ("PROC_EXEC", "PROCUREMENT_EXECUTIVE"):
         return "base.html"
     if role_code in ("AUDITOR", "COMPLIANCE_AUDITOR", "AUDIT"):
         return "audit/base_auditor.html"
-    if role_code in ("PROCUREMENT_MANAGER", "PROC_MGR", "MANAGER", "LEGAL_MGR"):
+    if role_code in ("LEGAL_MGR", "LEGAL_MANAGER", "LEGAL"):
+        return "layouts/legal_base.html"
+    if role_code in ("STORES_RECEIVER", "STORES"):
+        return "layouts/stores_base.html"
+    if role_code in ("FINANCE_AP", "FINANCE"):
+        return "layouts/finance_base.html"
+    if role_code in ("DEPT_APPROVER", "APPROVER"):
+        return "layouts/approver_base.html"
+    if role_code in ("REQUESTER",):
+        return "layouts/requester_base.html"
+    if role_code in ("PROCUREMENT_MANAGER", "PROC_MGR", "MANAGER"):
         return "manager/base_manager.html"
     return "base.html"
 
@@ -111,19 +121,6 @@ def dashboard_view(request):
         },
     ]
 
-    user = request.user
-    role_code = getattr(user, "role_code", None) or (
-        user.role.code if getattr(user, "role", None) else ""
-    )
-    role_code = str(role_code).upper()
-
-    base_layout = "layouts/finance_base.html"
-    if role_code in ["AUDITOR", "COMPLIANCE_AUDITOR", "AUDIT"]:
-        base_layout = "audit/base_auditor.html"
-    elif role_code in ["PROCUREMENT_MANAGER", "PROC_MGR", "MANAGER", "LEGAL_MGR"]:
-        base_layout = "manager/base_manager.html"
-    elif role_code in ["STORES_RECEIVER", "STORES"]:
-        base_layout = "layouts/stores_base.html"
     role_code = _get_role_code(request.user)
     base_layout = _resolve_base_layout(role_code)
 

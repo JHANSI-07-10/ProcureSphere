@@ -3,12 +3,21 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 
+from apps.accounts.models import Role
 from apps.audit.models import AuditLog
 from apps.budgets.services import convert_commitment_to_actual_service
 from apps.orders.models import PurchaseOrder
 from apps.receipts.models import ReceiptLine
 
 from .models import InvoiceLine, MatchException, SupplierInvoice
+
+
+def _get_user_role_code(user):
+    if not user:
+        return None
+    return getattr(user, "role_code", None) or (
+        user.role.code if getattr(user, "role", None) else None
+    )
 
 
 @transaction.atomic
@@ -196,6 +205,15 @@ def resolve_match_exception_service(
     """
     Finance exception resolution workflow for 3-way match variances.
     """
+    role_code = _get_user_role_code(resolved_by_user)
+    if not (
+        getattr(resolved_by_user, "is_superuser", False)
+        or role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN]
+    ):
+        raise ValidationError(
+            "Permission Denied: Only Finance / AP personnel can resolve invoice match exceptions."
+        )
+
     if match_exception.status != MatchException.STATUS_OPEN:
         raise ValidationError(f"Match exception is already in status '{match_exception.status}'.")
 
@@ -250,6 +268,15 @@ def mark_invoice_paid_service(*, invoice: SupplierInvoice, user) -> SupplierInvo
     """
     Marks invoice as PAID and transitions SpendLedger from COMMITMENT to ACTUAL.
     """
+    role_code = _get_user_role_code(user)
+    if not (
+        getattr(user, "is_superuser", False)
+        or role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN]
+    ):
+        raise ValidationError(
+            "Permission Denied: Only Finance / AP personnel can execute invoice payments."
+        )
+
     if invoice.status not in [
         SupplierInvoice.STATUS_READY_FOR_PAYMENT,
         SupplierInvoice.STATUS_APPROVAL,

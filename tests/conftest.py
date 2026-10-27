@@ -102,7 +102,11 @@ def procurement_world(db, db_roles, settings, tmp_path):
             email=f"{tin.lower()}@example.com",
             address="1 Test Street",
         )
-        Vendor.objects.filter(pk=v.pk).update(status=status)
+        update_fields = {"status": status}
+        if status == Vendor.STATUS_ACTIVE:
+            update_fields["is_event_eligible"] = True
+            update_fields["event_eligibility_status"] = Vendor.ELIGIBILITY_ELIGIBLE
+        Vendor.objects.filter(pk=v.pk).update(**update_fields)
         v.refresh_from_db()
         return v
 

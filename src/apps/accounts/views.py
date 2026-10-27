@@ -66,6 +66,33 @@ def portal_login_view(request):
                     next_url = "/"
             return redirect(next_url)
         else:
+            from apps.accounts.models import User
+            from apps.vendors.models import VendorCredentialDispatch
+
+            inactive_user = User.objects.filter(email__iexact=email).first()
+            if (
+                inactive_user
+                and inactive_user.check_password(password)
+                and not inactive_user.is_active
+            ):
+                pending_dispatch = VendorCredentialDispatch.objects.filter(
+                    user=inactive_user,
+                    legal_verification_status=VendorCredentialDispatch.LEGAL_STATUS_PENDING,
+                ).first()
+                if pending_dispatch or getattr(inactive_user, "is_vendor", False):
+                    messages.warning(
+                        request,
+                        "Your vendor portal account has been prepared by procurement and is currently "
+                        "pending Legal Manager verification and approval. Access will be activated "
+                        "once legal review is complete.",
+                    )
+                    return render(request, "pages/login.html", {"email": email})
+                else:
+                    messages.error(
+                        request, "Your account has been deactivated. Please contact support."
+                    )
+                    return render(request, "pages/login.html", {"email": email})
+
             messages.error(request, "Invalid email or password. Please try again.")
 
     return render(request, "pages/login.html")

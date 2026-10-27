@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import environ
@@ -21,7 +22,8 @@ env = environ.Env(
 # Read .env file if present
 env_file = BASE_DIR / ".env"
 if env_file.exists():
-    env.read_env(str(env_file))
+    is_docker = os.environ.get("DB_HOST") == "db" or os.path.exists("/.dockerenv")
+    env.read_env(str(env_file), overwrite=not is_docker)
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env("DJANGO_DEBUG")
@@ -229,6 +231,10 @@ CELERY_BEAT_SCHEDULE = {
     "sync-sourcing-bid-windows": {
         "task": "apps.sourcing.tasks.sync_sourcing_bid_windows_task",
         "schedule": 300.0,  # every 5 minutes; views/services also sync on access
+    },
+    "scan-vendor-document-expirations": {
+        "task": "apps.vendors.tasks.scan_vendor_document_expirations_task",
+        "schedule": 86400.0,  # daily scan (runs every 24h)
     },
 }
 # Login Throttling (django-axes) & Redirects

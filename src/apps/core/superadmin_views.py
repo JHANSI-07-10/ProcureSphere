@@ -19,15 +19,39 @@ from apps.core.superadmin_forms import (
     UserAdminForm,
 )
 from apps.organization.models import CostCenter, Department, Organization
+from functools import wraps
+
+
+def _is_super_admin(user):
+    return user.is_authenticated and (
+        user.is_superuser
+        or getattr(user, "role_code", None) == Role.SUPER_ADMIN
+        or (hasattr(user, "role") and user.role and user.role.code == Role.SUPER_ADMIN)
+    )
+
+
+def super_admin_required(view_func):
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if not _is_super_admin(request.user):
+            return HttpResponse(
+                "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+                status=403,
+            )
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped
 
 
 @login_required
+@super_admin_required
 def user_list_view(request):
     users = User.objects.select_related("role", "department").all().order_by("-date_joined")
     return render(request, "pages/dashboards/superadmin/users.html", {"users": users})
 
 
 @login_required
+@super_admin_required
 def user_create_view(request):
     if request.method == "POST":
         form = UserAdminForm(request.POST)
@@ -42,6 +66,7 @@ def user_create_view(request):
 
 
 @login_required
+@super_admin_required
 def user_edit_view(request, user_id):
     user = get_object_or_404(User, pk=user_id)
     if request.method == "POST":
@@ -54,15 +79,8 @@ def user_edit_view(request, user_id):
     return render(request, "pages/dashboards/superadmin/user_form.html", {"form": form})
 
 
-def _is_super_admin(user):
-    return user.is_authenticated and (
-        user.is_superuser
-        or getattr(user, "role_code", None) == Role.SUPER_ADMIN
-        or (hasattr(user, "role") and user.role and user.role.code == Role.SUPER_ADMIN)
-    )
-
-
 @login_required
+@super_admin_required
 def org_list_view(request):
     orgs = Organization.objects.all().order_by("name")
     departments = Department.objects.select_related("organization").all().order_by("name")
@@ -89,6 +107,7 @@ def org_list_view(request):
 
 
 @login_required
+@super_admin_required
 def org_create_view(request):
     if request.method == "POST":
         form = OrganizationAdminForm(request.POST)
@@ -101,6 +120,7 @@ def org_create_view(request):
 
 
 @login_required
+@super_admin_required
 def org_edit_view(request, org_id):
     org = get_object_or_404(Organization, pk=org_id)
     if request.method == "POST":
@@ -295,18 +315,21 @@ def cost_center_edit_view(request, cc_id):
 
 
 @login_required
+@super_admin_required
 def budget_list_view(request):
     budgets = Budget.objects.select_related("cost_center", "fiscal_period").all()
     return render(request, "pages/dashboards/superadmin/budgets.html", {"budgets": budgets})
 
 
 @login_required
+@super_admin_required
 def policy_list_view(request):
     policies = ApprovalPolicy.objects.select_related("department").all()
     return render(request, "pages/dashboards/superadmin/policies.html", {"policies": policies})
 
 
 @login_required
+@super_admin_required
 def audit_list_view(request):
     logs_list = AuditLog.objects.select_related("actor").all().order_by("-timestamp")
     paginator = Paginator(logs_list, 10)  # Show 10 logs per page
@@ -318,6 +341,7 @@ def audit_list_view(request):
 
 
 @login_required
+@super_admin_required
 def budget_create_view(request):
     if request.method == "POST":
         form = BudgetAdminForm(request.POST)
@@ -330,6 +354,7 @@ def budget_create_view(request):
 
 
 @login_required
+@super_admin_required
 def budget_edit_view(request, budget_id):
     budget = get_object_or_404(Budget, pk=budget_id)
     if request.method == "POST":
@@ -343,6 +368,7 @@ def budget_edit_view(request, budget_id):
 
 
 @login_required
+@super_admin_required
 def policy_create_view(request):
     if request.method == "POST":
         form = PolicyAdminForm(request.POST)
@@ -355,6 +381,7 @@ def policy_create_view(request):
 
 
 @login_required
+@super_admin_required
 def policy_edit_view(request, policy_id):
     policy = get_object_or_404(ApprovalPolicy, pk=policy_id)
     if request.method == "POST":
@@ -368,6 +395,7 @@ def policy_edit_view(request, policy_id):
 
 
 @login_required
+@super_admin_required
 def audit_export_view(request):
     format_type = request.GET.get("format", "csv")
     logs = AuditLog.objects.select_related("actor").all().order_by("-timestamp")
