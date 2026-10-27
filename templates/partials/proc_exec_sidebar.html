@@ -34,14 +34,17 @@
             </ul>
         </nav>
 
-        <!-- User info -->
-        <div class="border-top border-secondary border-opacity-25 px-3 py-3">
-            <div class="d-flex align-items-center gap-2" style="min-width: 0;">
-                <i class="fa-solid fa-circle-user text-info fs-4 me-2"></i>
-                <div style="min-width: 0;">
-                    <div class="small fw-semibold text-white text-truncate" title="{{ user.email }}">{{ user.email }}</div>
-                    <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Procurement Executive</div>
+        <!-- User & sign-out -->
+        <div class="border-top border-secondary border-opacity-25 px-3 py-3 mt-auto">
+            <div class="d-flex align-items-center justify-content-between gap-2 w-100">
+                <div class="d-flex align-items-center overflow-hidden me-2" style="min-width: 0; flex: 1 1 auto;">
+                    <i class="fa-solid fa-circle-user text-info fs-4 me-2 flex-shrink-0"></i>
+                    <div class="overflow-hidden" style="min-width: 0; flex: 1 1 auto;">
+                        <div class="small fw-semibold text-white text-truncate" title="{{ user.email }}">{{ user.email }}</div>
+                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Procurement Executive</div>
+                    </div>
                 </div>
+                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-circle flex-shrink-0 d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px; padding: 0;" title="Sign out"><i class="fa-solid fa-arrow-right-from-bracket"></i><span class="visually-hidden">Sign out</span></a>
             </div>
         </div>
     </div>

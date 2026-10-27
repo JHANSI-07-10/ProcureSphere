@@ -62,6 +62,7 @@ def register_vendor_service(
     bank_account_number: str = "",
     bank_routing_code: str = "",
     created_by_user: User = None,
+    organization=None,
     pan_number: str = "",
     gstin: str = "",
 ) -> Vendor:
@@ -69,6 +70,9 @@ def register_vendor_service(
     Registers a new vendor in DRAFT status with unique vendor number.
     Safely validates and normalizes optional dedicated PAN and GSTIN fields.
     """
+    if organization is None and created_by_user:
+        organization = getattr(created_by_user, "effective_organization", None)
+
     if Vendor.objects.filter(tax_identification_number=tax_identification_number).exists():
         raise ValidationError(f"Vendor with tax ID '{tax_identification_number}' already exists.")
 
@@ -105,6 +109,7 @@ def register_vendor_service(
         pan_number=norm_pan,
         gstin=norm_gstin,
         registration_number=registration_number,
+        organization=organization,
         category=category,
         email=email,
         phone=phone,

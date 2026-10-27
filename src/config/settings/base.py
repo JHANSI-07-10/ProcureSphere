@@ -301,6 +301,27 @@ VENDOR_PORTAL_LOGIN_URLS = env.list(
 BREVO_API_KEY = env("BREVO_API_KEY", default="")
 BREVO_SENDER_EMAIL = env("BREVO_SENDER_EMAIL", default="no-reply@procuresphere.com")
 BREVO_SENDER_NAME = env("BREVO_SENDER_NAME", default="ProcureSphere 360")
+BREVO_SMTP_LOGIN = env("BREVO_SMTP_LOGIN", default="")
+EMAIL_FROM_ADDRESS = env("EMAIL_FROM", default="")
+EMAIL_FROM_NAME = env("EMAIL_FROM_NAME", default="")
+
+# An xsmtpsib key is Brevo's SMTP password. Use it when EMAIL_HOST_PASSWORD is empty.
+# SMTP login is the Brevo account email (EMAIL_HOST_USER, BREVO_SMTP_LOGIN, or EMAIL_FROM).
+if not EMAIL_HOST_PASSWORD and BREVO_API_KEY.startswith("xsmtpsib-"):
+    EMAIL_HOST_PASSWORD = BREVO_API_KEY
+if not EMAIL_HOST_USER:
+    if BREVO_SMTP_LOGIN:
+        EMAIL_HOST_USER = BREVO_SMTP_LOGIN
+    elif "@" in EMAIL_FROM_ADDRESS:
+        EMAIL_HOST_USER = EMAIL_FROM_ADDRESS
+    else:
+        EMAIL_HOST_USER = BREVO_SENDER_EMAIL
+if "localhost" in DEFAULT_FROM_EMAIL:
+    if "@" in EMAIL_FROM_ADDRESS:
+        sender_name = EMAIL_FROM_NAME or BREVO_SENDER_NAME
+        DEFAULT_FROM_EMAIL = f"{sender_name} <{EMAIL_FROM_ADDRESS}>"
+    else:
+        DEFAULT_FROM_EMAIL = f"{BREVO_SENDER_NAME} <{BREVO_SENDER_EMAIL}>"
 
 # ---------------------------------------------------------------------------
 # Logging Configuration

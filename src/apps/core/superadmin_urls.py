@@ -5,6 +5,7 @@ from . import superadmin_views
 app_name = "superadmin"
 
 urlpatterns = [
+    path("", superadmin_views.superadmin_home_view, name="home"),
     path("users/", superadmin_views.user_list_view, name="users"),
     path("users/create/", superadmin_views.user_create_view, name="user_create"),
     path("users/<uuid:user_id>/edit/", superadmin_views.user_edit_view, name="user_edit"),

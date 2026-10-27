@@ -222,7 +222,7 @@ def home_view(request):  # noqa: C901
         from apps.sourcing.selectors import get_sourcing_dashboard_metrics
         from apps.sourcing.services import sync_all_event_windows
         from apps.vendors.filters import annotate_governance
-        from apps.vendors.selectors import get_governance_metrics
+        from apps.vendors.selectors import get_governance_metrics, get_governance_vendor_queryset
 
         sync_all_event_windows()
         now = timezone.now()
@@ -244,7 +244,7 @@ def home_view(request):  # noqa: C901
             ]
         ).order_by("-updated_at")[:10]
         attention_vendors = (
-            annotate_governance(Vendor.objects.select_related("category"))
+            get_governance_vendor_queryset(user=request.user)
             .filter(
                 Q(status=Vendor.STATUS_ON_HOLD)
                 | Q(latest_risk_level="HIGH")
@@ -368,24 +368,43 @@ def home_view(request):  # noqa: C901
         from apps.audit.models import AuditLog
         from apps.budgets.models import Budget
         from apps.invoices.models import MatchException
+        from apps.organization.models import Organization
+
+        scoped_org = getattr(user, "effective_organization", None) if not user.is_superuser else None
 
         today = timezone.now().date()
-        total_users = User.objects.count()
-        budget_agg = Budget.objects.aggregate(total=Sum("allocated_amount"))["total"]
-        allocated_budget = budget_agg if budget_agg is not None else Decimal("0.00")
-        pending_pr_count = PurchaseRequisition.objects.filter(
+        users_qs = User.objects.all()
+        budgets_qs = Budget.objects.all()
+        prs_qs = PurchaseRequisition.objects.filter(
             status__in=[
                 PurchaseRequisition.STATUS_SUBMITTED,
                 PurchaseRequisition.STATUS_MANAGER_REVIEW,
                 PurchaseRequisition.STATUS_BUDGET_REVIEW,
             ]
-        ).count()
-        pending_exceptions = MatchException.objects.filter(
-            status=MatchException.STATUS_OPEN
-        ).count()
-        audits_today = AuditLog.objects.filter(timestamp__date=today).count()
+        )
+        exceptions_qs = MatchException.objects.filter(status=MatchException.STATUS_OPEN)
+        audits_qs = AuditLog.objects.filter(timestamp__date=today)
+        orgs_qs = Organization.objects.order_by("code")
+
+        if scoped_org:
+            users_qs = users_qs.filter(Q(organization=scoped_org) | Q(department__organization=scoped_org))
+            budgets_qs = budgets_qs.filter(cost_center__department__organization=scoped_org)
+            prs_qs = prs_qs.filter(department__organization=scoped_org)
+            exceptions_qs = exceptions_qs.filter(invoice__po__requisition__department__organization=scoped_org)
+            audits_qs = audits_qs.filter(
+                Q(actor__organization=scoped_org) | Q(actor__department__organization=scoped_org)
+            )
+            orgs_qs = orgs_qs.filter(id=scoped_org.id)
+
+        total_users = users_qs.count()
+        budget_agg = budgets_qs.aggregate(total=Sum("allocated_amount"))["total"]
+        allocated_budget = budget_agg if budget_agg is not None else Decimal("0.00")
+        pending_pr_count = prs_qs.count()
+        pending_exceptions = exceptions_qs.count()
+        audits_today = audits_qs.count()
 
         context = {
+            "organizations": orgs_qs,
             "metrics": {
                 "total_users": total_users,
                 "allocated_budget": allocated_budget,

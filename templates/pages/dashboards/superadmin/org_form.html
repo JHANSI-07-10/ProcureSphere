@@ -10,19 +10,76 @@
         {% endif %}
         <div class="row g-3">
             <div class="col-md-6">
-                <label class="form-label fw-semibold text-secondary small">Code</label>
+                <label class="form-label fw-semibold text-secondary small">Code *</label>
                 {{ form.code }}
                 {% if form.code.errors %}<div class="text-danger small">{{ form.code.errors }}</div>{% endif %}
             </div>
             <div class="col-md-6">
-                <label class="form-label fw-semibold text-secondary small">Name</label>
+                <label class="form-label fw-semibold text-secondary small">Name *</label>
                 {{ form.name }}
                 {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors }}</div>{% endif %}
             </div>
-            <div class="col-12">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold text-secondary small">Tax Identifier</label>
+                {{ form.tax_identifier }}
+                {% if form.tax_identifier.errors %}<div class="text-danger small">{{ form.tax_identifier.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold text-secondary small">Status</label>
                 <div class="form-check form-switch mt-2">
                     {{ form.is_active }}
                     <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">Active Organization</label>
+                </div>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold text-secondary small">Registered Address</label>
+                {{ form.address }}
+                {% if form.address.errors %}<div class="text-danger small">{{ form.address.errors }}</div>{% endif %}
+            </div>
+
+            <!-- Organization Administrator Provisioning -->
+            <div class="col-12 mt-4">
+                <div class="card border border-primary border-opacity-25 bg-light rounded-3 p-3">
+                    <h6 class="fw-bold text-dark mb-2">
+                        <i class="fa-solid fa-user-shield text-primary me-2"></i>
+                        {% if is_edit %}Organization Administrator{% else %}Initial Organization Administrator{% endif %}
+                    </h6>
+                    <p class="text-muted small mb-3">
+                        {% if is_edit %}
+                        Manage the primary administrator user assigned to this organization.
+                        {% else %}
+                        The organization administrator will be automatically created with administrative access to this legal entity.
+                        {% endif %}
+                    </p>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small">Admin Email {% if not is_edit %}*{% endif %}</label>
+                            {{ form.admin_email }}
+                            {% if form.admin_email.errors %}<div class="text-danger small">{{ form.admin_email.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small">Temporary Password</label>
+                            {{ form.admin_password }}
+                            {% if form.admin_password.errors %}<div class="text-danger small">{{ form.admin_password.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small">First Name</label>
+                            {{ form.admin_first_name }}
+                            {% if form.admin_first_name.errors %}<div class="text-danger small">{{ form.admin_first_name.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small">Last Name</label>
+                            {{ form.admin_last_name }}
+                            {% if form.admin_last_name.errors %}<div class="text-danger small">{{ form.admin_last_name.errors }}</div>{% endif %}
+                        </div>
+                        {% if is_edit and form.admin_user %}
+                        <div class="col-12 mt-2">
+                            <label class="form-label fw-semibold text-secondary small">Assigned Admin User</label>
+                            {{ form.admin_user }}
+                            {% if form.admin_user.errors %}<div class="text-danger small">{{ form.admin_user.errors }}</div>{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
