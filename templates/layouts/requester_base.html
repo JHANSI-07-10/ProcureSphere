@@ -21,6 +21,15 @@
         <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
             <!-- User Profile & Sign Out -->
             {% if user.is_authenticated %}
+            <!-- Notification Bell -->
+            <a href="/notifications/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0 me-1" style="width: 36px; height: 36px;" title="Notifications">
+                <i class="fa-solid fa-bell fs-5"></i>
+                {% if unread_notifications_count > 0 %}
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
+                    {{ unread_notifications_count }}
+                </span>
+                {% endif %}
+            </a>
             <div class="d-flex align-items-center gap-2">
                 <div class="d-none d-lg-block text-end lh-sm me-1">
                     <div class="fw-semibold text-white small mb-1">{{ user.email }}</div>
@@ -33,6 +42,7 @@
                     <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 bg-dark text-white">
                         <li><a class="dropdown-item text-white py-2" href="/requisitions/create/"><i class="fa-solid fa-plus text-cyan me-2"></i> Create New PR</a></li>
                         <li><a class="dropdown-item text-white py-2" href="/requisitions/"><i class="fa-solid fa-list text-info me-2"></i> My Requisitions</a></li>
+                        <li><a class="dropdown-item text-white py-2" href="/notifications/"><i class="fa-solid fa-bell text-warning me-2"></i> Notifications {% if unread_notifications_count > 0 %}<span class="badge bg-danger rounded-pill ms-1">{{ unread_notifications_count }}</span>{% endif %}</a></li>
                         <li><hr class="dropdown-divider border-secondary"></li>
                         <li><a class="dropdown-item text-danger py-2" href="/logout/"><i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out</a></li>
                     </ul>
@@ -99,6 +109,14 @@
                     <div class="nav-section-label">Workflow &amp; Approvals</div>
                     <a href="/approvals/inbox/" class="vendor-navlink unified-navlink {% if '/approvals/' in request.path %}active-nav-item{% endif %}">
                         <i class="fa-solid fa-timeline nav-icon text-warning"></i>My Approvals
+                    </a>
+
+                    <div class="nav-section-label">Updates &amp; Alerts</div>
+                    <a href="/notifications/" class="vendor-navlink unified-navlink d-flex align-items-center justify-content-between {% if '/notifications/' in request.path %}active-nav-item{% endif %}">
+                        <span><i class="fa-solid fa-bell nav-icon text-warning"></i>Notifications</span>
+                        {% if unread_notifications_count > 0 %}
+                        <span class="badge bg-danger rounded-pill">{{ unread_notifications_count }}</span>
+                        {% endif %}
                     </a>
                 </nav>
 

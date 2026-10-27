@@ -3,7 +3,38 @@
 {% block title %}Requester Dashboard — ProcureSphere 360{% endblock %}
 
 {% block content %}
+<style>
+    .metric-card-link {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        text-decoration: none !important;
+        display: block;
+        height: 100%;
+    }
+    .metric-card-link:hover .stat-card {
+        transform: translateY(-3px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08) !important;
+    }
+</style>
+
 <div class="container-fluid px-0">
+    <!-- Unread Notifications Alert -->
+    {% if unread_notifications_count > 0 %}
+    <div class="alert alert-warning border-0 shadow-sm rounded-4 d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between p-3 mb-4 gap-3" role="alert">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px;">
+                <i class="fa-solid fa-bell fs-5"></i>
+            </div>
+            <div>
+                <div class="fw-bold text-dark">You have {{ unread_notifications_count }} unread notification{{ unread_notifications_count|pluralize }}</div>
+                <div class="text-secondary small">Review approvals, status changes, and updates regarding your purchase requisitions.</div>
+            </div>
+        </div>
+        <a href="/notifications/" class="btn btn-warning btn-sm rounded-pill px-3 py-1.5 fw-bold text-dark text-nowrap align-self-sm-center">
+            View Notifications <i class="fa-solid fa-arrow-right ms-1"></i>
+        </a>
+    </div>
+    {% endif %}
+
     <!-- Welcome Header & Quick Actions (Vendor Design Standard) -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
         <div>
@@ -24,54 +55,60 @@
         </div>
     </div>
 
-    <!-- 3 Summary Metric Cards (Matching Vendor Reference) -->
+    <!-- 3 Summary Metric Cards (Clickable & Matching Vendor Reference) -->
     <div class="row g-3 mb-4">
         <!-- 1. Total PRs -->
         <div class="col-12 col-md-4">
-            <div class="stat-card glass-card h-100 border-start border-4 border-primary">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Total PRs</span>
-                    <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(13, 110, 253, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fa-solid fa-file-invoice-dollar text-primary"></i>
+            <a href="/requisitions/" class="metric-card-link">
+                <div class="stat-card glass-card h-100 border-start border-4 border-primary">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small fw-semibold text-uppercase">Total PRs</span>
+                        <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(13, 110, 253, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-file-invoice-dollar text-primary"></i>
+                        </div>
+                    </div>
+                    <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.total_my_prs }}</div>
+                    <div class="text-muted small mt-1">
+                        <span class="text-primary">View all requests &rarr;</span>
                     </div>
                 </div>
-                <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.total_my_prs }}</div>
-                <div class="text-muted small mt-1">
-                    <a href="/requisitions/" class="text-decoration-none text-primary">View all requests &rarr;</a>
-                </div>
-            </div>
+            </a>
         </div>
 
         <!-- 2. Pending Approval -->
         <div class="col-12 col-md-4">
-            <div class="stat-card glass-card h-100 border-start border-4 border-warning">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Pending Approval</span>
-                    <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(245, 158, 11, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fa-solid fa-clock-rotate-left text-warning"></i>
+            <a href="/requisitions/?status=PENDING" class="metric-card-link">
+                <div class="stat-card glass-card h-100 border-start border-4 border-warning">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small fw-semibold text-uppercase">Pending Approval</span>
+                        <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(245, 158, 11, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-clock-rotate-left text-warning"></i>
+                        </div>
+                    </div>
+                    <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.pending_prs }}</div>
+                    <div class="text-muted small mt-1">
+                        <span class="text-warning">Awaiting review &rarr;</span>
                     </div>
                 </div>
-                <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.pending_prs }}</div>
-                <div class="text-muted small mt-1">
-                    <a href="/requisitions/?status=PENDING" class="text-decoration-none text-warning">Awaiting review &rarr;</a>
-                </div>
-            </div>
+            </a>
         </div>
 
         <!-- 3. Approved PRs -->
         <div class="col-12 col-md-4">
-            <div class="stat-card glass-card h-100 border-start border-4 border-success">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Approved PRs</span>
-                    <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fa-solid fa-circle-check text-success"></i>
+            <a href="/requisitions/?status=APPROVED" class="metric-card-link">
+                <div class="stat-card glass-card h-100 border-start border-4 border-success">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small fw-semibold text-uppercase">Approved PRs</span>
+                        <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-circle-check text-success"></i>
+                        </div>
+                    </div>
+                    <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.approved_prs }}</div>
+                    <div class="text-muted small mt-1">
+                        <span class="text-success">Ready for sourcing &rarr;</span>
                     </div>
                 </div>
-                <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.approved_prs }}</div>
-                <div class="text-muted small mt-1">
-                    <a href="/requisitions/?status=APPROVED" class="text-decoration-none text-success">Ready for sourcing &rarr;</a>
-                </div>
-            </div>
+            </a>
         </div>
     </div>
 

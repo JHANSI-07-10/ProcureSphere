@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
 from django.http import FileResponse
@@ -73,6 +74,16 @@ def list_view(request):
         else:
             items = items.filter(status=status_filter)
 
+    # Pagination (10 items per page)
+    paginator = Paginator(items, 10)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    query_params = request.GET.copy()
+    if "page" in query_params:
+        query_params.pop("page")
+    querystring = query_params.urlencode()
+
     if role_code == Role.LEGAL_MGR or role_code == "LEGAL_MGR":
         base_layout = "layouts/legal_base.html"
     elif role_code in [Role.DEPT_APPROVER, Role.PROC_MGR]:
@@ -84,7 +95,9 @@ def list_view(request):
         request,
         "pages/requisitions/list.html",
         {
-            "items": items,
+            "items": page_obj,
+            "page_obj": page_obj,
+            "querystring": querystring,
             "role_code": role_code,
             "base_layout": base_layout,
             "search_q": search_q,

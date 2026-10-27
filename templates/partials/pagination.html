@@ -18,5 +18,7 @@
     </ul>
 </nav>
 {% elif page_obj.paginator.count %}
-<div class="px-3 py-2 border-top small text-muted">{{ page_obj.paginator.count }} record{{ page_obj.paginator.count|pluralize }}</div>
+<div class="d-flex justify-content-between align-items-center px-3 py-2 border-top small text-muted">
+    <span>Showing {{ page_obj.paginator.count }} of {{ page_obj.paginator.count }} record{{ page_obj.paginator.count|pluralize }}</span>
+</div>
 {% endif %}

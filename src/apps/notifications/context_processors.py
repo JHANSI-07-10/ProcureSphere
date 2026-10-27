@@ -33,10 +33,8 @@ def notifications_processor(request):
             pending_count = PurchaseRequisition.objects.filter(
                 department=user_dept, status__in=statuses
             ).count()
-            if pending_count == 0:
-                pending_count = PurchaseRequisition.objects.filter(status__in=statuses).count()
         else:
-            pending_count = PurchaseRequisition.objects.filter(status__in=statuses).count()
+            pending_count = 0
     elif role_code in [Role.PROC_MGR, Role.SUPER_ADMIN]:
         pending_count = PurchaseRequisition.objects.filter(status__in=statuses).count()
     elif role_code == Role.LEGAL_MGR:

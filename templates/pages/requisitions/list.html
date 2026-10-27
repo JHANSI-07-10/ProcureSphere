@@ -39,8 +39,8 @@
                     <i class="fa-solid fa-filter me-1.5"></i> Filter
                 </button>
                 {% if search_q or status_filter %}
-                <a href="{% url 'requisitions_list' %}" class="btn btn-outline-secondary rounded-pill px-3 shadow-sm d-inline-flex align-items-center justify-content-center" style="height: 42px;" title="Clear Filter">
-                    <i class="fa-solid fa-xmark"></i>
+                <a href="{% url 'requisitions_list' %}" class="btn btn-outline-secondary rounded-pill px-3 shadow-sm d-inline-flex align-items-center justify-content-center text-nowrap" style="height: 42px;" title="Clear Filter">
+                    <i class="fa-solid fa-xmark me-1.5"></i> Reset
                 </a>
                 {% endif %}
             </div>
@@ -181,6 +181,7 @@
                 </tbody>
             </table>
         </div>
+        {% include 'partials/pagination.html' %}
         {% else %}
         <div class="text-center py-5">
             <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">

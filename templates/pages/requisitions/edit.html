@@ -210,7 +210,7 @@
                     </div>
                     <hr>
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary rounded-pill fw-bold py-2">
+                        <button type="submit" id="save_changes_btn" class="btn btn-primary rounded-pill fw-bold py-2" disabled title="No changes made yet">
                             Save Changes
                         </button>
                         <a href="{% url 'requisition_detail' pr.pk %}" class="btn btn-light rounded-pill fw-bold py-2 text-muted">
@@ -375,6 +375,7 @@
         `;
         tbody.appendChild(tr);
         calculateTotalAmount();
+        markFormDirty();
     }
 
     function removeLineItem(btn) {
@@ -394,11 +395,13 @@
                 if (price) price.value = '';
                 if (uom) uom.value = 'EA';
                 calculateTotalAmount();
+                markFormDirty();
             }
             return;
         }
         btn.closest('tr').remove();
         calculateTotalAmount();
+        markFormDirty();
     }
 
     function calculateTotalAmount(updateNotice = true) {
@@ -469,6 +472,21 @@
                 descSpan.textContent = 'No active budget allocation found for this Cost Center (will require Finance Exception approval).';
             }
         }
+    }
+
+    const saveBtn = document.getElementById('save_changes_btn');
+    const editForm = document.getElementById('pr_edit_form');
+
+    function markFormDirty() {
+        if (saveBtn && saveBtn.disabled) {
+            saveBtn.disabled = false;
+            saveBtn.removeAttribute('title');
+        }
+    }
+
+    if (editForm && saveBtn) {
+        editForm.addEventListener('input', markFormDirty);
+        editForm.addEventListener('change', markFormDirty);
     }
 
     document.getElementById('pr_edit_form').addEventListener('submit', validateBudgetOnSubmit);
