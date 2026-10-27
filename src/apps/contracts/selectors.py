@@ -212,6 +212,12 @@ def get_legal_dashboard_metrics(user=None):
     overdue_obligations = obligations_qs.filter(is_fulfilled=False, due_date__lt=today).count()
     open_milestones = milestones_qs.filter(is_completed=False).count()
 
+    from apps.vendors.models import VendorCredentialDispatch
+
+    pending_vendor_verifications = VendorCredentialDispatch.objects.filter(
+        legal_verification_status=VendorCredentialDispatch.LEGAL_STATUS_PENDING
+    ).count()
+
     return {
         "total_contracts": total_contracts,
         "active_contracts": active_contracts,
@@ -221,4 +227,97 @@ def get_legal_dashboard_metrics(user=None):
         "open_obligations": open_obligations,
         "overdue_obligations": overdue_obligations,
         "open_milestones": open_milestones,
+        "pending_vendor_verifications": pending_vendor_verifications,
     }
+
+
+def get_pending_vendor_verifications_qs():
+    """
+    Returns list of records pending Legal Manager verification with pre-evaluated KYC compliance reports.
+    Includes:
+    1. VendorCredentialDispatch records pending legal verification.
+    2. Vendors with replacement/renewed KYC documents in PENDING status,
+       ensuring replacement documents enter the Legal review queue even when no credential dispatch is pending.
+    """
+    from django.db.models import Prefetch
+
+    from apps.vendors.kyc_policy import evaluate_vendor_kyc_compliance
+    from apps.vendors.models import Vendor, VendorCredentialDispatch, VendorDocument
+
+    doc_prefetch = Prefetch(
+        "vendor__documents",
+        queryset=VendorDocument.objects.select_related(
+            "verified_by", "replaces_document"
+        ).prefetch_related("review_history"),
+    )
+
+    dispatches = list(
+        VendorCredentialDispatch.objects.filter(
+            legal_verification_status=VendorCredentialDispatch.LEGAL_STATUS_PENDING
+        )
+        .select_related("vendor", "vendor__category", "user", "created_by")
+        .prefetch_related(doc_prefetch)
+        .order_by("-created_at")
+    )
+    seen_vendor_ids = {d.vendor_id for d in dispatches if d.vendor_id}
+
+    vendor_doc_prefetch = Prefetch(
+        "documents",
+        queryset=VendorDocument.objects.select_related(
+            "verified_by", "replaces_document"
+        ).prefetch_related("review_history"),
+    )
+    vendor_dispatch_prefetch = Prefetch(
+        "credential_dispatches",
+        queryset=VendorCredentialDispatch.objects.select_related("user", "created_by").order_by(
+            "-created_at"
+        ),
+    )
+
+    # Include vendors that have pending documents but no pending credential dispatch
+    vendors_with_pending_docs = (
+        Vendor.objects.filter(documents__status=VendorDocument.STATUS_PENDING)
+        .exclude(id__in=seen_vendor_ids)
+        .select_related("category", "created_by")
+        .prefetch_related(vendor_doc_prefetch, vendor_dispatch_prefetch)
+        .distinct()
+    )
+
+    additional_items = []
+    for vendor in vendors_with_pending_docs:
+        # Use cached prefetched list instead of issuing a new SQL query per vendor
+        dispatches_list = list(vendor.credential_dispatches.all())
+        dispatch = dispatches_list[0] if dispatches_list else None
+        if dispatch:
+            additional_items.append(dispatch)
+        else:
+
+            class _VendorDocReviewItem:
+                def __init__(self, v):
+                    self.id = v.id
+                    self.vendor = v
+                    self.user = None
+                    self.sent_to = v.email
+                    self.created_by = v.created_by
+                    self.created_at = v.created_at
+                    self.legal_verification_status = "DOCUMENTS_PENDING"
+
+            additional_items.append(_VendorDocReviewItem(vendor))
+
+    all_items = dispatches + additional_items
+    for item in all_items:
+        item.kyc_compliance = evaluate_vendor_kyc_compliance(item.vendor)
+    return all_items
+
+
+def get_pending_documents_for_review_qs():
+    """
+    Returns QuerySet of VendorDocument records with status STATUS_PENDING awaiting Legal review.
+    """
+    from apps.vendors.models import VendorDocument
+
+    return (
+        VendorDocument.objects.filter(status=VendorDocument.STATUS_PENDING)
+        .select_related("vendor", "vendor__category", "replaces_document")
+        .order_by("-created_at")
+    )

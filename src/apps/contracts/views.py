@@ -41,11 +41,72 @@ from .services import (
 )
 
 
+def _get_user_role(user):
+    if not user or not user.is_authenticated:
+        return None
+    return getattr(user, "role_code", None) or (
+        user.role.code if getattr(user, "role", None) else None
+    )
+
+
+def _is_auditor(user):
+    return _get_user_role(user) == Role.AUDITOR
+
+
+def _can_view_contract_list(user):
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    role_code = _get_user_role(user)
+    if role_code in [Role.REQUESTER, Role.DEPT_APPROVER, Role.STORES_RECEIVER]:
+        return False
+    return role_code in [
+        Role.SUPER_ADMIN,
+        Role.LEGAL_MGR,
+        Role.PROC_MGR,
+        Role.PROC_EXEC,
+        Role.FINANCE_AP,
+        Role.AUDITOR,
+        Role.VENDOR_USER,
+    ]
+
+
+def _can_view_contract(user, contract):
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    role_code = _get_user_role(user)
+    if role_code in [Role.REQUESTER, Role.DEPT_APPROVER, Role.STORES_RECEIVER]:
+        return False
+    if role_code in [
+        Role.SUPER_ADMIN,
+        Role.LEGAL_MGR,
+        Role.PROC_MGR,
+        Role.PROC_EXEC,
+        Role.FINANCE_AP,
+        Role.AUDITOR,
+    ]:
+        return True
+    if role_code == Role.VENDOR_USER:
+        vendor = getattr(user, "vendor", None)
+        return vendor is not None and contract.vendor_id == vendor.id
+    return contract.contract_owner_id == user.id
+
+
 @login_required(login_url="/login/")
 def list_view(request):
     """
     Contract Register List View with filtering by status, search query, and metrics.
     """
+    if not _can_view_contract_list(request.user):
+        messages.error(
+            request,
+            "Permission Denied: You do not have permission to access the contract register.",
+        )
+        return redirect("home")
+
     status_filter = request.GET.get("status", "").strip()
     search_query = request.GET.get("q", "").strip()
 
@@ -70,10 +131,13 @@ def create_view(request):
     role_code = getattr(request.user, "role_code", None) or (
         request.user.role.code if getattr(request.user, "role", None) else None
     )
-    if role_code == Role.AUDITOR:
+    if not (
+        request.user.is_superuser
+        or role_code in [Role.SUPER_ADMIN, Role.LEGAL_MGR, Role.PROC_MGR, Role.PROC_EXEC]
+    ):
         messages.error(
             request,
-            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot draft contracts.",
+            "Permission Denied: You do not have permission to draft contracts.",
         )
         return redirect("contracts_list")
 
@@ -116,6 +180,15 @@ def detail_view(request, contract_id):
         messages.error(request, "Contract record not found.")
         return redirect("contracts_list")
 
+    if not _can_view_contract(request.user, contract):
+        messages.error(
+            request,
+            "Permission Denied: You do not have permission to view this contract.",
+        )
+        if _can_view_contract_list(request.user):
+            return redirect("contracts_list")
+        return redirect("home")
+
     audit_logs = AuditLog.objects.filter(
         target_model="Contract", target_object_id=str(contract.id)
     ).order_by("-timestamp")
@@ -157,21 +230,19 @@ def detail_view(request, contract_id):
     return render(request, "pages/contracts/detail.html", context)
 
 
-def _is_auditor(user):
-    role_code = getattr(user, "role_code", None) or (
-        user.role.code if getattr(user, "role", None) else None
-    )
-    return role_code == Role.AUDITOR
-
-
 @login_required(login_url="/login/")
 @require_POST
 def submit_legal_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
-    if _is_auditor(request.user):
+    role_code = _get_user_role(request.user)
+    if not (
+        request.user.is_superuser
+        or role_code in [Role.SUPER_ADMIN, Role.LEGAL_MGR, Role.PROC_MGR, Role.PROC_EXEC]
+        or contract.contract_owner_id == request.user.id
+    ):
         messages.error(
             request,
-            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot modify contracts.",
+            "Permission Denied: You do not have permission to submit contracts for legal review.",
         )
         return redirect("contract_detail", contract_id=contract.id)
     notes = request.POST.get("notes", "")
@@ -189,10 +260,11 @@ def submit_legal_view(request, contract_id):
 @require_POST
 def legal_approve_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
-    if _is_auditor(request.user):
+    role_code = _get_user_role(request.user)
+    if not (request.user.is_superuser or role_code in [Role.LEGAL_MGR, Role.SUPER_ADMIN]):
         messages.error(
             request,
-            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot approve contracts.",
+            "Permission Denied: Only Legal Managers or Super Admins can approve legal reviews.",
         )
         return redirect("contract_detail", contract_id=contract.id)
     notes = request.POST.get("notes", "")
@@ -211,10 +283,11 @@ def legal_approve_view(request, contract_id):
 @require_POST
 def legal_reject_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
-    if _is_auditor(request.user):
+    role_code = _get_user_role(request.user)
+    if not (request.user.is_superuser or role_code in [Role.LEGAL_MGR, Role.SUPER_ADMIN]):
         messages.error(
             request,
-            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot reject contracts.",
+            "Permission Denied: Only Legal Managers or Super Admins can reject legal reviews.",
         )
         return redirect("contract_detail", contract_id=contract.id)
     reason = request.POST.get("reason", "").strip()
@@ -236,10 +309,14 @@ def legal_reject_view(request, contract_id):
 @require_POST
 def business_approve_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
-    if _is_auditor(request.user):
+    role_code = _get_user_role(request.user)
+    if not (
+        request.user.is_superuser
+        or role_code in [Role.PROC_MGR, Role.DEPT_APPROVER, Role.SUPER_ADMIN]
+    ):
         messages.error(
             request,
-            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot approve contracts.",
+            "Permission Denied: Only Procurement Managers or Department Approvers can perform business approval.",
         )
         return redirect("contract_detail", contract_id=contract.id)
     notes = request.POST.get("notes", "")
@@ -258,10 +335,13 @@ def business_approve_view(request, contract_id):
 @require_POST
 def amend_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
-    if _is_auditor(request.user):
+    role_code = _get_user_role(request.user)
+    if not (
+        request.user.is_superuser or role_code in [Role.LEGAL_MGR, Role.PROC_MGR, Role.SUPER_ADMIN]
+    ):
         messages.error(
             request,
-            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot amend contracts.",
+            "Permission Denied: Only Legal Managers, Procurement Managers, or Super Admins can amend contracts.",
         )
         return redirect("contract_detail", contract_id=contract.id)
     form = ContractAmendmentForm(request.POST)
@@ -290,10 +370,14 @@ def amend_view(request, contract_id):
 @require_POST
 def milestone_create_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
-    if _is_auditor(request.user):
+    role_code = _get_user_role(request.user)
+    if not (
+        request.user.is_superuser
+        or role_code in [Role.LEGAL_MGR, Role.PROC_MGR, Role.PROC_EXEC, Role.SUPER_ADMIN]
+    ):
         messages.error(
             request,
-            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot create milestones.",
+            "Permission Denied: You do not have permission to create milestones.",
         )
         return redirect("contract_detail", contract_id=contract.id)
     form = ContractMilestoneForm(request.POST)
@@ -315,10 +399,14 @@ def milestone_create_view(request, contract_id):
 @require_POST
 def milestone_toggle_view(request, contract_id, milestone_id):
     milestone = get_object_or_404(ContractMilestone, id=milestone_id, contract_id=contract_id)
-    if _is_auditor(request.user):
+    role_code = _get_user_role(request.user)
+    if not (
+        request.user.is_superuser
+        or role_code in [Role.LEGAL_MGR, Role.PROC_MGR, Role.PROC_EXEC, Role.SUPER_ADMIN]
+    ):
         messages.error(
             request,
-            "Permission Denied: Compliance Auditors hold strictly read-only permissions.",
+            "Permission Denied: You do not have permission to modify milestones.",
         )
         return redirect("contract_detail", contract_id=contract_id)
     complete_contract_milestone_service(milestone=milestone, user=request.user)
@@ -330,10 +418,14 @@ def milestone_toggle_view(request, contract_id, milestone_id):
 @require_POST
 def obligation_create_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
-    if _is_auditor(request.user):
+    role_code = _get_user_role(request.user)
+    if not (
+        request.user.is_superuser
+        or role_code in [Role.LEGAL_MGR, Role.PROC_MGR, Role.PROC_EXEC, Role.SUPER_ADMIN]
+    ):
         messages.error(
             request,
-            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot create obligations.",
+            "Permission Denied: You do not have permission to create obligations.",
         )
         return redirect("contract_detail", contract_id=contract.id)
     form = ContractObligationForm(request.POST)
@@ -355,10 +447,14 @@ def obligation_create_view(request, contract_id):
 @require_POST
 def obligation_toggle_view(request, contract_id, obligation_id):
     obligation = get_object_or_404(ContractObligation, id=obligation_id, contract_id=contract_id)
-    if _is_auditor(request.user):
+    role_code = _get_user_role(request.user)
+    if not (
+        request.user.is_superuser
+        or role_code in [Role.LEGAL_MGR, Role.PROC_MGR, Role.PROC_EXEC, Role.SUPER_ADMIN]
+    ):
         messages.error(
             request,
-            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot fulfill obligations.",
+            "Permission Denied: You do not have permission to fulfill obligations.",
         )
         return redirect("contract_detail", contract_id=contract_id)
     fulfill_contract_obligation_service(obligation=obligation, user=request.user)
@@ -370,10 +466,14 @@ def obligation_toggle_view(request, contract_id, obligation_id):
 @require_POST
 def document_upload_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
-    if _is_auditor(request.user):
+    role_code = _get_user_role(request.user)
+    if not (
+        request.user.is_superuser
+        or role_code in [Role.LEGAL_MGR, Role.PROC_MGR, Role.PROC_EXEC, Role.SUPER_ADMIN]
+    ):
         messages.error(
             request,
-            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot upload contract documents.",
+            "Permission Denied: You do not have permission to upload contract documents.",
         )
         return redirect("contract_detail", contract_id=contract.id)
     form = ContractDocumentForm(request.POST, request.FILES)
@@ -390,26 +490,6 @@ def document_upload_view(request, contract_id):
     return redirect("contract_detail", contract_id=contract.id)
 
 
-def _can_view_contract(user, contract):
-    if not user or not user.is_authenticated:
-        return False
-    role_code = getattr(user, "role_code", None) or (
-        user.role.code if getattr(user, "role", None) else None
-    )
-    if role_code in [
-        Role.SUPER_ADMIN,
-        Role.LEGAL_MGR,
-        Role.PROC_MGR,
-        Role.PROC_EXEC,
-        Role.AUDITOR,
-    ]:
-        return True
-    if role_code == Role.VENDOR_USER:
-        vendor = getattr(user, "vendor", None)
-        return vendor is not None and contract.vendor_id == vendor.id
-    return contract.contract_owner_id == user.id
-
-
 @login_required(login_url="/login/")
 def document_download_view(request, contract_id, document_id):
     """
@@ -421,7 +501,9 @@ def document_download_view(request, contract_id, document_id):
             request,
             "Permission Denied: You are not authorized to access documents for this contract.",
         )
-        return redirect("contracts_list")
+        if _can_view_contract_list(request.user):
+            return redirect("contracts_list")
+        return redirect("home")
 
     document = get_object_or_404(ContractDocument, id=document_id, contract=contract)
     if (
@@ -454,10 +536,13 @@ def document_download_view(request, contract_id, document_id):
 @require_POST
 def renew_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
-    if _is_auditor(request.user):
+    role_code = _get_user_role(request.user)
+    if not (
+        request.user.is_superuser or role_code in [Role.LEGAL_MGR, Role.PROC_MGR, Role.SUPER_ADMIN]
+    ):
         messages.error(
             request,
-            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot renew contracts.",
+            "Permission Denied: Only Legal Managers, Procurement Managers, or Super Admins can renew contracts.",
         )
         return redirect("contract_detail", contract_id=contract.id)
     form = ContractRenewalForm(request.POST)
@@ -484,10 +569,13 @@ def renew_view(request, contract_id):
 @require_POST
 def terminate_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
-    if _is_auditor(request.user):
+    role_code = _get_user_role(request.user)
+    if not (
+        request.user.is_superuser or role_code in [Role.LEGAL_MGR, Role.PROC_MGR, Role.SUPER_ADMIN]
+    ):
         messages.error(
             request,
-            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot terminate contracts.",
+            "Permission Denied: Only Legal Managers, Procurement Managers, or Super Admins can terminate contracts.",
         )
         return redirect("contract_detail", contract_id=contract.id)
     reason = request.POST.get("reason", "").strip()
@@ -507,33 +595,152 @@ def dashboard_view(request):
     """
     Legal & SLA Governance Desk Dashboard View for Legal Managers.
     """
+    role_code = _get_user_role(request.user)
+    if not (request.user.is_superuser or role_code in [Role.LEGAL_MGR, Role.SUPER_ADMIN]):
+        messages.error(
+            request,
+            "Permission Denied: Access to Legal Dashboard is restricted to Legal Managers and Super Admins.",
+        )
+        return redirect("home")
+
     from .selectors import (
-        get_active_contract_alerts,
         get_contracts_pending_legal_review,
         get_contracts_qs,
         get_expiring_contracts,
         get_legal_dashboard_metrics,
+        get_pending_milestones,
         get_pending_obligations,
+        get_pending_vendor_verifications_qs,
     )
 
     user_contracts = get_contracts_qs(user=request.user)
-    active_contracts = user_contracts.filter(
-        status__in=[Contract.STATUS_ACTIVE, Contract.STATUS_RENEWED]
-    ).order_by("end_date")
     pending_legal = get_contracts_pending_legal_review().filter(
         id__in=user_contracts.values_list("id", flat=True)
     )
     expiring_contracts = get_expiring_contracts(days=30, user=request.user)
     pending_obligations = get_pending_obligations(user=request.user)
-    active_alerts = get_active_contract_alerts(user=request.user)
+    pending_milestones = get_pending_milestones(user=request.user)
     metrics = get_legal_dashboard_metrics(user=request.user)
+    pending_vendor_verifications = get_pending_vendor_verifications_qs()
 
     context = {
         "metrics": metrics,
-        "active_contracts_list": active_contracts[:10],
         "pending_legal_list": pending_legal[:10],
         "expiring_contracts_list": expiring_contracts[:10],
         "pending_obligations_list": pending_obligations[:10],
-        "active_alerts_list": active_alerts[:10],
+        "pending_milestones_list": pending_milestones[:10],
+        "pending_vendor_verifications": pending_vendor_verifications,
     }
     return render(request, "pages/dashboards/legal_dashboard.html", context)
+
+
+@login_required(login_url="/login/")
+@require_POST
+def legal_validate_vendor_credentials_view(request, dispatch_id):
+    """
+    POST action for Legal Manager to approve and activate vendor credentials and portal access.
+    """
+    from apps.vendors.permissions import can_legal_verify_vendor
+    from apps.vendors.services import legal_validate_vendor_credentials_service
+
+    if not can_legal_verify_vendor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Only Legal Managers and Super Admins can verify vendor credentials.",
+        )
+        return redirect("contracts_dashboard")
+
+    notes = request.POST.get("notes", "").strip()
+    try:
+        dispatch = legal_validate_vendor_credentials_service(
+            dispatch_id=dispatch_id, legal_user=request.user, notes=notes
+        )
+        messages.success(
+            request,
+            f"Vendor portal credentials for '{dispatch.vendor.legal_name}' ({dispatch.sent_to}) successfully verified and activated.",
+        )
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
+    except Exception as exc:
+        messages.error(request, f"Failed to validate vendor credentials: {exc}")
+
+    return redirect("contracts_dashboard")
+
+
+@login_required(login_url="/login/")
+@require_POST
+def legal_reject_vendor_credentials_view(request, dispatch_id):
+    """
+    POST action for Legal Manager to reject vendor credentials and request changes.
+    """
+    from apps.vendors.permissions import can_legal_verify_vendor
+    from apps.vendors.services import legal_reject_vendor_credentials_service
+
+    if not can_legal_verify_vendor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Only Legal Managers and Super Admins can verify vendor credentials.",
+        )
+        return redirect("contracts_dashboard")
+
+    notes = request.POST.get("notes", "").strip()
+    if not notes:
+        messages.error(request, "Reviewer notes are required when rejecting vendor credentials.")
+        return redirect("contracts_dashboard")
+
+    try:
+        dispatch = legal_reject_vendor_credentials_service(
+            dispatch_id=dispatch_id, legal_user=request.user, notes=notes
+        )
+        messages.warning(
+            request,
+            f"Vendor credentials for '{dispatch.vendor.legal_name}' rejected. Status set to Changes Required.",
+        )
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
+    except Exception as exc:
+        messages.error(request, f"Failed to reject vendor credentials: {exc}")
+
+    return redirect("contracts_dashboard")
+
+
+@login_required(login_url="/login/")
+@require_POST
+def legal_document_decision_view(request, document_id):
+    """
+    POST action for Legal Manager to record a document-level verification decision:
+    VERIFY, REJECT, or REQUEST_CORRECTION.
+    """
+    from apps.vendors.permissions import can_legal_verify_vendor
+    from apps.vendors.services import verify_vendor_document_decision_service
+
+    if not can_legal_verify_vendor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Only Legal Managers and Super Admins can verify vendor documents.",
+        )
+        return redirect("contracts_dashboard")
+
+    decision = request.POST.get("decision", "").strip().upper()
+    notes = request.POST.get("reviewer_notes", "").strip()
+
+    try:
+        doc = verify_vendor_document_decision_service(
+            document_id=document_id,
+            reviewer=request.user,
+            decision=decision,
+            reviewer_notes=notes,
+        )
+        if decision == "VERIFY":
+            messages.success(request, f"Document '{doc.title}' has been successfully verified.")
+        elif decision == "REJECT":
+            messages.warning(request, f"Document '{doc.title}' rejected.")
+        else:
+            messages.info(request, f"Corrections requested for document '{doc.title}'.")
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
+    except Exception as exc:
+        messages.error(request, f"Failed to record document decision: {exc}")
+
+    next_url = request.POST.get("next") or request.META.get("HTTP_REFERER") or "contracts_dashboard"
+    return redirect(next_url)

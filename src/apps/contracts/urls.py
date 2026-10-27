@@ -62,4 +62,19 @@ urlpatterns = [
     path(
         "contracts/<uuid:contract_id>/terminate/", views.terminate_view, name="contract_terminate"
     ),
+    path(
+        "contracts/credentials/<uuid:dispatch_id>/validate/",
+        views.legal_validate_vendor_credentials_view,
+        name="legal_validate_credentials",
+    ),
+    path(
+        "contracts/credentials/<uuid:dispatch_id>/reject/",
+        views.legal_reject_vendor_credentials_view,
+        name="legal_reject_credentials",
+    ),
+    path(
+        "contracts/documents/<uuid:document_id>/decision/",
+        views.legal_document_decision_view,
+        name="legal_document_decision",
+    ),
 ]
