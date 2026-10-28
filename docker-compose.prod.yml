@@ -1,0 +1,118 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: procuresphere_db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-procuresphere_db}
+      POSTGRES_USER: ${DB_USER:-procure_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-procure_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-procure_user} -d ${DB_NAME:-procuresphere_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: procuresphere_redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  web:
+    build: .
+    container_name: procuresphere_web
+    command: gunicorn -c gunicorn.conf.py config.wsgi:application
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    expose:
+      - "8000"
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.prod
+      - DATABASE_URL=postgresql://${DB_USER:-procure_user}:${DB_PASSWORD:-procure_password}@db:5432/${DB_NAME:-procuresphere_db}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,web,nginx
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: procuresphere_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_volume:/app/staticfiles:ro
+      - media_volume:/app/media:ro
+    depends_on:
+      - web
+    restart: unless-stopped
+
+  celery_worker:
+    build: .
+    container_name: procuresphere_worker
+    command: celery -A config worker -l info
+    volumes:
+      - media_volume:/app/media
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.prod
+      - DATABASE_URL=postgresql://${DB_USER:-procure_user}:${DB_PASSWORD:-procure_password}@db:5432/${DB_NAME:-procuresphere_db}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery_beat:
+    build: .
+    container_name: procuresphere_beat
+    command: celery -A config beat -l info
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.prod
+      - DATABASE_URL=postgresql://${DB_USER:-procure_user}:${DB_PASSWORD:-procure_password}@db:5432/${DB_NAME:-procuresphere_db}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
