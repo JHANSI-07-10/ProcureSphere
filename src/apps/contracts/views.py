@@ -115,6 +115,7 @@ def list_view(request):
     """
     Contract Register List View with filtering by status, search query, and metrics.
     """
+    _enforce_internal_contracts_access(request)
     if not _can_view_contract_list(request.user):
         messages.error(
             request,
