@@ -37,7 +37,7 @@
             .legal-sidebar-desktop,
             .manager-sidebar-desktop,
             .auditor-sidebar,
-            aside.bg-dark {
+            aside.bg-dark:not(.approver-sidebar):not(.sa-sidebar) {
                 width: 260px !important;
                 min-width: 260px !important;
                 flex-shrink: 0 !important;
@@ -156,10 +156,10 @@
             margin-bottom: 0 !important;
         }
 
-        aside.bg-dark .sidebar-footer a,
-        aside.bg-dark a.sidebar-signout-btn,
-        aside.bg-dark .sidebar-footer a:hover,
-        aside.bg-dark a.sidebar-signout-btn:hover {
+        aside.bg-dark:not(.approver-sidebar) .sidebar-footer a,
+        aside.bg-dark:not(.approver-sidebar) a.sidebar-signout-btn,
+        aside.bg-dark:not(.approver-sidebar) .sidebar-footer a:hover,
+        aside.bg-dark:not(.approver-sidebar) a.sidebar-signout-btn:hover {
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;

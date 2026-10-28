@@ -76,16 +76,16 @@
         <div class="sidebar-footer border-top border-secondary border-opacity-25 px-3 py-3 mt-auto">
             <div class="d-flex align-items-center justify-content-between gap-2 w-100">
                 <div class="d-flex align-items-center overflow-hidden me-2" style="min-width: 0; flex: 1 1 auto;">
-                    <div class="avatar-circle-sm bg-info text-dark fw-bold d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 me-2" style="width: 32px; height: 32px; font-size: 0.85rem;">
-                        {{ user.email|slice:":1"|upper|default:"D" }}
+                    <div class="avatar-circle-sm bg-primary text-white fw-bold d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 me-2 shadow-2xs" style="width: 32px; height: 32px; font-size: 0.85rem;">
+                        {{ user.email|slice:":1"|upper|default:"A" }}
                     </div>
                     <div class="overflow-hidden" style="min-width: 0; flex: 1 1 auto;">
-                        <div class="small fw-semibold text-white text-truncate" title="{{ user.email }}">{{ user.email }}</div>
-                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Department Approver</div>
+                        <div class="small fw-semibold text-white text-truncate" title="{{ user.email }}">{{ user.email|default:"approver@hpe.com" }}</div>
+                        <div class="badge bg-info text-dark rounded-pill d-inline-block text-truncate" style="font-size: 0.65rem; max-width: 100%;">Department Approver</div>
                     </div>
                 </div>
-                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-circle flex-shrink-0 d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px; padding: 0;" title="Sign out">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-circle flex-shrink-0 d-inline-flex align-items-center justify-content-center approver-signout-btn" style="width: 32px !important; min-width: 32px !important; height: 32px !important; padding: 0 !important; border-radius: 50% !important;" title="Sign out">
+                    <i class="fa-solid fa-arrow-right-from-bracket" style="font-size: 0.8rem;"></i>
                     <span class="visually-hidden">Sign out</span>
                 </a>
             </div>
@@ -191,20 +191,38 @@
 
     /* Desktop Sidebar (>= 992px) */
     @media (min-width: 992px) {
-        .approver-sidebar {
+        #approverSidebar,
+        .approver-sidebar,
+        aside#approverSidebar.bg-dark {
             width: 268px !important;
             min-width: 268px !important;
-            height: 100vh;
-            position: -webkit-sticky;
-            position: sticky;
-            top: 0;
-            z-index: 1020;
+            height: 100vh !important;
+            position: -webkit-sticky !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 1020 !important;
             background-color: #212529 !important;
             border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
+            align-self: stretch !important;
+            margin-top: 0 !important;
+            padding-top: 0 !important;
         }
         .approver-backdrop {
             display: none !important;
         }
+    }
+
+    #approverSidebar .sidebar-footer a.approver-signout-btn,
+    #approverSidebar .sidebar-footer a {
+        width: 32px !important;
+        min-width: 32px !important;
+        height: 32px !important;
+        padding: 0 !important;
+        border-radius: 50% !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-shadow: none !important;
     }
 
     /* Mobile & Tablet Responsive Sidebar (< 992px) */
