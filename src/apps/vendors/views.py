@@ -341,9 +341,26 @@ def vendor_kyc_action_view(request, vendor_id, kyc_action):
 @login_required(login_url="/login/")
 def vendor_document_download_view(request, vendor_id, doc_id):
     """Authorised internal download; files are never linked by their storage URL."""
+    import os
+
+    from apps.audit.models import AuditLog
+
     _require_governance_view(request.user)
     vendor = _get_scoped_vendor_or_404(request, vendor_id)
     doc = get_object_or_404(VendorDocument, pk=doc_id, vendor=vendor)
+
+    AuditLog.objects.create(
+        actor=request.user,
+        action=AuditLog.ACTION_EXPORT,
+        target_model="VendorDocument",
+        target_object_id=str(doc.id),
+        new_state={
+            "document_title": doc.title,
+            "filename": os.path.basename(doc.file.name) if getattr(doc, "file", None) else "",
+            "vendor_id": str(vendor.id),
+        },
+    )
+
     try:
         return FileResponse(doc.file.open("rb"), as_attachment=True)
     except (FileNotFoundError, ValueError):
