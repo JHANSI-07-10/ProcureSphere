@@ -12,8 +12,10 @@ from apps.orders.models import POLine, PurchaseOrder
 from apps.organization.models import CostCenter, Department, FiscalPeriod, Organization
 from apps.receipts.services import (
     create_goods_receipt_service,
+    handoff_goods_to_stock_service,
     record_inspection_service,
 )
+from apps.receipts.views import get_stores_dashboard_data
 from apps.vendors.models import Vendor, VendorCategory
 
 
@@ -69,6 +71,11 @@ def stores_dashboard_test_world(db, db_roles):
         role=db_roles[Role.SUPER_ADMIN],
         is_superuser=True,
     )
+    auditor_user = User.objects.create_user(
+        email="stores_auditor@test.local",
+        password="Password123!",
+        role=db_roles[Role.AUDITOR],
+    )
     requester_user = User.objects.create_user(
         email="stores_requester@test.local",
         password="Password123!",
@@ -79,6 +86,22 @@ def stores_dashboard_test_world(db, db_roles):
         password="Password123!",
         role=db_roles[Role.VENDOR_USER],
         vendor=vendor,
+    )
+
+    # POs for filtering tests
+    po_draft = PurchaseOrder.objects.create(
+        po_number="PO-STO-DRAFT-003",
+        vendor=vendor,
+        cost_center=cost_center,
+        status=PurchaseOrder.STATUS_DRAFT,
+        total_amount=Decimal("5000.00"),
+    )
+    po_completed = PurchaseOrder.objects.create(
+        po_number="PO-STO-COMP-004",
+        vendor=vendor,
+        cost_center=cost_center,
+        status=PurchaseOrder.STATUS_COMPLETED,
+        total_amount=Decimal("15000.00"),
     )
 
     # 1. PO awaiting delivery (ISSUED)
@@ -177,17 +200,93 @@ def stores_dashboard_test_world(db, db_roles):
         ],
     )
 
+    # GRN 3: Fully handed off to stock
+    po_handed = PurchaseOrder.objects.create(
+        po_number="PO-STO-HANDED-005",
+        vendor=vendor,
+        cost_center=cost_center,
+        status=PurchaseOrder.STATUS_ACKNOWLEDGED,
+        total_amount=Decimal("3000.00"),
+    )
+    po_line_handed = POLine.objects.create(
+        po=po_handed,
+        item_description="SFP+ Transceiver 10G",
+        quantity=Decimal("6.00"),
+        unit_price=Decimal("500.00"),
+    )
+    grn_handed_off = create_goods_receipt_service(
+        po=po_handed,
+        received_by=receiver_user,
+        receipt_items=[
+            {
+                "po_line_id": str(po_line_handed.id),
+                "quantity_received": Decimal("6.00"),
+                "quantity_accepted": Decimal("6.00"),
+            }
+        ],
+        delivery_note_number="DN-HANDED-903",
+    )
+    record_inspection_service(
+        receipt=grn_handed_off,
+        inspected_by=receiver_user,
+        inspection_items=[
+            {
+                "receipt_line_id": str(grn_handed_off.lines.first().id),
+                "passed": True,
+                "inspection_notes": "Passed QC",
+            }
+        ],
+    )
+    handoff_goods_to_stock_service(
+        receipt=grn_handed_off,
+        handed_off_by=receiver_user,
+        storage_location="AISLE-A1-BIN4",
+    )
+
     return {
         "receiver_user": receiver_user,
         "admin_user": admin_user,
+        "auditor_user": auditor_user,
         "requester_user": requester_user,
         "vendor_user": vendor_user,
         "po_delivery": po_delivery,
         "po_receipt": po_receipt,
+        "po_draft": po_draft,
+        "po_completed": po_completed,
         "grn_pending_insp": grn_pending_insp,
         "grn_inspected": grn_inspected,
+        "grn_handed_off": grn_handed_off,
         "receipt_line_rejected": receipt_line2,
     }
+
+
+@pytest.mark.django_db
+def test_data_provider_returns_all_four_operational_collections(stores_dashboard_test_world):
+    """
+    Verify get_stores_dashboard_data directly returns all 4 operational collections
+    as lists, with preserved integer counts and the pending_stock_handoffs alias.
+    """
+    receiver = stores_dashboard_test_world["receiver_user"]
+    data = get_stores_dashboard_data(receiver)
+
+    assert "metrics" in data
+    assert "recent_grns" in data
+    assert "pending_deliveries" in data
+    assert "pending_inspections" in data
+    assert "pending_handoffs" in data
+    assert "pending_rejections" in data
+
+    metrics = data["metrics"]
+    assert "pending_stock_handoff_grns" in metrics
+    assert "pending_stock_handoffs" in metrics
+    assert metrics["pending_stock_handoffs"] == metrics["pending_stock_handoff_grns"]
+    assert isinstance(metrics["pending_deliveries"], int)
+    assert isinstance(metrics["pending_inspections"], int)
+
+    assert isinstance(data["pending_deliveries"], list)
+    assert isinstance(data["pending_inspections"], list)
+    assert isinstance(data["pending_handoffs"], list)
+    assert isinstance(data["pending_rejections"], list)
 
 
 @pytest.mark.django_db
@@ -279,6 +378,55 @@ def test_role_dispatch_root_route_stores_dashboard_collections(stores_dashboard_
 
 
 @pytest.mark.django_db
+def test_stores_collections_eligibility_and_filtering(stores_dashboard_test_world):
+    """
+    Verify eligible records appear in collections and ineligible records are excluded:
+    - Deliveries: ISSUED and PARTIAL_RECEIPT appear; DRAFT and COMPLETED do not.
+    - Inspections: PENDING inspection appears; passed inspection does not.
+    - Handoffs: PENDING_HANDOFF appears; HANDED_OFF does not.
+    """
+    receiver = stores_dashboard_test_world["receiver_user"]
+    data = get_stores_dashboard_data(receiver)
+
+    # 1. Deliveries: DRAFT and COMPLETED must be excluded
+    delivery_ids = [po.id for po in data["pending_deliveries"]]
+    assert stores_dashboard_test_world["po_delivery"].id in delivery_ids
+    assert stores_dashboard_test_world["po_receipt"].id in delivery_ids
+    assert stores_dashboard_test_world["po_draft"].id not in delivery_ids
+    assert stores_dashboard_test_world["po_completed"].id not in delivery_ids
+
+    # 2. Inspections: Already inspected GRNs must be excluded
+    insp_ids = [g.id for g in data["pending_inspections"]]
+    assert stores_dashboard_test_world["grn_pending_insp"].id in insp_ids
+    assert stores_dashboard_test_world["grn_inspected"].id not in insp_ids
+    assert stores_dashboard_test_world["grn_handed_off"].id not in insp_ids
+
+    # 3. Handoffs: Already handed off GRNs must be excluded
+    handoff_ids = [g.id for g in data["pending_handoffs"]]
+    assert stores_dashboard_test_world["grn_inspected"].id in handoff_ids
+    assert stores_dashboard_test_world["grn_handed_off"].id not in handoff_ids
+
+
+@pytest.mark.django_db
+def test_stock_handoff_kpi_card_and_badge_renders_correct_count(stores_dashboard_test_world):
+    """
+    Verify metrics.pending_stock_handoffs renders the expected count in the KPI card and badge.
+    """
+    client = Client()
+    client.force_login(stores_dashboard_test_world["receiver_user"])
+
+    response = client.get(reverse("receipt_dashboard"))
+    assert response.status_code == 200
+
+    data = get_stores_dashboard_data(stores_dashboard_test_world["receiver_user"])
+    expected_handoffs = data["metrics"]["pending_stock_handoffs"]
+    assert expected_handoffs >= 1
+
+    content = response.content.decode("utf-8")
+    assert f">{expected_handoffs}</h3>" in content or f">{expected_handoffs}</span>" in content
+
+
+@pytest.mark.django_db
 def test_stores_dashboard_empty_states_render(db, db_roles):
     """
     Verify that when no records exist, all 4 collections are empty and template empty-states render.
@@ -340,6 +488,11 @@ def test_stores_dashboard_authorization_and_blocking(stores_dashboard_test_world
     admin_response = client.get(reverse("receipt_dashboard"))
     assert admin_response.status_code == 200
 
+    # 5. Auditor user
+    client.force_login(stores_dashboard_test_world["auditor_user"])
+    auditor_response = client.get(reverse("receipt_dashboard"))
+    assert auditor_response.status_code == 200
+
 
 @pytest.mark.django_db
 def test_stores_dashboard_integer_metrics_preserved(stores_dashboard_test_world):
@@ -359,3 +512,109 @@ def test_stores_dashboard_integer_metrics_preserved(stores_dashboard_test_world)
     assert isinstance(metrics["pending_stock_handoffs"], int)
     assert isinstance(metrics["total_rejections"], int)
     assert isinstance(metrics["total_grns"], int)
+
+
+@pytest.mark.django_db
+def test_inspection_dispatches_notifications_on_rejection_and_acceptance(stores_dashboard_test_world):
+    """
+    Verify quality inspection dispatches:
+    - TYPE_EXCEPTION_RAISED to requester and PO creator when quantities are rejected.
+    - TYPE_GOODS_RECEIVED to requester when all items pass inspection.
+    - Prevents duplicate notification spam on re-inspection.
+    """
+    from apps.notifications.models import Notification
+    from apps.requisitions.models import PurchaseRequisition
+
+    receiver = stores_dashboard_test_world["receiver_user"]
+    grn = stores_dashboard_test_world["grn_pending_insp"]
+    requester = stores_dashboard_test_world["requester_user"]
+
+    # Link requisition with requester to PO
+    po = grn.po
+    pr = PurchaseRequisition.objects.create(
+        requester=requester,
+        department=po.cost_center.department,
+        cost_center=po.cost_center,
+        title="Test Hardware Requisition",
+        total_amount=po.total_amount,
+        status=PurchaseRequisition.STATUS_APPROVED,
+        requested_delivery_date=timezone.now().date() + datetime.timedelta(days=14),
+    )
+    po.requisition = pr
+    po.save(update_fields=["requisition"])
+
+    line = grn.lines.first()
+
+    # 1. Inspection with rejection -> TYPE_EXCEPTION_RAISED
+    record_inspection_service(
+        receipt=grn,
+        inspected_by=receiver,
+        inspection_items=[
+            {
+                "receipt_line_id": str(line.id),
+                "passed": False,
+                "rejected_quantity": Decimal("1.00"),
+                "rejection_reason": "Defective port",
+            }
+        ],
+    )
+
+    notifs = Notification.objects.filter(
+        recipient=requester,
+        notification_type=Notification.TYPE_EXCEPTION_RAISED,
+        target_url=f"/receipts/{grn.id}/",
+    )
+    assert notifs.count() == 1
+    assert "Receipt Quality Rejection" in notifs.first().title
+
+    # 2. Re-inspection does not duplicate the notification
+    record_inspection_service(
+        receipt=grn,
+        inspected_by=receiver,
+        inspection_items=[
+            {
+                "receipt_line_id": str(line.id),
+                "passed": False,
+                "rejected_quantity": Decimal("1.00"),
+                "rejection_reason": "Defective port confirmed",
+            }
+        ],
+    )
+    assert notifs.count() == 1
+
+    # 3. Passed inspection -> TYPE_GOODS_RECEIVED
+    po_line = line.po_line
+    # Add ordered quantity if needed so quantity_received doesn't exceed
+    po_line.quantity = Decimal("50.00")
+    po_line.save(update_fields=["quantity"])
+
+    grn_pass = create_goods_receipt_service(
+        po=po,
+        received_by=receiver,
+        receipt_items=[
+            {
+                "po_line_id": str(po_line.id),
+                "quantity_received": Decimal("1.00"),
+                "quantity_accepted": Decimal("1.00"),
+            }
+        ],
+        delivery_note_number="DN-PASS-TEST",
+    )
+    record_inspection_service(
+        receipt=grn_pass,
+        inspected_by=receiver,
+        inspection_items=[
+            {
+                "receipt_line_id": str(grn_pass.lines.first().id),
+                "passed": True,
+                "inspection_notes": "Passed all quality checks",
+            }
+        ],
+    )
+    pass_notifs = Notification.objects.filter(
+        recipient=requester,
+        notification_type=Notification.TYPE_GOODS_RECEIVED,
+        title__startswith="Receipt Inspection Passed",
+        target_url=f"/receipts/{grn_pass.id}/",
+    )
+    assert pass_notifs.count() == 1
