@@ -94,21 +94,47 @@ class POLine(TimeStampedModel):
 
 
 class POAmendment(TimeStampedModel):
+    STATUS_PENDING = "PENDING"
+    STATUS_APPROVED = "APPROVED"
+    STATUS_REJECTED = "REJECTED"
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending Approval"),
+        (STATUS_APPROVED, "Approved"),
+        (STATUS_REJECTED, "Rejected"),
+    ]
+
     po = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name="amendments")
     amendment_number = models.PositiveIntegerField()
     reason = models.TextField()
     previous_version_snapshot = models.JSONField(
         help_text="Immutable JSON snapshot of PO prior to change order"
     )
+    pending_line_items = models.JSONField(
+        default=list,
+        help_text="Proposed line item changes awaiting approval",
+    )
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True
+    )
     requested_by = models.ForeignKey(
         "accounts.User", on_delete=models.PROTECT, related_name="requested_po_amendments"
     )
+    approved_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_po_amendments",
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True)
 
     class Meta:
         unique_together = ("po", "amendment_number")
 
     def __str__(self):
-        return f"Amendment #{self.amendment_number} for {self.po.po_number}"
+        return f"Amendment #{self.amendment_number} for {self.po.po_number} [{self.status}]"
 
 
 class DeliverySchedule(TimeStampedModel):

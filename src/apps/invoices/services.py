@@ -141,6 +141,8 @@ def run_3_way_match_service(
         price_tolerance_pct = policy.price_tolerance_pct
     if qty_tolerance_pct is None:
         qty_tolerance_pct = policy.qty_tolerance_pct
+    price_tolerance_amount = policy.price_tolerance_amount
+    qty_tolerance_amount = policy.qty_tolerance_amount
 
     invoice.status = SupplierInvoice.STATUS_MATCHING
     invoice.save(update_fields=["status", "updated_at"])
@@ -183,8 +185,12 @@ def run_3_way_match_service(
 
         remaining_accepted_qty = max(Decimal("0.00"), accepted_qty_agg - prior_invoiced_qty)
         max_allowed_qty = remaining_accepted_qty * (Decimal("1.00") + qty_tolerance_pct)
+        qty_within_amount = (
+            qty_tolerance_amount is not None
+            and (inv_line.quantity - remaining_accepted_qty) <= qty_tolerance_amount
+        )
 
-        if inv_line.quantity > max_allowed_qty:
+        if inv_line.quantity > max_allowed_qty and not qty_within_amount:
             qty_diff = inv_line.quantity - remaining_accepted_qty
             variance = qty_diff * inv_line.unit_price
             exc = MatchException.objects.create(
@@ -200,7 +206,12 @@ def run_3_way_match_service(
 
         # 2. Price Variance check (Billed Unit Price vs PO Line Unit Price)
         max_allowed_price = po_line.unit_price * (Decimal("1.00") + price_tolerance_pct)
-        if inv_line.unit_price > max_allowed_price:
+        price_within_amount = (
+            price_tolerance_amount is not None
+            and (inv_line.unit_price - po_line.unit_price) <= price_tolerance_amount
+        )
+
+        if inv_line.unit_price > max_allowed_price and not price_within_amount:
             unit_diff = inv_line.unit_price - po_line.unit_price
             variance = unit_diff * inv_line.quantity
             exc = MatchException.objects.create(

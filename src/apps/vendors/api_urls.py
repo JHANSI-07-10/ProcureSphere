@@ -336,13 +336,14 @@ class VendorViewSet(viewsets.ModelViewSet):
                 return qs.none()
         elif not user.is_superuser:
             scoped_org = getattr(user, "effective_organization", None)
-            if not scoped_org:
-                return qs.none()
-            qs = qs.filter(
-                Q(organization=scoped_org)
-                | Q(created_by__organization=scoped_org)
-                | Q(created_by__department__organization=scoped_org)
-            )
+            if scoped_org:
+                qs = qs.filter(
+                    Q(organization=scoped_org)
+                    | Q(organization__isnull=True)
+                    | Q(created_by__organization=scoped_org)
+                    | Q(created_by__department__organization=scoped_org)
+                )
+            # else: no scoped org — internal staff sees all vendors
 
         filterset = VendorFilter(self.request.query_params, queryset=qs)
         if not filterset.is_valid():

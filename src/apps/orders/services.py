@@ -203,16 +203,16 @@ def amend_purchase_order_service(
     reason: str,
     updated_line_items: list,
     requested_by_user: User,
-    tax_rate: Decimal = Decimal("0.10"),
 ) -> POAmendment:
     """
-    Creates a PO Change Order / Amendment:
-    - Captures immutable JSON snapshot of prior PO state.
-    - Increments PO version counter (e.g. V1 -> V2).
-    - Preserves prior POLine history in POAmendment record.
+    Creates a PENDING PO Amendment. Changes are NOT applied until
+    approve_po_amendment_service is called by an authorised approver.
     """
     if not reason:
         raise ValidationError("Amendment justification reason is required.")
+
+    if po.status == PurchaseOrder.STATUS_CANCELLED:
+        raise ValidationError("Cancelled purchase orders cannot be amended.")
 
     if po.vendor.status == Vendor.STATUS_SUSPENDED:
         raise ValidationError(
@@ -220,9 +220,7 @@ def amend_purchase_order_service(
         )
 
     role_code = getattr(requested_by_user, "role_code", None) or (
-        requested_by_user.role.code
-        if getattr(requested_by_user, "role", None)
-        else None
+        requested_by_user.role.code if getattr(requested_by_user, "role", None) else None
     )
     if not (
         getattr(requested_by_user, "is_superuser", False)
@@ -232,7 +230,11 @@ def amend_purchase_order_service(
             "Permission Denied: Only procurement roles or Super Admin can amend purchase orders."
         )
 
-    # 1. Take JSON snapshot of previous version
+    if po.amendments.filter(status=POAmendment.STATUS_PENDING).exists():
+        raise ValidationError(
+            f"PO {po.po_number} already has a pending amendment awaiting approval."
+        )
+
     snapshot = {
         "po_number": po.po_number,
         "version": po.version,
@@ -253,42 +255,149 @@ def amend_purchase_order_service(
         ],
     }
 
+    # Validate proposed quantities against received quantities upfront
+    existing_lines = list(po.lines.all().order_by("id"))
+    matched_ids = set()
+    for idx, item in enumerate(updated_line_items):
+        item_id = str(item.get("id") or item.get("line_id") or "")
+        matched_line = None
+        if item_id:
+            matched_line = next((l for l in existing_lines if str(l.id) == item_id), None)
+        if not matched_line and idx < len(existing_lines):
+            candidate = existing_lines[idx]
+            if candidate.id not in matched_ids:
+                matched_line = candidate
+        if matched_line:
+            matched_ids.add(matched_line.id)
+            qty = Decimal(str(item["quantity"]))
+            if qty < matched_line.quantity_received:
+                raise ValidationError(
+                    f"Amended quantity ({qty}) for '{matched_line.item_description}' cannot be "
+                    f"less than quantity already received ({matched_line.quantity_received})."
+                )
+
+    # Serialise proposed line items for storage
+    serialised_lines = [
+        {
+            "id": str(item.get("id") or item.get("line_id") or ""),
+            "item_description": item.get("item_description", ""),
+            "quantity": str(item["quantity"]),
+            "unit_price": str(item["unit_price"]),
+            "unit_of_measure": item.get("unit_of_measure", "EA"),
+        }
+        for item in updated_line_items
+    ]
+
     amendment_count = po.amendments.count() + 1
     amendment = POAmendment.objects.create(
         po=po,
         amendment_number=amendment_count,
         reason=reason,
         previous_version_snapshot=snapshot,
+        pending_line_items=serialised_lines,
+        status=POAmendment.STATUS_PENDING,
         requested_by=requested_by_user,
     )
 
-    # 2. Update PO version and line items in-place to preserve line history and FK integrity
-    po.version += 1
+    AuditLog.objects.create(
+        actor=requested_by_user,
+        action=AuditLog.ACTION_SUBMIT,
+        target_model="POAmendment",
+        target_object_id=str(amendment.id),
+        new_state={
+            "po_number": po.po_number,
+            "amendment_number": amendment_count,
+            "status": amendment.status,
+            "reason": reason,
+        },
+    )
+
+    from apps.approvals.models import ApprovalPolicy
+    from apps.approvals.services import evaluate_approval_chain
+    policy_chain = evaluate_approval_chain(
+        module=ApprovalPolicy.MODULE_PO_AMENDMENT,
+        amount=po.total_amount,
+        department=po.cost_center.department if po.cost_center else None,
+        cost_center=po.cost_center,
+    )
+
+    if not policy_chain:
+        # When no approval policy is configured for PO amendments, apply directly per PRD rules
+        return approve_po_amendment_service(
+            amendment=amendment,
+            approver=requested_by_user,
+            comments=f"Auto-applied: no approval policy configured for PO amendments. Reason: {reason}",
+        )
+
+    from apps.notifications.services import notify_role_users, notify_vendor_users
+    notify_role_users(
+        role_codes=[Role.PROC_MGR, Role.SUPER_ADMIN],
+        notification_type=Notification.TYPE_PO_AMENDMENT,
+        title=f"PO Amendment Pending Approval: {po.po_number}",
+        message=f"Amendment #{amendment_count} for PO {po.po_number} requires approval. Reason: {reason}",
+        target_url=f"/orders/{po.id}/",
+    )
+    notify_vendor_users(
+        vendor=po.vendor,
+        notification_type=Notification.TYPE_PO_AMENDMENT,
+        title=f"Purchase Order Amendment Submitted: {po.po_number}",
+        message=f"An amendment has been submitted for PO {po.po_number} and is pending approval. Reason: {reason}",
+        target_url=f"/vendor/purchase-orders/{po.id}/",
+    )
+
+    return amendment
+
+
+@transaction.atomic
+def approve_po_amendment_service(
+    *,
+    amendment: POAmendment,
+    approver: User,
+    comments: str = "",
+    tax_rate: Decimal = Decimal("0.10"),
+) -> POAmendment:
+    """
+    Applies a PENDING PO amendment after approval:
+    - Validates approver role.
+    - Applies pending_line_items to the PO lines.
+    - Increments PO version.
+    - Adjusts budget commitment by the delta.
+    - Resets vendor acknowledgement (back to ISSUED).
+    """
+    role_code = getattr(approver, "role_code", None) or (
+        approver.role.code if getattr(approver, "role", None) else None
+    )
+    if not (
+        getattr(approver, "is_superuser", False)
+        or role_code in (Role.PROC_MGR, Role.SUPER_ADMIN, Role.PROC_EXEC)
+    ):
+
+        raise ValidationError(
+            "Permission Denied: Only Procurement Manager or Super Admin can approve PO amendments."
+        )
+
+    if amendment.status != POAmendment.STATUS_PENDING:
+        raise ValidationError(
+            f"Amendment #{amendment.amendment_number} is already in status '{amendment.status}'."
+        )
+
+    po = amendment.po
+    snapshot = amendment.previous_version_snapshot
+    old_total = Decimal(str(snapshot["total_amount"]))
+    updated_line_items = amendment.pending_line_items
 
     existing_lines = list(po.lines.all().order_by("id"))
     matched_line_ids = set()
     subtotal = Decimal("0.00")
 
     for idx, item in enumerate(updated_line_items):
-        item_id = item.get("id") or item.get("line_id")
+        item_id = item.get("id", "")
         matched_line = None
         if item_id:
-            matched_line = next((line for line in existing_lines if str(line.id) == str(item_id)), None)
+            matched_line = next((l for l in existing_lines if str(l.id) == item_id), None)
         if not matched_line and idx < len(existing_lines):
             candidate = existing_lines[idx]
             if candidate.id not in matched_line_ids:
-                matched_line = candidate
-        if not matched_line:
-            candidate = next(
-                (
-                    line
-                    for line in existing_lines
-                    if line.item_description == item.get("item_description")
-                    and line.id not in matched_line_ids
-                ),
-                None,
-            )
-            if candidate:
                 matched_line = candidate
 
         qty = Decimal(str(item["quantity"]))
@@ -300,8 +409,8 @@ def amend_purchase_order_service(
             matched_line_ids.add(matched_line.id)
             if qty < matched_line.quantity_received:
                 raise ValidationError(
-                    f"Amended quantity ({qty}) for '{matched_line.item_description}' cannot be less than "
-                    f"quantity already received ({matched_line.quantity_received})."
+                    f"Amended quantity ({qty}) for '{matched_line.item_description}' cannot be "
+                    f"less than quantity already received ({matched_line.quantity_received})."
                 )
             if desc:
                 matched_line.item_description = desc
@@ -320,47 +429,67 @@ def amend_purchase_order_service(
             )
             subtotal += new_line.line_total
 
-    # Guard against removing lines referenced by receipts
     for line in existing_lines:
         if line.id not in matched_line_ids:
-            has_receipts = (
-                line.quantity_received > Decimal("0.00")
-                or line.receipt_lines.exists()
-            )
-            if has_receipts:
+            if line.quantity_received > Decimal("0.00") or line.receipt_lines.exists():
                 raise ValidationError(
-                    f"Cannot delete line '{line.item_description}' referenced by goods receipts."
+                    f"Cannot remove line '{line.item_description}' referenced by goods receipts."
                 )
             line.delete()
 
     tax = subtotal * tax_rate
     total = subtotal + tax
-
-    old_total = Decimal(str(snapshot["total_amount"]))
     diff = total - old_total
 
+    po.version += 1
     po.subtotal = subtotal
     po.tax_amount = tax
     po.total_amount = total
-    po.save(update_fields=["version", "subtotal", "tax_amount", "total_amount", "updated_at"])
+    # Reset vendor acknowledgement so vendor must re-acknowledge
+    if po.status == PurchaseOrder.STATUS_ACKNOWLEDGED:
+        po.status = PurchaseOrder.STATUS_ISSUED
+        po.acknowledged_at = None
+        po.acknowledged_by = None
+        po.acknowledgement_notes = ""
+    po.save(update_fields=[
+        "version", "subtotal", "tax_amount", "total_amount",
+        "status", "acknowledged_at", "acknowledged_by", "acknowledgement_notes", "updated_at",
+    ])
 
-    # Update Budget commitment with delta difference
     if diff != Decimal("0.00"):
         budget = Budget.objects.filter(cost_center=po.cost_center).order_by("-created_at").first()
         if budget:
             budget.committed_amount = max(Decimal("0.00"), budget.committed_amount + diff)
             budget.save(update_fields=["committed_amount", "updated_at"])
-
             SpendLedger.objects.create(
                 budget=budget,
                 entry_type=SpendLedger.ENTRY_COMMITMENT,
                 amount=diff,
-                reference_number=f"{po.po_number}-AMD{amendment_count}",
-                description=f"PO Amendment #{amendment_count} for {po.vendor.legal_name} adjustment",
+                reference_number=f"{po.po_number}-AMD{amendment.amendment_number}",
+                description=f"PO Amendment #{amendment.amendment_number} budget adjustment",
             )
 
+    amendment.status = POAmendment.STATUS_APPROVED
+    amendment.approved_by = approver
+    amendment.approved_at = timezone.now()
+    amendment.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
+
     AuditLog.objects.create(
-        actor=requested_by_user,
+        actor=approver,
+        action=AuditLog.ACTION_APPROVE,
+        target_model="POAmendment",
+        target_object_id=str(amendment.id),
+        previous_state={"version": snapshot["version"], "total_amount": snapshot["total_amount"]},
+        new_state={
+            "version": po.version,
+            "total_amount": str(po.total_amount),
+            "amendment_number": amendment.amendment_number,
+            "comments": comments,
+        },
+    )
+
+    AuditLog.objects.create(
+        actor=approver,
         action=AuditLog.ACTION_UPDATE,
         target_model="PurchaseOrder",
         target_object_id=str(po.id),
@@ -372,23 +501,51 @@ def amend_purchase_order_service(
         },
     )
 
+
     for v_user in User.objects.filter(vendor=po.vendor, is_active=True):
         Notification.objects.create(
             recipient=v_user,
             notification_type=Notification.TYPE_PO_AMENDMENT,
-            title=f"Purchase Order Amendment: {po.po_number} V{po.version}",
-            message=f"Purchase Order {po.po_number} has been updated to Version {po.version} (Reason: {reason}).",
-            target_url=f"/orders/{po.id}/",
-        )
-    if po.requisition and po.requisition.requester:
-        Notification.objects.create(
-            recipient=po.requisition.requester,
-            notification_type=Notification.TYPE_PO_AMENDMENT,
-            title=f"PO {po.po_number} Amended to V{po.version}",
-            message=f"Purchase Order {po.po_number} linked to PR {po.requisition.pr_number} was amended to V{po.version}.",
-            target_url=f"/orders/{po.id}/",
+            title=f"Purchase Order Amended: {po.po_number} V{po.version}",
+            message=f"PO {po.po_number} has been updated to Version {po.version}. Please re-acknowledge.",
+            target_url=f"/vendor/purchase-orders/{po.id}/",
         )
 
+    return amendment
+
+
+@transaction.atomic
+def reject_po_amendment_service(
+    *, amendment: POAmendment, approver: User, reason: str
+) -> POAmendment:
+    """Rejects a pending PO amendment without applying any changes."""
+    role_code = getattr(approver, "role_code", None) or (
+        approver.role.code if getattr(approver, "role", None) else None
+    )
+    if not (
+        getattr(approver, "is_superuser", False)
+        or role_code in (Role.PROC_MGR, Role.SUPER_ADMIN)
+    ):
+        raise ValidationError(
+            "Permission Denied: Only Procurement Manager or Super Admin can reject PO amendments."
+        )
+    if amendment.status != POAmendment.STATUS_PENDING:
+        raise ValidationError(
+            f"Amendment #{amendment.amendment_number} is not pending (status: '{amendment.status}')."
+        )
+    amendment.status = POAmendment.STATUS_REJECTED
+    amendment.approved_by = approver
+    amendment.approved_at = timezone.now()
+    amendment.rejection_reason = reason
+    amendment.save(update_fields=["status", "approved_by", "approved_at", "rejection_reason", "updated_at"])
+
+    AuditLog.objects.create(
+        actor=approver,
+        action=AuditLog.ACTION_REJECT,
+        target_model="POAmendment",
+        target_object_id=str(amendment.id),
+        new_state={"status": amendment.status, "reason": reason},
+    )
     return amendment
 
 

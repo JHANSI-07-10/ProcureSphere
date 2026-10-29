@@ -1,5 +1,6 @@
 import os
 
+from django.db import models
 from django.core.exceptions import ValidationError
 from django.http import FileResponse
 from rest_framework import serializers, status, viewsets
@@ -10,7 +11,7 @@ from rest_framework.response import Response
 
 from apps.audit.models import AuditLog
 
-from .models import Contract, ContractDocument, ContractMilestone, ContractObligation
+from .models import Contract, ContractAlert, ContractDocument, ContractMilestone, ContractObligation
 from .permissions import (
     CanBusinessApproveContract,
     CanManageContract,
@@ -21,6 +22,7 @@ from .permissions import (
 )
 from .selectors import get_contracts_qs
 from .serializers import (
+    ContractAlertSerializer,
     ContractDocumentSerializer,
     ContractMilestoneSerializer,
     ContractObligationSerializer,
@@ -462,4 +464,31 @@ class ContractViewSet(viewsets.ModelViewSet):
             open(document.file.path, "rb"),
             as_attachment=True,
             filename=os.path.basename(document.file.name),
+        )
+
+    @action(detail=False, methods=["get"], url_path="alerts")
+    def alerts(self, request):
+        """List all contract alerts across all contracts visible to the user."""
+        contract_ids = self.get_queryset().values_list("id", flat=True)
+        alerts_qs = ContractAlert.objects.filter(contract_id__in=contract_ids).order_by("-triggered_at")
+        return Response(
+            ContractAlertSerializer(alerts_qs, many=True).data,
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["get"], url_path="renewals")
+    def renewals(self, request):
+        """List contracts in RENEWAL_DUE status or within their renewal notice window."""
+        from django.utils import timezone
+        today = timezone.now().date()
+        qs = self.get_queryset().filter(
+            models.Q(status=Contract.STATUS_RENEWAL_DUE)
+            | models.Q(
+                status=Contract.STATUS_ACTIVE,
+                end_date__lte=today + timezone.timedelta(days=90),
+            )
+        ).order_by("end_date")
+        return Response(
+            ContractSerializer(qs, many=True).data,
+            status=status.HTTP_200_OK,
         )

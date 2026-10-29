@@ -11,6 +11,9 @@ class ApprovalPolicy(TimeStampedModel):
     MODULE_SOURCING = "SOURCING"
     MODULE_INVOICE = "INVOICE"
     MODULE_VENDOR = "VENDOR"
+    MODULE_PO_AMENDMENT = "PO_AMENDMENT"
+    MODULE_CONTRACT = "CONTRACT"
+    MODULE_BUDGET_EXCEPTION = "BUDGET_EXCEPTION"
 
     MODULE_CHOICES = [
         (MODULE_PR, "Purchase Requisition"),
@@ -18,12 +21,22 @@ class ApprovalPolicy(TimeStampedModel):
         (MODULE_SOURCING, "Sourcing Award"),
         (MODULE_INVOICE, "Invoice Match Exception"),
         (MODULE_VENDOR, "Vendor KYC Approval"),
+        (MODULE_PO_AMENDMENT, "PO Amendment"),
+        (MODULE_CONTRACT, "Contract"),
+        (MODULE_BUDGET_EXCEPTION, "Budget Exception"),
     ]
 
     name = models.CharField(max_length=200)
     module = models.CharField(max_length=50, choices=MODULE_CHOICES)
     department = models.ForeignKey(
         "organization.Department",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="approval_policies",
+    )
+    cost_center = models.ForeignKey(
+        "organization.CostCenter",
         on_delete=models.CASCADE,
         null=True,
         blank=True,

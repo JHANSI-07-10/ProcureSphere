@@ -23,8 +23,8 @@ def email_settings(settings):
 
 def _issue_twice(w):
     vendor = w["vendor_draft"]
-    issue_vendor_credentials_service(vendor=vendor, issued_by=w["exec"])
-    issue_vendor_credentials_service(vendor=vendor, issued_by=w["exec"])  # resend -> 2 dispatches
+    issue_vendor_credentials_service(vendor=vendor, issued_by=w["exec"], auto_activate=True)
+    issue_vendor_credentials_service(vendor=vendor, issued_by=w["exec"], auto_activate=True)  # resend -> 2 dispatches
     VendorCredentialDispatch.objects.filter(vendor=vendor).update(status="FAILED")
     return vendor, User.objects.get(vendor=vendor)
 

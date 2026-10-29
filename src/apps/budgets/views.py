@@ -16,15 +16,32 @@ def _enforce_internal_budget_access(request):
     role_code = getattr(user, "role_code", None) or (
         user.role.code if hasattr(user, "role") and user.role else None
     )
-    if role_code == Role.VENDOR_USER and not user.is_superuser:
-        raise PermissionDenied(
-            "External vendors are not authorized to view internal budget information."
-        )
+    if not user.is_authenticated:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("Authentication required.")
+    if user.is_superuser:
+        return
+    ALLOWED_FULL = {Role.FINANCE_AP, Role.SUPER_ADMIN, Role.AUDITOR, Role.PROC_MGR, Role.PROC_EXEC}
+    ALLOWED_SCOPED = {Role.REQUESTER, Role.DEPT_APPROVER}
+    if role_code in ALLOWED_FULL:
+        return
+    if role_code in ALLOWED_SCOPED:
+        return  # queryset scoping applied in the view
+    from django.core.exceptions import PermissionDenied
+    raise PermissionDenied("You do not have permission to view budget information.")
+
+
+BUDGET_FULL_ACCESS_ROLES = {Role.FINANCE_AP, Role.SUPER_ADMIN, Role.AUDITOR, Role.PROC_MGR, Role.PROC_EXEC}
 
 
 @login_required(login_url="/login/")
 def list_view(request):
     _enforce_internal_budget_access(request)
+
+    user = request.user
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if hasattr(user, "role") and user.role else None
+    )
 
     selected_dept_id = request.GET.get("dept") or ""
     selected_cc_id = request.GET.get("cost_center") or ""
@@ -35,6 +52,22 @@ def list_view(request):
     fiscal_periods = FiscalPeriod.objects.all().order_by("-year", "-period_number")
 
     all_cost_centers = list(cost_centers)
+
+    # Requester and Approver are scoped to their own cost center only
+    is_scoped_role = role_code in (Role.REQUESTER, Role.DEPT_APPROVER) and not user.is_superuser
+    if is_scoped_role:
+        user_cc = getattr(user, "cost_center", None)
+        user_dept = getattr(user, "department", None)
+        budgets = Budget.objects.select_related("cost_center__department", "fiscal_period")
+        if user_cc:
+            budgets = budgets.filter(cost_center=user_cc)
+        elif user_dept:
+            budgets = budgets.filter(cost_center__department=user_dept)
+        else:
+            budgets = budgets.none()
+    else:
+        budgets = Budget.objects.select_related("cost_center__department", "fiscal_period").all()
+
     if selected_dept_id:
         filtered_cost_centers = [
             cc for cc in all_cost_centers if str(cc.department_id) == str(selected_dept_id)
@@ -42,14 +75,13 @@ def list_view(request):
     else:
         filtered_cost_centers = all_cost_centers
 
-    budgets = Budget.objects.select_related("cost_center__department", "fiscal_period").all()
-
-    if selected_dept_id:
-        budgets = budgets.filter(cost_center__department_id=selected_dept_id)
-    if selected_cc_id:
-        budgets = budgets.filter(cost_center_id=selected_cc_id)
-    if selected_period_id:
-        budgets = budgets.filter(fiscal_period_id=selected_period_id)
+    if not is_scoped_role:
+        if selected_dept_id:
+            budgets = budgets.filter(cost_center__department_id=selected_dept_id)
+        if selected_cc_id:
+            budgets = budgets.filter(cost_center_id=selected_cc_id)
+        if selected_period_id:
+            budgets = budgets.filter(fiscal_period_id=selected_period_id)
 
     totals = budgets.aggregate(
         total_allocated=Sum("allocated_amount"),

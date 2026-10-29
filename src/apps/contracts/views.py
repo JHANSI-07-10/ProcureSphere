@@ -51,9 +51,10 @@ def _enforce_internal_contracts_access(request):
         raise PermissionDenied("Authentication required.")
     if user.is_superuser:
         return
-    if getattr(user, "is_vendor", False) or role_code in [Role.VENDOR_USER, "VENDOR_USER"]:
+    if role_code == Role.VENDOR_USER and not getattr(user, "vendor_id", None):
         from django.core.exceptions import PermissionDenied
-        raise PermissionDenied("External vendors are not authorized to access internal contract management.")
+        raise PermissionDenied("External vendors without a linked vendor record are not authorized to access contracts.")
+
 
 
 def _get_user_role(user):

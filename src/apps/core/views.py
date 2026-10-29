@@ -66,8 +66,11 @@ def home_view(request):  # noqa: C901
     """
     user = request.user
     role_code = getattr(user, "role_code", None) or (
-        user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
+        user.role.code if hasattr(user, "role") and user.role else None
     )
+
+    if role_code is None and not user.is_superuser:
+        return render(request, "pages/dashboards/no_role.html", status=403)
 
     # 1. REQUESTER ROLE DASHBOARD
     if role_code == Role.REQUESTER:

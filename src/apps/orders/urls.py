@@ -26,6 +26,11 @@ urlpatterns = [
         name="orders_amendments_partial",
     ),
     path(
+        "purchase-orders/<uuid:pk>/amendments/<uuid:amendment_id>/action/",
+        views.po_approve_amendment_view,
+        name="order_amendment_action",
+    ),
+    path(
         "purchase-orders/<uuid:pk>/approve/",
         views.po_approve_action_view,
         name="order_approve",

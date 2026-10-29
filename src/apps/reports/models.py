@@ -34,6 +34,7 @@ class ExportJob(TimeStampedModel):
         "accounts.User", on_delete=models.PROTECT, related_name="export_jobs"
     )
     result_file = models.FileField(upload_to="report_exports/%Y/%m/", null=True, blank=True)
+    file_hash = models.CharField(max_length=64, blank=True, help_text="SHA-256 hex digest of result_file")
     error_message = models.TextField(blank=True)
 
     def __str__(self):

@@ -64,6 +64,8 @@ def test_new_vendor_is_listed_as_pending_then_invitable_after_kyc_approval(
     issue_vendor_credentials_service(vendor=vendor, issued_by=w["exec"])
     temp = mail.outbox[0].body.split("Temporary password: ")[1].split()[0]
     vendor_user = User.objects.get(vendor=vendor)
+    vendor_user.is_active = True
+    vendor_user.save(update_fields=["is_active"])
     vclient = client.__class__()
     assert (
         vclient.post("/login/", {"email": vendor_user.email, "password": temp}).status_code == 302

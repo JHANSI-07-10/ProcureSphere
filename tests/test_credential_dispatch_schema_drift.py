@@ -19,6 +19,14 @@ from apps.vendors.services import issue_vendor_credentials_service
 
 pytestmark = [pytest.mark.django_db, pytest.mark.regression]
 
+import django.db.backends.sqlite3.base as _sqlite_check
+import django.db.backends.postgresql.base as _pg_check
+
+def _is_sqlite():
+    from django.db import connection
+    return "sqlite" in connection.vendor
+
+
 migration = importlib.import_module(
     "apps.vendors.migrations.0006_relax_orphan_credentialdispatch_columns"
 )
@@ -31,16 +39,23 @@ def email_settings(settings):
 
 
 def _add_drifted_column():
+    if _is_sqlite():
+        pytest.skip("Schema drift tests require PostgreSQL")
     with connection.cursor() as cur:
         cur.execute(
-            "ALTER TABLE vendors_vendorcredentialdispatch ADD COLUMN legal_notes text NOT NULL DEFAULT ''"
+            "ALTER TABLE vendors_vendorcredentialdispatch ADD COLUMN IF NOT EXISTS legal_notes text NOT NULL DEFAULT ''"
         )
-        cur.execute(
-            "ALTER TABLE vendors_vendorcredentialdispatch ALTER COLUMN legal_notes DROP DEFAULT"
-        )
+        try:
+            cur.execute(
+                "ALTER TABLE vendors_vendorcredentialdispatch ALTER COLUMN legal_notes DROP DEFAULT"
+            )
+        except Exception:
+            pass  # column may already exist without default
 
 
 def _column_nullable(name):
+    if _is_sqlite():
+        pytest.skip("Schema drift tests require PostgreSQL")
     with connection.cursor() as cur:
         cur.execute(
             "SELECT is_nullable FROM information_schema.columns "

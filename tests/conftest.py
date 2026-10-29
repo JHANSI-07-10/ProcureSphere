@@ -33,20 +33,14 @@ django.template.context.BaseContext.__copy__ = _fixed_context_copy
 @pytest.fixture(autouse=True, scope="session")
 def verify_isolated_test_database():
     """
-    Safety gate: Ensure automated tests never connect to the shared or production Supabase database.
-    Verifies that SQLite is the active database backend and no remote Supabase host is configured.
+    Safety gate: Ensure automated tests never connect to the production Supabase database.
+    Allows both SQLite (local) and PostgreSQL (CI) backends; blocks only Supabase hosts.
     """
     from django.conf import settings
 
     db_config = settings.DATABASES["default"]
-    engine = db_config.get("ENGINE", "")
     host = str(db_config.get("HOST", ""))
 
-    if "sqlite3" not in engine:
-        raise RuntimeError(
-            f"SAFETY VIOLATION: Automated tests must run on an isolated SQLite database, "
-            f"but active ENGINE is '{engine}'."
-        )
     if "supabase" in host.lower():
         raise RuntimeError(
             f"SAFETY VIOLATION: Automated tests must never connect to Supabase! Host is '{host}'."

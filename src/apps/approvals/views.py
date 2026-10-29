@@ -3,11 +3,13 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import redirect, render
+from django.utils import timezone
 
-from apps.accounts.models import Role
+from apps.accounts.models import Role, User
 from apps.requisitions.models import PurchaseRequisition
 
-from .services import process_approval_action_service
+from .models import ApprovalDelegate
+from .services import process_approval_action_service, set_approval_delegate_service
 
 
 def _get_approval_querysets(user, role_code):
@@ -170,3 +172,52 @@ def approvals_inbox_view(request):
 
 # Alias for URL route compatibility
 inbox_view = approvals_inbox_view
+
+
+@login_required(login_url="/login/")
+def delegation_view(request):
+    """
+    Allows approvers to set a temporary delegate for their approval responsibilities.
+    """
+    user = request.user
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if hasattr(user, "role") and user.role else ""
+    )
+
+    if request.method == "POST":
+        delegate_id = request.POST.get("delegate_id")
+        start_date = request.POST.get("start_date")
+        end_date = request.POST.get("end_date")
+        reason = request.POST.get("reason", "").strip()
+
+        try:
+            delegate_user = User.objects.get(pk=delegate_id)
+            set_approval_delegate_service(
+                approver=user,
+                delegate=delegate_user,
+                start_date=start_date,
+                end_date=end_date,
+                reason=reason,
+            )
+            messages.success(request, f"Delegation to {delegate_user.email} set successfully.")
+        except User.DoesNotExist:
+            messages.error(request, "Selected delegate user not found.")
+        except Exception as e:
+            messages.error(request, f"Error setting delegation: {str(e)}")
+        return redirect("approvals_delegation")
+
+    active_delegates = ApprovalDelegate.objects.filter(
+        approver=user, is_active=True, end_date__gte=timezone.now().date()
+    ).order_by("-start_date")
+
+    eligible_delegates = User.objects.filter(
+        role__code__in=[Role.DEPT_APPROVER, Role.PROC_MGR, Role.PROC_EXEC]
+    ).exclude(pk=user.pk).select_related("role")
+
+    base_layout = _get_base_layout(role_code)
+    return render(request, "pages/approvals/delegation.html", {
+        "active_delegates": active_delegates,
+        "eligible_delegates": eligible_delegates,
+        "base_layout": base_layout,
+        "role_code": role_code,
+    })

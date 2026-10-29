@@ -9,16 +9,24 @@ from .models import Vendor, VendorDocument
 def scope_vendors_queryset(qs, user=None):
     if not user:
         return qs
+    if user.is_superuser:
+        return qs
+    role_code = getattr(user, "role_code", None)
+    from apps.accounts.models import Role
+    if role_code == Role.VENDOR_USER:
+        # Vendor portal users are scoped by their own vendor record in vendor_dashboard_views
+        return qs
     scoped_org = getattr(user, "effective_organization", None)
     if scoped_org:
+        # Vendors explicitly assigned to this org, OR vendors with no org (global/legacy)
         return qs.filter(
             Q(organization=scoped_org)
             | Q(created_by__organization=scoped_org)
             | Q(created_by__department__organization=scoped_org)
+            | Q(organization__isnull=True)
         )
-    if user.is_superuser:
-        return qs
-    return qs.none()
+    # Internal staff with no org assignment sees all vendors (including NULL-org)
+    return qs
 
 
 def get_all_vendors(user=None):

@@ -18,52 +18,64 @@ RECEIVABLE_PO_STATUSES = [
 
 @login_required(login_url="/login/")
 def list_view(request):
+    from django.core.exceptions import PermissionDenied
     user = request.user
     role_code = getattr(user, "role_code", None) or (
-        user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
+        user.role.code if hasattr(user, "role") and user.role else None
     )
 
-    if role_code == Role.STORES_RECEIVER:
-        # Stores / Receiver sees only POs eligible for receiving
-        items = (
-            PurchaseOrder.objects.filter(status__in=RECEIVABLE_PO_STATUSES)
-            .select_related("vendor", "cost_center")
-            .prefetch_related("lines")
-            .order_by("-created_at")
-        )
+    if role_code is None and not user.is_superuser:
+        raise PermissionDenied("No role assigned. Contact your administrator.")
+
+    base_qs = PurchaseOrder.objects.select_related("vendor", "cost_center").prefetch_related("lines").order_by("-created_at")
+
+    if user.is_superuser or role_code in (Role.SUPER_ADMIN, Role.PROC_EXEC, Role.PROC_MGR,
+                                          Role.FINANCE_AP, Role.AUDITOR):
+        items = base_qs
+    elif role_code == Role.STORES_RECEIVER:
+        items = base_qs.filter(status__in=RECEIVABLE_PO_STATUSES)
     elif role_code == Role.VENDOR_USER and getattr(user, "vendor", None):
-        items = (
-            PurchaseOrder.objects.filter(vendor=user.vendor)
-            .select_related("vendor", "cost_center")
-            .prefetch_related("lines")
-            .order_by("-created_at")
-        )
+        items = base_qs.filter(vendor=user.vendor)
+    elif role_code in (Role.REQUESTER, Role.DEPT_APPROVER):
+        # Scoped to POs linked to their own PRs or their department
+        dept = getattr(user, "department", None)
+        from django.db.models import Q
+        q = Q(requisition__requester=user)
+        if dept:
+            q |= Q(requisition__department=dept)
+        items = base_qs.filter(q)
+    elif role_code == Role.LEGAL_MGR:
+        # Legal sees POs linked to contracts they manage (read-only context)
+        items = base_qs
     else:
-        items = (
-            PurchaseOrder.objects.all()
-            .select_related("vendor", "cost_center")
-            .prefetch_related("lines")
-            .order_by("-created_at")
-        )
+        raise PermissionDenied("You do not have permission to view purchase orders.")
+
+    context = {
+        "items": items,
+        "role_code": role_code,
+        "is_stores_receiver": role_code == Role.STORES_RECEIVER,
+        "receivable_statuses": RECEIVABLE_PO_STATUSES,
+    }
+    if role_code == Role.SUPER_ADMIN or getattr(user, "is_superuser", False):
+        context["base_layout"] = "base.html"
 
     return render(
         request,
         "pages/orders/list.html",
-        {
-            "items": items,
-            "role_code": role_code,
-            "is_stores_receiver": role_code == Role.STORES_RECEIVER,
-            "receivable_statuses": RECEIVABLE_PO_STATUSES,
-        },
+        context,
     )
 
 
 @login_required(login_url="/login/")
 def detail_view(request, pk):
+    from django.core.exceptions import PermissionDenied
     user = request.user
     role_code = getattr(user, "role_code", None) or (
-        user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
+        user.role.code if hasattr(user, "role") and user.role else None
     )
+
+    if role_code is None and not user.is_superuser:
+        raise PermissionDenied("No role assigned. Contact your administrator.")
 
     po = get_object_or_404(
         PurchaseOrder.objects.select_related(
@@ -262,6 +274,37 @@ def po_amend_modal_view(request, pk):
 
 
 @login_required(login_url="/login/")
+@require_POST
+def po_approve_amendment_view(request, pk, amendment_id):
+    """Procurement Manager approves a pending PO amendment."""
+    _require_po_execute(request.user)
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if hasattr(request.user, "role") and request.user.role else None
+    )
+    if not (request.user.is_superuser or role_code in (Role.PROC_MGR, Role.SUPER_ADMIN)):
+        raise PermissionDenied("Only Procurement Manager or Super Admin can approve amendments.")
+    from .models import POAmendment
+    from .services import approve_po_amendment_service, reject_po_amendment_service
+    po = get_object_or_404(PurchaseOrder, pk=pk)
+    amendment = get_object_or_404(POAmendment, pk=amendment_id, po=po)
+    action = request.POST.get("action", "approve")
+    comments = request.POST.get("comments", "").strip()
+    try:
+        if action == "reject":
+            reject_po_amendment_service(amendment=amendment, approver=request.user, reason=comments or "Rejected")
+            messages.success(request, f"Amendment #{amendment.amendment_number} rejected.")
+        else:
+            approve_po_amendment_service(amendment=amendment, approver=request.user, comments=comments)
+            messages.success(
+                request,
+                f"Amendment #{amendment.amendment_number} approved. PO {po.po_number} updated to V{po.version}.",
+            )
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
+    return redirect("order_detail", pk=po.id)
+
+
+@login_required(login_url="/login/")
 def po_amendments_partial_view(request, pk):
     """HTMX fragment: immutable amendment/version history for a PO."""
     _require_po_execute(request.user)
@@ -277,9 +320,9 @@ def po_create_view(request):
     """View & modal to issue a purchase order."""
     user = request.user
     role_code = getattr(user, "role_code", None) or (
-        user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
+        user.role.code if hasattr(user, "role") and user.role else None
     )
-    if role_code not in [Role.SUPER_ADMIN, Role.PROC_EXEC, Role.PROC_MGR]:
+    if not user.is_superuser and role_code not in (Role.SUPER_ADMIN, Role.PROC_EXEC, Role.PROC_MGR):
         raise PermissionDenied("Only Procurement users can issue purchase orders.")
 
     if request.method == "POST":
