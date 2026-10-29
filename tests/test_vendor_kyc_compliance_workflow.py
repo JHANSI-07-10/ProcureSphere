@@ -26,6 +26,7 @@ from apps.contracts.selectors import (
     get_pending_vendor_verifications_qs,
 )
 from apps.notifications.models import Notification
+from apps.organization.models import Organization
 from apps.sourcing.models import BidInvite, SourcingEvent, VendorBid
 from apps.sourcing.services import (
     _assert_vendor_awardable,
@@ -71,12 +72,17 @@ def setup_environment(settings):
 @pytest.fixture
 def test_setup(db, db_roles):
     """Sets up cross-role users, category, and registered vendor."""
+    org, _ = Organization.objects.get_or_create(
+        code="HPE-PROC",
+        defaults={"name": "HPE Procurement", "tax_identifier": "US-HPE-001", "is_active": True},
+    )
     proc_exec = User.objects.create_user(
         email="pe.officer@test.local",
         password="Password123!",
         first_name="Proc",
         last_name="Exec",
         role=db_roles[Role.PROC_EXEC],
+        organization=org,
     )
     legal_mgr = User.objects.create_user(
         email="legal.counsel@test.local",
@@ -84,6 +90,7 @@ def test_setup(db, db_roles):
         first_name="Legal",
         last_name="Manager",
         role=db_roles[Role.LEGAL_MGR],
+        organization=org,
     )
     stores_user = User.objects.create_user(
         email="stores.user@test.local",
@@ -91,6 +98,7 @@ def test_setup(db, db_roles):
         first_name="Stores",
         last_name="Receiver",
         role=db_roles[Role.STORES_RECEIVER],
+        organization=org,
     )
     category = VendorCategory.objects.create(name="Cloud Solutions", code="IT")
     vendor = register_vendor_service(
@@ -102,12 +110,15 @@ def test_setup(db, db_roles):
         address="100 Tech Park, Silicon Way",
         created_by_user=proc_exec,
     )
+    vendor.organization = org
+    vendor.save(update_fields=["organization"])
     return {
         "proc_exec": proc_exec,
         "legal_mgr": legal_mgr,
         "stores_user": stores_user,
         "vendor": vendor,
         "category": category,
+        "org": org,
     }
 
 
