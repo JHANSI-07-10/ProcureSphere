@@ -159,10 +159,11 @@ def generate_view(request):
         )
 
         try:
-            generate_export_job_service(job.id)
-            messages.success(request, f"{report_type} report successfully generated!")
+            from apps.reports.tasks import run_export_job_task
+            run_export_job_task.delay(job.id)
+            messages.success(request, f"{report_type} report queued for generation.")
         except Exception as e:
-            messages.error(request, f"Error generating report: {str(e)}")
+            messages.error(request, f"Error queuing report: {str(e)}")
 
     return redirect("reports_hub")
 

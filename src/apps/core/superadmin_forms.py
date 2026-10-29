@@ -341,7 +341,7 @@ class CostCenterAdminForm(forms.ModelForm):
             user_qs = user_qs.filter(Q(organization=scoped_org) | Q(department__organization=scoped_org))
         user = user_qs.first()
         if user is None:
-            raise forms.ValidationError("No active user exists with this email in your organization.")
+            raise forms.ValidationError("No active user exists with this email.")
         return user
 
     def save(self, commit=True):

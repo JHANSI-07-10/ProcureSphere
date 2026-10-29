@@ -191,6 +191,20 @@ class MatchTolerancePolicy(TimeStampedModel):
     qty_tolerance_pct = models.DecimalField(
         max_digits=5, decimal_places=4, default=Decimal("0.0500"), help_text="e.g. 0.0500 for 5%"
     )
+    price_tolerance_amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Absolute price tolerance per line (e.g. 500.00). Pass if either % or amount is within bounds.",
+    )
+    qty_tolerance_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Absolute quantity tolerance per line (e.g. 2.00). Pass if either % or amount is within bounds.",
+    )
 
     def save(self, *args, **kwargs):
         if self.is_active:

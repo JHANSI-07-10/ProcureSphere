@@ -231,10 +231,6 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_BEAT_SCHEDULE = {
-    "test-beat-task-every-minute": {
-        "task": "apps.notifications.tasks.test_celery_beat_task",
-        "schedule": 60.0,  # every 60 seconds
-    },
     "sync-sourcing-bid-windows": {
         "task": "apps.sourcing.tasks.sync_sourcing_bid_windows_task",
         "schedule": 60.0,  # every 60 seconds; views/services also sync on access

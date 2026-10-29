@@ -660,8 +660,15 @@ def generate_export_job_service(export_job_id: int) -> ExportJob:
             filename = f"{job.report_type}_export_{job.id}.pdf"
             job.result_file.save(filename, ContentFile(output.getvalue()), save=False)
 
+        # Compute SHA-256 of the generated file for integrity verification
+        import hashlib
+        if job.result_file:
+            job.result_file.seek(0)
+            job.file_hash = hashlib.sha256(job.result_file.read()).hexdigest()
+            job.result_file.seek(0)
+
         job.status = ExportJob.STATUS_COMPLETED
-        job.save(update_fields=["status", "result_file", "updated_at"])
+        job.save(update_fields=["status", "result_file", "file_hash", "updated_at"])
 
         AuditLog.objects.create(
             actor=job.requested_by,

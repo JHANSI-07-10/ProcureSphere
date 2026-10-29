@@ -77,15 +77,16 @@ def _get_scoped_vendor_or_404(request, vendor_id, select_category=False):
     qs = Vendor.objects.all()
     if select_category:
         qs = qs.select_related("category")
-    scoped_org = getattr(request.user, "effective_organization", None)
-    if scoped_org:
-        qs = qs.filter(
-            Q(organization=scoped_org)
-            | Q(created_by__organization=scoped_org)
-            | Q(created_by__department__organization=scoped_org)
-        )
-    elif not request.user.is_superuser:
-        raise Http404("Vendor not found.")
+    if not request.user.is_superuser:
+        scoped_org = getattr(request.user, "effective_organization", None)
+        if scoped_org:
+            qs = qs.filter(
+                Q(organization=scoped_org)
+                | Q(created_by__organization=scoped_org)
+                | Q(created_by__department__organization=scoped_org)
+                | Q(organization__isnull=True)
+            )
+        # else: internal staff with no org sees all vendors (including NULL-org)
     return get_object_or_404(qs, pk=vendor_id)
 
 

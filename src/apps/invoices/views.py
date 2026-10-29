@@ -44,7 +44,13 @@ def _get_user_role(user):
 
 @login_required(login_url="/login/")
 def list_view(request):
-    _enforce_internal_invoice_access(request)
+    _enforce_internal_invoice_access(
+        request,
+        allowed_roles=[
+            Role.FINANCE_AP, Role.SUPER_ADMIN, Role.AUDITOR,
+            Role.PROC_MGR, Role.PROC_EXEC,
+        ],
+    )
     items = SupplierInvoice.objects.all().order_by("-created_at")
     return render(request, "pages/invoices/list.html", {"items": items})
 

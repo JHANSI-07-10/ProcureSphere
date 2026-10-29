@@ -71,10 +71,11 @@ def resolve_active_delegate(approver: User) -> User:
     return approver
 
 
-def evaluate_approval_chain(*, module: str, amount: Decimal, department=None):
+def evaluate_approval_chain(*, module: str, amount: Decimal, department=None, cost_center=None):
     """
     Evaluates server-side approval routing policies for a module & amount threshold.
-    Returns list of tuples: [(step, target_approver_role, effective_approver_user)]
+    Specificity: cost_center > department > global (department=None, cost_center=None).
+    Returns list of step dicts.
     """
     policies = ApprovalPolicy.objects.filter(
         models.Q(max_amount__isnull=True) | models.Q(max_amount__gte=amount),
@@ -83,12 +84,13 @@ def evaluate_approval_chain(*, module: str, amount: Decimal, department=None):
         min_amount__lte=amount,
     ).order_by("-min_amount")
 
-    if department:
-        # Filter policy matching department or fallback to global policy
-        dept_policy = policies.filter(department=department).first()
-        selected_policy = dept_policy or policies.filter(department__isnull=True).first()
-    else:
-        selected_policy = policies.filter(department__isnull=True).first()
+    selected_policy = None
+    if cost_center:
+        selected_policy = policies.filter(cost_center=cost_center).first()
+    if not selected_policy and department:
+        selected_policy = policies.filter(department=department, cost_center__isnull=True).first()
+    if not selected_policy:
+        selected_policy = policies.filter(department__isnull=True, cost_center__isnull=True).first()
 
     if not selected_policy:
         return []
