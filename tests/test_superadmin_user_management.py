@@ -182,3 +182,4 @@ def test_non_superadmin_access_denied_for_users(requester_client):
 
     res_post = client.post(reverse("superadmin:user_create"), {"email": "hack@example.com"})
     assert res_post.status_code == 403
+

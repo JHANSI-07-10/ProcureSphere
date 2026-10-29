@@ -31,13 +31,16 @@
             .unified-sidebar-desktop,
             .approver-sidebar-desktop,
             .requester-sidebar-desktop,
-            .superadmin-sidebar-desktop,
             .stores-desk-nav,
             .finance-sidebar-desktop,
             .legal-sidebar-desktop,
             .manager-sidebar-desktop,
             .auditor-sidebar,
+<<<<<<< Updated upstream
             aside.bg-dark:not(.approver-sidebar):not(.sa-sidebar) {
+=======
+            aside.bg-dark:not(#saSidebar):not(.sa-sidebar) {
+>>>>>>> Stashed changes
                 width: 260px !important;
                 min-width: 260px !important;
                 flex-shrink: 0 !important;
@@ -116,9 +119,8 @@
         aside.bg-dark nav a.active-nav-item,
         aside.bg-dark nav a.active,
         aside.bg-dark .sidebar-nav-container a.active,
-        aside.bg-dark .sidebar-nav-container a.active-nav-item,
-        aside.bg-dark a.nav-link.active,
-        aside.bg-dark a.nav-link.active-nav-item {
+        aside.bg-dark:not(#saSidebar):not(.sa-sidebar) a.nav-link.active,
+        aside.bg-dark:not(#saSidebar):not(.sa-sidebar) a.nav-link.active-nav-item {
             background: #0D6EFD !important;
             color: #FFFFFF !important;
             font-weight: 700 !important;

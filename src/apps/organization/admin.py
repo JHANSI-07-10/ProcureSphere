@@ -44,12 +44,27 @@ class OrganizationDjangoAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         is_create = not self.instance or not self.instance.pk
+        if "admin_user" in self.fields:
+            self.fields["admin_user"].required = False
+            self.fields["admin_user"].empty_label = "-- Select Existing Admin (Optional) --"
+            self.fields["admin_user"].queryset = User.objects.filter(
+                Q(role__code=Role.SUPER_ADMIN) | Q(is_superuser=True), is_active=True
+            ).order_by("email")
         if is_create:
-            self.fields["admin_email"].required = True
+            self.fields["admin_email"].required = False
         else:
             self.fields["admin_email"].help_text = (
                 "Leave blank if you do not wish to re-assign or change the admin user."
             )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        admin_user = cleaned_data.get("admin_user")
+        admin_email = cleaned_data.get("admin_email")
+        is_create = not self.instance or not self.instance.pk
+        if is_create and not admin_user and not admin_email:
+            self.add_error("admin_email", "Please provide an Admin Email or select an Assigned Admin User.")
+        return cleaned_data
 
 
 @admin.register(Organization)
@@ -69,14 +84,14 @@ class OrganizationAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         if getattr(request.user, "effective_organization", None):
             return False
-        if not request.user.is_superuser:
+        if not (request.user.is_superuser or getattr(request.user, "role_code", None) == Role.SUPER_ADMIN):
             return False
         return super().has_add_permission(request)
 
     def has_delete_permission(self, request, obj=None):
         if getattr(request.user, "effective_organization", None):
             return False
-        if not request.user.is_superuser:
+        if not (request.user.is_superuser or getattr(request.user, "role_code", None) == Role.SUPER_ADMIN):
             return False
         return super().has_delete_permission(request, obj)
 
@@ -123,6 +138,7 @@ class OrganizationAdmin(admin.ModelAdmin):
                     "Initial Organization Administrator",
                     {
                         "fields": (
+                            "admin_user",
                             "admin_email",
                             "admin_first_name",
                             "admin_last_name",
@@ -130,7 +146,7 @@ class OrganizationAdmin(admin.ModelAdmin):
                             "send_welcome_email",
                         ),
                         "description": (
-                            "Specify the Organization Administrator credentials. "
+                            "Specify the Organization Administrator credentials or select an existing administrator. "
                             "This user will receive administrative access to the organization's dashboard."
                         ),
                     },
@@ -165,7 +181,10 @@ class OrganizationAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         if not change:
-            admin_email = form.cleaned_data.get("admin_email")
+            admin_user_obj = form.cleaned_data.get("admin_user")
+            admin_email = (form.cleaned_data.get("admin_email") or "").strip()
+            if admin_user_obj and not admin_email:
+                admin_email = admin_user_obj.email
             admin_first_name = form.cleaned_data.get("admin_first_name", "")
             admin_last_name = form.cleaned_data.get("admin_last_name", "")
             admin_password = form.cleaned_data.get("admin_password")
@@ -410,16 +429,88 @@ def _organization_section_first(request, app_label=None):
 
 def _admin_index(request, extra_context=None):
     extra_context = dict(extra_context or {})
-    org_qs = Organization.objects.order_by("code")
-    scoped_org = getattr(request.user, "effective_organization", None)
+    scoped_org = getattr(request.user, "effective_organization", None) if not request.user.is_superuser else None
+    is_global_superadmin = bool(request.user.is_superuser and not scoped_org)
+
+    org_qs = Organization.objects.select_related("admin_user").order_by("name")
     if scoped_org:
         org_qs = org_qs.filter(id=scoped_org.id)
+
     extra_context["dashboard_organizations"] = org_qs
+    extra_context["scoped_org"] = scoped_org
+    extra_context["is_global_superadmin"] = is_global_superadmin
+    extra_context["can_add_organization"] = is_global_superadmin
+
+    try:
+        from decimal import Decimal
+        from django.db.models import Sum
+        from django.utils import timezone
+        from apps.accounts.models import User
+        from apps.audit.models import AuditLog
+        from apps.budgets.models import Budget
+        from apps.invoices.models import MatchException
+        from apps.organization.models import CostCenter, Department
+        from apps.requisitions.models import PurchaseRequisition
+
+        today = timezone.now().date()
+        users_qs = User.objects.all()
+        budgets_qs = Budget.objects.all()
+        prs_qs = PurchaseRequisition.objects.filter(
+            status__in=[
+                PurchaseRequisition.STATUS_SUBMITTED,
+                PurchaseRequisition.STATUS_MANAGER_REVIEW,
+                PurchaseRequisition.STATUS_BUDGET_REVIEW,
+            ]
+        )
+        exceptions_qs = MatchException.objects.filter(status=MatchException.STATUS_OPEN)
+        audits_qs = AuditLog.objects.filter(timestamp__date=today)
+
+        if scoped_org:
+            users_qs = users_qs.filter(Q(organization=scoped_org) | Q(department__organization=scoped_org))
+            budgets_qs = budgets_qs.filter(cost_center__department__organization=scoped_org)
+            prs_qs = prs_qs.filter(department__organization=scoped_org)
+            exceptions_qs = exceptions_qs.filter(invoice__po__requisition__department__organization=scoped_org)
+            audits_qs = audits_qs.filter(
+                Q(actor__organization=scoped_org) | Q(actor__department__organization=scoped_org)
+            )
+
+        total_users = users_qs.count()
+        budget_agg = budgets_qs.aggregate(total=Sum("allocated_amount"))["total"]
+        allocated_budget = budget_agg if budget_agg is not None else Decimal("0.00")
+        pending_pr_count = prs_qs.count()
+        pending_exceptions = exceptions_qs.count()
+        audits_today = audits_qs.count()
+
+        extra_context["metrics"] = {
+            "total_users": total_users,
+            "allocated_budget": allocated_budget,
+            "pending_pr_count": pending_pr_count,
+            "pending_exceptions": pending_exceptions,
+            "audits_today": audits_today,
+        }
+        extra_context["organizations"] = org_qs
+        extra_context["total_organizations"] = 1 if scoped_org else Organization.objects.count()
+        extra_context["active_organizations"] = (1 if scoped_org.is_active else 0) if scoped_org else Organization.objects.filter(is_active=True).count()
+        extra_context["provisioned_admins"] = (
+            Organization.objects.filter(admin_user__isnull=False).count()
+            if is_global_superadmin
+            else 1
+        )
+        extra_context["total_system_users"] = total_users
+        extra_context["total_departments"] = Department.objects.filter(organization=scoped_org).count() if scoped_org else Department.objects.count()
+        extra_context["total_cost_centers"] = CostCenter.objects.filter(department__organization=scoped_org).count() if scoped_org else CostCenter.objects.count()
+    except Exception:
+        pass
+
     return admin.AdminSite.index(admin.site, request, extra_context)
 
 
 admin.site.get_app_list = _organization_section_first
 admin.site.index = _admin_index
+admin.site.site_header = "ProcureSphere 360 — Platform Administration"
+admin.site.site_title = "ProcureSphere 360 Super Admin"
+admin.site.index_title = "Super Admin Control Center & Multi-Tenant Manager"
+
 
 
 @admin.register(FiscalPeriod)

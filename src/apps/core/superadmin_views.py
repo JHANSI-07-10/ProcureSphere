@@ -8,7 +8,7 @@ from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Prefetch, Q
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.accounts.models import Role, User
 from apps.accounts.password_utils import generate_secure_password
@@ -124,6 +124,23 @@ def user_list_view(request):
     )
 
 
+def _should_send_welcome_email(request, default=True):
+    """
+    Determines whether a credentials/welcome email should be dispatched.
+    If 'send_welcome_email_present' is in request.POST, the UI explicitly rendered
+    the toggle, so send_welcome_email must be checked (in request.POST).
+    If 'send_welcome_email' is explicitly in request.POST without the hidden tag
+    (e.g. from programmatic tests or API payloads), evaluate its truthiness.
+    Otherwise (e.g. older payloads or automated tests omitting the field), return default.
+    """
+    if "send_welcome_email_present" in request.POST:
+        return "send_welcome_email" in request.POST
+    if "send_welcome_email" in request.POST:
+        val = request.POST.get("send_welcome_email")
+        return str(val).lower() in ("1", "true", "on", "yes")
+    return default
+
+
 @login_required
 def user_create_view(request):
     if not _is_super_admin(request.user):
@@ -170,24 +187,28 @@ def user_create_view(request):
                     user_agent=request.META.get("HTTP_USER_AGENT", ""),
                 )
 
-            # Trigger welcome email strictly after database commit
-            email_status, email_error = send_user_welcome_email(
-                user=user,
-                temporary_password=raw_password,
-                request=request,
-            )
-
-            # User-facing notifications per Section 6 specification
-            if email_status == "SENT":
-                messages.success(request, "User account created successfully.")
-                messages.info(request, f"Welcome email sent successfully to {user.email}.")
-            elif email_status == "QUEUED":
-                messages.success(request, "User created successfully. Welcome email queued for delivery.")
-            else:
-                messages.warning(
-                    request,
-                    "User created successfully, but the welcome email could not be delivered. Please retry.",
+            send_email_flag = _should_send_welcome_email(request, default=True)
+            if send_email_flag:
+                # Trigger welcome email strictly after database commit
+                email_status, email_error = send_user_welcome_email(
+                    user=user,
+                    temporary_password=raw_password,
+                    request=request,
                 )
+
+                # User-facing notifications per Section 6 specification
+                if email_status == "SENT":
+                    messages.success(request, "User account created successfully.")
+                    messages.info(request, f"Welcome email sent successfully to {user.email}.")
+                elif email_status == "QUEUED":
+                    messages.success(request, "User created successfully. Welcome email queued for delivery.")
+                else:
+                    messages.warning(
+                        request,
+                        "User created successfully, but the welcome email could not be delivered. Please retry.",
+                    )
+            else:
+                messages.success(request, "User account created successfully.")
 
             return HttpResponse("<script>window.location.reload();</script>")
     else:
@@ -226,9 +247,29 @@ def user_edit_view(request, user_id):
         if form.is_valid():
             user = form.save(commit=False)
             user.username = form.cleaned_data["email"]
+            send_email_flag = _should_send_welcome_email(request, default=True)
             new_password = form.cleaned_data.get("password")
             if new_password and new_password.strip():
                 raw_pwd = new_password.strip()
+                user.set_password(raw_pwd)
+                user.must_change_password = True
+                user.save()
+                if send_email_flag:
+                    email_status, email_error = send_user_welcome_email(
+                        user=user,
+                        temporary_password=raw_pwd,
+                        request=request,
+                    )
+                    if email_status == "SENT":
+                        messages.info(request, f"Updated credentials email successfully sent to {user.email}.")
+                    elif email_status == "QUEUED":
+                        messages.info(request, f"Updated credentials email queued for delivery to {user.email}.")
+                    else:
+                        messages.warning(request, f"Credentials updated, but email could not be delivered: {email_error}")
+            elif send_email_flag:
+                # If send_welcome_email is checked but password was left blank,
+                # generate a fresh temporary password so valid credentials can be emailed to the user
+                raw_pwd = generate_secure_password()
                 user.set_password(raw_pwd)
                 user.must_change_password = True
                 user.save()
@@ -238,11 +279,11 @@ def user_edit_view(request, user_id):
                     request=request,
                 )
                 if email_status == "SENT":
-                    messages.info(request, f"Updated credentials email successfully sent to {user.email}.")
+                    messages.info(request, f"Login credentials email successfully sent to {user.email}.")
                 elif email_status == "QUEUED":
-                    messages.info(request, f"Updated credentials email queued for delivery to {user.email}.")
+                    messages.info(request, f"Login credentials email queued for delivery to {user.email}.")
                 else:
-                    messages.warning(request, f"Credentials updated, but email could not be delivered: {email_error}")
+                    messages.warning(request, f"User saved, but credentials email could not be delivered: {email_error}")
             else:
                 user.save()
 
@@ -429,11 +470,14 @@ def org_create_view(request):
         if form.is_valid():
             from apps.organization.services import create_organization_with_admin_service
 
-            admin_email = form.cleaned_data.get("admin_email")
+            admin_user_obj = form.cleaned_data.get("admin_user")
+            admin_email = (form.cleaned_data.get("admin_email") or "").strip()
+            if admin_user_obj and not admin_email:
+                admin_email = admin_user_obj.email
             admin_first_name = form.cleaned_data.get("admin_first_name", "")
             admin_last_name = form.cleaned_data.get("admin_last_name", "")
             admin_password = form.cleaned_data.get("admin_password")
-
+            send_welcome_flag = form.cleaned_data.get("send_welcome_email", True)
             org, admin_user, raw_pwd = create_organization_with_admin_service(
                 name=form.cleaned_data["name"],
                 code=form.cleaned_data["code"],
@@ -444,21 +488,23 @@ def org_create_view(request):
                 admin_first_name=admin_first_name,
                 admin_last_name=admin_last_name,
                 admin_password=admin_password,
-                send_welcome_email_flag=True,
+                send_welcome_email_flag=send_welcome_flag,
                 request=request,
                 actor=request.user,
             )
             admin_info = f" with Administrator '{admin_user.email}'" if admin_user else ""
             messages.success(request, f"Organization '{org.name}' ({org.code}){admin_info} created successfully.")
-            if admin_user:
+            if admin_user and send_welcome_flag:
                 email_status = getattr(org, "_welcome_email_status", None)
                 if email_status == "SENT":
-                    messages.info(request, f"Login email and password successfully sent to {admin_user.email}.")
+                    messages.info(request, f"Login email and password successfully sent to {admin_user.email} via Brevo.")
                 elif email_status == "FAILED":
                     messages.warning(
                         request,
-                        f"Administrator account created, but email could not be sent: {getattr(org, '_welcome_email_error', 'mail server error')}",
+                        f"Administrator account created, but welcome email could not be sent: {getattr(org, '_welcome_email_error', 'mail server error')}",
                     )
+            elif admin_user and not send_welcome_flag:
+                messages.info(request, f"Administrator account '{admin_user.email}' created (welcome email was skipped per checkbox).")
             return HttpResponse("<script>window.location.reload();</script>")
     else:
         form = OrganizationAdminForm()
@@ -476,9 +522,9 @@ def org_edit_view(request, org_id):
 
     org = get_object_or_404(Organization.objects.select_related("admin_user"), pk=org_id)
     scoped_org = get_user_scoped_org(request.user)
-    if scoped_org and org.id != scoped_org.id:
+    if scoped_org or not request.user.is_superuser:
         return HttpResponse(
-            "<div class='alert alert-danger m-3'>Permission Denied: You cannot modify other organizations.</div>",
+            "<div class='alert alert-danger m-3'>Permission Denied: Organization Administrators cannot edit organization details. Only platform super administrators can modify legal entities.</div>",
             status=403,
         )
 
@@ -490,6 +536,14 @@ def org_edit_view(request, org_id):
             admin_password = form.cleaned_data.get("admin_password")
             target_user = None
             password_to_send = None
+            admin_user_dropdown = form.cleaned_data.get("admin_user")
+            if admin_user_dropdown and org.admin_user != admin_user_dropdown:
+                org.admin_user = admin_user_dropdown
+                org.save(update_fields=["admin_user"])
+                if not admin_user_dropdown.organization_id:
+                    admin_user_dropdown.organization = org
+                    admin_user_dropdown.save(update_fields=["organization"])
+
             if admin_email and (not org.admin_user or org.admin_user.email != admin_email.strip().lower()):
                 norm_email = admin_email.strip().lower()
                 role, _ = Role.objects.get_or_create(code=Role.SUPER_ADMIN, defaults={"name": "Super Admin"})
@@ -508,6 +562,10 @@ def org_edit_view(request, org_id):
                     user.organization = org
                     user.role = role
                     user.is_staff = True
+                    if form.cleaned_data.get("admin_first_name"):
+                        user.first_name = form.cleaned_data.get("admin_first_name")
+                    if form.cleaned_data.get("admin_last_name"):
+                        user.last_name = form.cleaned_data.get("admin_last_name")
                 if admin_password and admin_password.strip():
                     password_to_send = admin_password.strip()
                     user.set_password(password_to_send)
@@ -516,31 +574,235 @@ def org_edit_view(request, org_id):
                 org.admin_user = user
                 org.save(update_fields=["admin_user"])
                 target_user = user
-            elif admin_password and admin_password.strip() and org.admin_user:
-                password_to_send = admin_password.strip()
-                org.admin_user.set_password(password_to_send)
-                org.admin_user.must_change_password = True
-                org.admin_user.save(update_fields=["password", "must_change_password"])
-                target_user = org.admin_user
+            elif org.admin_user:
+                admin_first_name = form.cleaned_data.get("admin_first_name", "")
+                admin_last_name = form.cleaned_data.get("admin_last_name", "")
+                role, _ = Role.objects.get_or_create(code=Role.SUPER_ADMIN, defaults={"name": "Super Admin"})
+                org.admin_user.role = role
+                org.admin_user.organization = org
+                org.admin_user.is_staff = True
+                org.admin_user.is_active = True
+                user_updated = True
+                if admin_first_name and org.admin_user.first_name != admin_first_name:
+                    org.admin_user.first_name = admin_first_name
+                if admin_last_name and org.admin_user.last_name != admin_last_name:
+                    org.admin_user.last_name = admin_last_name
+                if admin_password and admin_password.strip():
+                    password_to_send = admin_password.strip()
+                    org.admin_user.set_password(password_to_send)
+                    org.admin_user.must_change_password = True
+                    target_user = org.admin_user
+                if user_updated:
+                    org.admin_user.save()
 
-            if target_user and password_to_send:
-                email_status, email_error = send_user_welcome_email(
-                    user=target_user,
-                    temporary_password=password_to_send,
-                    request=request,
-                )
-                if email_status == "SENT":
-                    messages.info(request, f"Login email and password successfully sent to {target_user.email}.")
-                elif email_status == "QUEUED":
-                    messages.info(request, f"Credentials email queued for delivery to {target_user.email}.")
-                else:
-                    messages.warning(request, f"Credentials updated, but email could not be delivered: {email_error}")
+            send_welcome_flag = _should_send_welcome_email(
+                request,
+                default=bool(admin_password and admin_password.strip()) or form.cleaned_data.get("send_welcome_email", False),
+            )
+            if send_welcome_flag:
+                if not target_user and org.admin_user:
+                    target_user = org.admin_user
+                if not password_to_send and target_user:
+                    password_to_send = generate_secure_password()
+                    target_user.set_password(password_to_send)
+                    target_user.must_change_password = True
+                    target_user.save(update_fields=["password", "must_change_password"])
+
+                if target_user and password_to_send:
+                    email_status, email_error = send_user_welcome_email(
+                        user=target_user,
+                        temporary_password=password_to_send,
+                        request=request,
+                    )
+                    if email_status == "SENT":
+                        messages.info(request, f"Login email and password successfully sent to {target_user.email} via Brevo.")
+                    elif email_status == "QUEUED":
+                        messages.info(request, f"Credentials email queued for delivery to {target_user.email}.")
+                    else:
+                        messages.warning(request, f"Credentials updated, but email could not be delivered: {email_error}")
 
             messages.success(request, f"Organization '{org.name}' updated successfully.")
             return HttpResponse("<script>window.location.reload();</script>")
     else:
         form = OrganizationAdminForm(instance=org)
     return render(request, "pages/dashboards/superadmin/org_form.html", {"form": form, "is_edit": True, "org": org})
+
+
+@login_required
+@super_admin_required
+def org_detail_view(request, org_id):
+    scoped_org = get_user_scoped_org(request.user)
+    if scoped_org and scoped_org.id != org_id:
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: You cannot view other organizations.</div>",
+            status=403,
+        )
+    org = get_object_or_404(
+        Organization.objects.select_related("admin_user").prefetch_related("departments", "departments__cost_centers"),
+        pk=org_id,
+    )
+    departments_count = org.departments.count()
+    cost_centers_count = sum(dept.cost_centers.count() for dept in org.departments.all())
+    users_count = org.org_users.count()
+    vendors_count = org.vendors.count()
+
+    context = {
+        "org": org,
+        "departments_count": departments_count,
+        "cost_centers_count": cost_centers_count,
+        "users_count": users_count,
+        "vendors_count": vendors_count,
+        "departments": org.departments.all()[:10],
+        "is_global_superadmin": bool(not scoped_org),
+    }
+    return render(request, "pages/dashboards/superadmin/org_detail_modal.html", context)
+
+
+@login_required
+@super_admin_required
+def org_resend_credentials_view(request, org_id):
+    scoped_org = get_user_scoped_org(request.user)
+    if scoped_org and scoped_org.id != org_id:
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: You cannot modify other organizations.</div>",
+            status=403,
+        )
+    if request.method != "POST":
+        return HttpResponse("<div class='alert alert-danger m-3'>Method not allowed.</div>", status=405)
+
+    org = get_object_or_404(Organization.objects.select_related("admin_user"), pk=org_id)
+    if not org.admin_user:
+        messages.error(request, f"Organization '{org.name}' has no assigned administrator user.")
+        return HttpResponse("<script>window.location.reload();</script>")
+
+    admin_user = org.admin_user
+    role, _ = Role.objects.get_or_create(code=Role.SUPER_ADMIN, defaults={"name": "Super Admin"})
+    admin_user.role = role
+    admin_user.organization = org
+    admin_user.is_staff = True
+    admin_user.is_active = True
+
+    new_temp_pwd = generate_secure_password()
+    admin_user.set_password(new_temp_pwd)
+    admin_user.must_change_password = True
+    admin_user.save()
+
+    from apps.audit.services import create_audit_log_service
+
+    create_audit_log_service(
+        actor=request.user,
+        action=AuditLog.ACTION_UPDATE,
+        target_model="User",
+        target_object_id=str(admin_user.id),
+        previous_state={"credentials_resend": False},
+        new_state={"credentials_resend": True, "email": admin_user.email},
+        ip_address=request.META.get("REMOTE_ADDR"),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+    )
+
+    email_status, email_error = send_user_welcome_email(
+        user=admin_user,
+        temporary_password=new_temp_pwd,
+        request=request,
+    )
+
+    if email_status == "SENT":
+        messages.success(request, f"Login credentials and password successfully sent to {admin_user.email} via Brevo!")
+    elif email_status == "QUEUED":
+        messages.info(request, f"Credentials email queued for delivery to {admin_user.email}.")
+    else:
+        messages.warning(request, f"Credentials updated, but Brevo email delivery failed: {email_error}")
+
+    return HttpResponse("<script>window.location.reload();</script>")
+
+
+@login_required
+@super_admin_required
+def org_delete_view(request, org_id):
+    scoped_org = get_user_scoped_org(request.user)
+    if scoped_org is not None or not (request.user.is_superuser or _is_super_admin(request.user)):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Only global platform administrators can delete organizations.</div>",
+            status=403,
+        )
+
+    org = get_object_or_404(Organization.objects.select_related("admin_user"), pk=org_id)
+
+    # Check if this is the actor's own active organization
+    if getattr(request.user, "effective_organization", None) == org:
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Cannot delete the active organization your account is assigned to.</div>",
+            status=400,
+        )
+
+    if request.method == "POST":
+        from apps.organization.services import delete_organization_service
+
+        success, message = delete_organization_service(organization=org, actor=request.user, request=request)
+        if success:
+            messages.success(request, message)
+            if request.headers.get("HX-Request"):
+                return HttpResponse("<script>window.location.reload();</script>")
+            return redirect("superadmin:organizations")
+        else:
+            messages.error(request, message)
+            if request.headers.get("HX-Request"):
+                return HttpResponse(f"<div class='alert alert-danger m-3'>{message}</div>")
+            return redirect("superadmin:organizations")
+
+    # GET request - return deletion confirmation modal
+    departments_count = org.departments.count()
+    cost_centers_count = CostCenter.objects.filter(department__organization=org).count()
+    users_count = org.org_users.count()
+
+    return render(
+        request,
+        "pages/dashboards/superadmin/org_delete_modal.html",
+        {
+            "org": org,
+            "departments_count": departments_count,
+            "cost_centers_count": cost_centers_count,
+            "users_count": users_count,
+        },
+    )
+
+
+@login_required
+@super_admin_required
+def org_resend_credentials_view(request, org_id):
+    org = get_object_or_404(Organization.objects.select_related("admin_user"), pk=org_id)
+    if not org.admin_user:
+        messages.error(request, "This organization does not have an assigned administrator.")
+        return HttpResponse("<script>window.location.reload();</script>")
+
+    role, _ = Role.objects.get_or_create(code=Role.SUPER_ADMIN, defaults={"name": "Super Admin"})
+    admin_user = org.admin_user
+    admin_user.role = role
+    admin_user.organization = org
+    admin_user.is_staff = True
+    admin_user.is_active = True
+
+    new_password = generate_secure_password()
+    admin_user.set_password(new_password)
+    admin_user.must_change_password = True
+    admin_user.save()
+
+    email_status, email_error = send_user_welcome_email(
+        user=admin_user,
+        temporary_password=new_password,
+        request=request,
+    )
+
+    if email_status == "SENT":
+        messages.success(request, f"New credentials successfully emailed to {admin_user.email} via Brevo.")
+    elif email_status == "QUEUED":
+        messages.info(request, f"Credentials email queued for delivery to {admin_user.email}.")
+    else:
+        messages.warning(request, f"Password updated, but email could not be sent: {email_error}")
+
+    return HttpResponse("<script>window.location.reload();</script>")
+
+
 
 
 @login_required
