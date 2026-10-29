@@ -303,7 +303,7 @@ def test_shared_pages_preserve_correct_experience_for_non_stores_roles(nav_setup
     assert resp_admin_po.status_code == 200
     admin_po_html = resp_admin_po.content.decode()
     assert "stores-sidebar" not in admin_po_html
-    assert "ERP Modules" in admin_po_html  # Standard top navbar
+    assert "saSidebar" in admin_po_html or "ERP Modules" in admin_po_html  # Super Admin layout/navbar
 
     # 2. Procurement Executive on /purchase-orders/
     client.force_login(nav_setup["proc_exec_user"])

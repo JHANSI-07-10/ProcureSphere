@@ -457,6 +457,51 @@ def record_inspection_service(
         new_state=new_state,
     )
 
+    from apps.notifications.models import Notification
+
+    has_rejected = any(line.quantity_rejected > Decimal("0.00") for line in receipt.lines.all())
+    if has_rejected:
+        recipients = set()
+        if po.requisition and po.requisition.requester:
+            recipients.add(po.requisition.requester)
+        if po.created_by:
+            recipients.add(po.created_by)
+
+        for recipient in recipients:
+            if not Notification.objects.filter(
+                recipient=recipient,
+                notification_type=Notification.TYPE_EXCEPTION_RAISED,
+                target_url=f"/receipts/{receipt.id}/",
+            ).exists():
+                Notification.objects.create(
+                    recipient=recipient,
+                    notification_type=Notification.TYPE_EXCEPTION_RAISED,
+                    title=f"Receipt Quality Rejection: {receipt.grn_number}",
+                    message=(
+                        f"Quality inspection recorded rejected items on receipt {receipt.grn_number} "
+                        f"for PO {po.po_number}."
+                    ),
+                    target_url=f"/receipts/{receipt.id}/",
+                )
+    elif receipt.overall_inspection_status == "PASSED":
+        if po.requisition and po.requisition.requester:
+            if not Notification.objects.filter(
+                recipient=po.requisition.requester,
+                notification_type=Notification.TYPE_GOODS_RECEIVED,
+                title__startswith="Receipt Inspection Passed",
+                target_url=f"/receipts/{receipt.id}/",
+            ).exists():
+                Notification.objects.create(
+                    recipient=po.requisition.requester,
+                    notification_type=Notification.TYPE_GOODS_RECEIVED,
+                    title=f"Receipt Inspection Passed: {receipt.grn_number}",
+                    message=(
+                        f"Quality inspection has passed for all items on receipt {receipt.grn_number} "
+                        f"for PO {po.po_number}."
+                    ),
+                    target_url=f"/receipts/{receipt.id}/",
+                )
+
     return receipt
 
 
