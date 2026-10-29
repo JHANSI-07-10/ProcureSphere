@@ -32,6 +32,19 @@ class UserAdminForm(forms.ModelForm):
         ),
     )
 
+    send_welcome_email = forms.BooleanField(
+        label="Send Login Credentials Email",
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(
+            attrs={
+                "class": "form-check-input",
+                "id": "id_send_welcome_email",
+            }
+        ),
+        help_text="Send email with login credentials (email & password) to the user via Brevo.",
+    )
+
     class Meta:
         model = User
         fields = ["email", "phone_number", "role", "department", "cost_center", "is_active"]
@@ -78,10 +91,12 @@ class UserAdminForm(forms.ModelForm):
 
         if not self.instance.pk or getattr(self.instance, "_state", None) and self.instance._state.adding:
             self.initial.setdefault("is_active", True)
+            self.initial.setdefault("send_welcome_email", True)
             self.fields["password"].help_text = (
                 "Must contain at least 12 characters, including uppercase, lowercase, numbers, and special characters."
             )
         else:
+            self.initial.setdefault("send_welcome_email", True)
             self.fields["password"].help_text = "Leave blank to keep existing password."
 
     def clean_email(self):
@@ -202,8 +217,15 @@ class OrganizationAdminForm(forms.ModelForm):
     admin_password = forms.CharField(
         label="Temporary Password",
         required=False,
-        widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Leave blank to auto-generate"}),
+        widget=forms.PasswordInput(attrs={"class": "form-control", "id": "id_admin_password", "placeholder": "Leave blank to auto-generate"}),
         help_text="Leave blank to generate a secure temporary password.",
+    )
+    send_welcome_email = forms.BooleanField(
+        label="Send Welcome Email",
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_send_welcome_email"}),
+        help_text="Send email with login credentials (email & password) to the administrator via Brevo.",
     )
 
     class Meta:
@@ -226,14 +248,21 @@ class OrganizationAdminForm(forms.ModelForm):
         self.fields["admin_user"].queryset = User.objects.filter(
             role__code=Role.SUPER_ADMIN, is_active=True
         ).order_by("email")
-        if is_create:
-            self.fields["admin_email"].required = True
-        else:
-            self.fields["admin_email"].required = False
-            if self.instance and self.instance.admin_user:
-                self.fields["admin_email"].initial = self.instance.admin_user.email
-                self.fields["admin_first_name"].initial = self.instance.admin_user.first_name
-                self.fields["admin_last_name"].initial = self.instance.admin_user.last_name
+        self.fields["admin_email"].required = False
+        self.fields["send_welcome_email"].initial = is_create
+        if not is_create and self.instance and self.instance.admin_user:
+            self.fields["admin_email"].initial = self.instance.admin_user.email
+            self.fields["admin_first_name"].initial = self.instance.admin_user.first_name
+            self.fields["admin_last_name"].initial = self.instance.admin_user.last_name
+
+    def clean(self):
+        cleaned_data = super().clean()
+        admin_user = cleaned_data.get("admin_user")
+        admin_email = (cleaned_data.get("admin_email") or "").strip()
+        is_create = not self.instance or not self.instance.pk
+        if is_create and not admin_user and not admin_email:
+            self.add_error("admin_email", "Please provide an Admin Email for the organization administrator.")
+        return cleaned_data
 
     def clean_code(self):
         code = self.cleaned_data.get("code", "").strip().upper()
@@ -335,13 +364,32 @@ class CostCenterAdminForm(forms.ModelForm):
         raw = (self.cleaned_data.get("manager") or "").strip()
         if not raw:
             return None
-        user_qs = User.objects.filter(email__iexact=raw, is_active=True)
-        scoped_org = _get_form_scoped_org(self.request)
-        if scoped_org:
-            user_qs = user_qs.filter(Q(organization=scoped_org) | Q(department__organization=scoped_org))
-        user = user_qs.first()
+        user = User.objects.filter(email__iexact=raw, is_active=True).first()
         if user is None:
-            raise forms.ValidationError("No active user exists with this email.")
+            user = User.objects.filter(email__iexact=raw).first()
+            if user:
+                user.is_active = True
+                user.save(update_fields=["is_active"])
+            else:
+                role, _ = Role.objects.get_or_create(code=Role.DEPT_APPROVER, defaults={"name": "Department Approver"})
+                dept = self.cleaned_data.get("department") or (self.instance.department if self.instance.pk else None)
+                scoped_org = _get_form_scoped_org(self.request) or (dept.organization if dept else None)
+                temp_pwd = generate_secure_password()
+                user = User.objects.create_user(
+                    email=raw.lower(),
+                    password=temp_pwd,
+                    role=role,
+                    organization=scoped_org,
+                    department=dept,
+                    is_active=True,
+                )
+                user.must_change_password = True
+                user.save(update_fields=["must_change_password"])
+                try:
+                    from apps.notifications.email_service import send_user_welcome_email
+                    send_user_welcome_email(user=user, temporary_password=temp_pwd, request=self.request)
+                except Exception:
+                    pass
         return user
 
     def save(self, commit=True):

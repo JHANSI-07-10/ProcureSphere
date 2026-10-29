@@ -30,17 +30,34 @@
                         <i class="fa-solid fa-gauge-high me-2"></i><span>Dashboard</span>
                     </a>
                 </li>
-                <li class="sa-nav-label">Organization &amp; Access</li>
+
+                {% if request.user.is_superuser and not request.user.effective_organization %}
+                {# ========================================================================= #}
+                {# GLOBAL SUPER ADMIN: DEDICATED SOLELY TO TENANT ORGANIZATION MANAGEMENT   #}
+                {# ========================================================================= #}
+                <li class="sa-nav-label">Organization Management</li>
                 <li class="nav-item">
                     <a href="/superadmin/organizations/"
-                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/organizations/' in request.path or '/superadmin/cost-centers/' in request.path or '/superadmin/departments/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-sitemap me-2"></i><span>Organizations &amp; Masters</span>
+                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/organizations/' in request.path %}active{% endif %}">
+                        <i class="fa-solid fa-sitemap me-2"></i><span>Organizations</span>
+                    </a>
+                </li>
+
+                {% else %}
+                {# ========================================================================= #}
+                {# ORGANIZATION ADMIN: EXISTING DESIGN (Depts, Cost Centers, Users, Rules)   #}
+                {# ========================================================================= #}
+                <li class="sa-nav-label">Organization &amp; Masters</li>
+                <li class="nav-item">
+                    <a href="/superadmin/organizations/"
+                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/organizations/' in request.path or '/superadmin/departments/' in request.path or '/superadmin/cost-centers/' in request.path %}active{% endif %}">
+                        <i class="fa-solid fa-sitemap me-2"></i><span>Departments &amp; Cost Centers</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="/superadmin/users/"
                         class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/users/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-users-gear me-2"></i><span>Users &amp; Roles</span>
+                        <i class="fa-solid fa-users-gear me-2"></i><span>Manage Users &amp; Roles</span>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -87,6 +104,7 @@
                         <i class="fa-solid fa-clock-rotate-left me-2"></i><span>Audit Logs</span>
                     </a>
                 </li>
+                {% endif %}
             </ul>
         </div>
         <div class="border-top border-secondary border-opacity-25 px-3 py-3 mt-auto">
@@ -206,6 +224,13 @@
         border-radius: 4px;
     }
 
+    .sa-sidebar .overflow-y-auto::-webkit-scrollbar-button,
+    #saSidebar .overflow-y-auto::-webkit-scrollbar-button {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+
     .sa-nav-label {
         font-size: 0.68rem;
         letter-spacing: 0.08em;
@@ -225,10 +250,37 @@
         color: #fff !important;
     }
 
-    .sa-nav-link.active {
+    .sa-nav-link.active,
+    #saSidebar .sa-nav-link.active,
+    #saSidebar a.nav-link.active,
+    #saSidebar a.active,
+    aside#saSidebar.bg-dark a.nav-link.active,
+    aside#saSidebar.bg-dark a.nav-link.active-nav-item,
+    aside.bg-dark #menu a.nav-link.active,
+    .sa-sidebar .sa-nav-link.active,
+    .sa-sidebar a.nav-link.active {
         background: #ffc107 !important;
         color: #1a1a1a !important;
-        font-weight: 700;
+        font-weight: 700 !important;
+        box-shadow: none !important;
+        text-decoration: none !important;
+    }
+
+    .sa-nav-link.active i,
+    .sa-nav-link.active span,
+    #saSidebar .sa-nav-link.active i,
+    #saSidebar a.nav-link.active i,
+    #saSidebar .sa-nav-link.active span,
+    #saSidebar a.nav-link.active span,
+    aside#saSidebar.bg-dark a.nav-link.active i,
+    aside#saSidebar.bg-dark a.nav-link.active span,
+    aside.bg-dark #menu a.nav-link.active i,
+    aside.bg-dark #menu a.nav-link.active span,
+    .sa-sidebar .sa-nav-link.active i,
+    .sa-sidebar a.nav-link.active i,
+    .sa-sidebar .sa-nav-link.active span,
+    .sa-sidebar a.nav-link.active span {
+        color: #1a1a1a !important;
     }
 
     .sa-status-dot {
@@ -272,12 +324,15 @@
     }
 
     @media (min-width: 992px) {
-        .sa-sidebar {
-            width: 268px;
-            min-width: 268px;
-            height: 100vh;
-            position: sticky;
-            top: 0;
+        #saSidebar,
+        .sa-sidebar,
+        aside#saSidebar.bg-dark {
+            width: 268px !important;
+            min-width: 268px !important;
+            height: 100vh !important;
+            position: sticky !important;
+            top: 0 !important;
+            align-self: flex-start !important;
         }
 
         .sa-backdrop {

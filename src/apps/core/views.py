@@ -387,7 +387,7 @@ def home_view(request):  # noqa: C901
         )
         exceptions_qs = MatchException.objects.filter(status=MatchException.STATUS_OPEN)
         audits_qs = AuditLog.objects.filter(timestamp__date=today)
-        orgs_qs = Organization.objects.order_by("code")
+        orgs_qs = Organization.objects.select_related("admin_user").order_by("code")
 
         if scoped_org:
             users_qs = users_qs.filter(Q(organization=scoped_org) | Q(department__organization=scoped_org))
@@ -406,8 +406,24 @@ def home_view(request):  # noqa: C901
         pending_exceptions = exceptions_qs.count()
         audits_today = audits_qs.count()
 
+        is_global_superadmin = bool(not scoped_org)
+
         context = {
             "organizations": orgs_qs,
+            "scoped_org": scoped_org,
+            "is_global_superadmin": is_global_superadmin,
+            "can_add_organization": is_global_superadmin,
+            "total_organizations": Organization.objects.count() if is_global_superadmin else (1 if scoped_org else 0),
+            "active_organizations": (
+                Organization.objects.filter(is_active=True).count()
+                if is_global_superadmin
+                else (1 if (scoped_org and scoped_org.is_active) else 0)
+            ),
+            "provisioned_admins": (
+                Organization.objects.filter(admin_user__isnull=False).count()
+                if is_global_superadmin
+                else (1 if (scoped_org and scoped_org.admin_user) else 0)
+            ),
             "metrics": {
                 "total_users": total_users,
                 "allocated_budget": allocated_budget,

@@ -34,8 +34,11 @@ def requester_client(db):
 
 
 @pytest.fixture
-def sample_org_and_dept(db):
+def sample_org_and_dept(db, superadmin_client):
+    _, admin_user = superadmin_client
     org = Organization.objects.create(name="Hewlett Packard Enterprise", code="HPE", is_active=True)
+    admin_user.organization = org
+    admin_user.save()
     dept_it = Department.objects.create(name="IT Operations", code="IT-OPS", organization=org)
     dept_hr = Department.objects.create(name="Human Resources", code="HR", organization=org)
     return org, dept_it, dept_hr
@@ -280,19 +283,34 @@ def test_cost_center_edit_modal_and_update(superadmin_client, sample_org_and_dep
     edit_form = client.get(reverse("superadmin:cost_center_edit", kwargs={"cc_id": cc.pk}))
     assert 'value="assigned.manager@procuresphere.local"' in edit_form.content.decode("utf-8")
 
+    # Saving with a new manager email auto-creates the user and assigns as manager
+    new_manager_resp = client.post(
+        reverse("superadmin:cost_center_edit", kwargs={"cc_id": unassigned.pk}),
+        {
+            "code": "CC-OPEN-01",
+            "name": "Still Open",
+            "department": str(dept_hr.pk),
+            "manager": "new.autocreated.manager@procuresphere.local",
+        },
+    )
+    assert new_manager_resp.status_code == 200
+    assert "<script>window.location.reload();</script>" in new_manager_resp.content.decode("utf-8")
+    unassigned.refresh_from_db()
+    assert unassigned.manager is not None
+    assert unassigned.manager.email == "new.autocreated.manager@procuresphere.local"
+
+    # Saving with an invalid email format is rejected
     rejected = client.post(
         reverse("superadmin:cost_center_edit", kwargs={"cc_id": unassigned.pk}),
         {
             "code": "CC-OPEN-01",
             "name": "Still Open",
             "department": str(dept_hr.pk),
-            "manager": "nobody@procuresphere.local",
+            "manager": "invalid-email-address",
         },
     )
     assert rejected.status_code == 200
-    assert "No active user exists with this email." in rejected.content.decode("utf-8")
-    unassigned.refresh_from_db()
-    assert unassigned.manager is None
+    assert "Enter a valid email address." in rejected.content.decode("utf-8")
 
 
 @pytest.mark.django_db
@@ -329,10 +347,12 @@ def test_cost_center_hr_ops_scenario_complete(superadmin_client, requester_clien
     7. Verify CC-IT-101 remains completely unchanged.
     8. Verify unauthorized users cannot create or edit cost centers.
     """
-    admin_client, _ = superadmin_client
+    admin_client, admin_user = superadmin_client
     req_client, _ = requester_client
 
     org = Organization.objects.create(name="Hewlett Packard Enterprise", code="HPE", is_active=True)
+    admin_user.organization = org
+    admin_user.save()
     dept_it = Department.objects.create(name="IT Infrastructure Operations", code="IT-OPS", organization=org)
     dept_hr = Department.objects.create(name="Human Resources Operations", code="HR-OPS", organization=org)
 

@@ -99,7 +99,7 @@ def test_create_user_with_manual_password_and_welcome_email(superadmin_client, s
     assert len(mail.outbox) == 1
     sent_mail = mail.outbox[0]
     assert sent_mail.to == ["manual.user@example.com"]
-    assert "Welcome to ProcureSphere 360 – Your Account Details" in sent_mail.subject
+    assert "Welcome to ProcureSphere 360" in sent_mail.subject
 
     # Check content in text or html alternatives
     all_content = sent_mail.body
@@ -422,4 +422,118 @@ def test_superadmin_sidebar_profile_alignment_and_non_clipping_signout(superadmi
     assert "min-width: 0" in html
     assert "text-truncate" in html
     assert "title=" in html
+
+
+@pytest.mark.django_db
+def test_user_form_contains_send_welcome_email_checkbox_toggle(superadmin_client):
+    """Verifies that the user form modal (create & edit) renders the Send Login Credentials Email toggle."""
+    client, _ = superadmin_client
+    res_create = client.get(reverse("superadmin:user_create"))
+    assert res_create.status_code == 200
+    html_create = res_create.content.decode("utf-8")
+    assert "id_send_welcome_email" in html_create
+    assert "Send Login Credentials Email (via Brevo)" in html_create
+
+    # Also check edit modal
+    role, _ = Role.objects.get_or_create(code=Role.REQUESTER, defaults={"name": "Requester"})
+    user = User.objects.create_user(email="test_toggle@procuresphere.local", password="OldPassword123!", role=role)
+    res_edit = client.get(reverse("superadmin:user_edit", kwargs={"user_id": user.id}))
+    assert res_edit.status_code == 200
+    html_edit = res_edit.content.decode("utf-8")
+    assert "id_send_welcome_email" in html_edit
+    assert "Send Login Credentials Email (via Brevo)" in html_edit
+
+
+@pytest.mark.django_db
+def test_user_edit_with_blank_password_and_send_email_true_generates_password_and_sends_credentials(
+    superadmin_client, sample_roles_and_departments
+):
+    """
+    Verifies that saving a user in edit mode with a blank password and send_welcome_email=True
+    auto-generates a secure password and emails the credentials to the user.
+    """
+    client, _ = superadmin_client
+    _, role_app, dept_hr, _ = sample_roles_and_departments
+    mail.outbox.clear()
+
+    user = User.objects.create_user(
+        email="test_blank_pwd_edit@example.com",
+        password="InitialPassword123!",
+        role=role_app,
+        department=dept_hr,
+        organization=dept_hr.organization,
+    )
+    initial_hash = user.password
+
+    # Post with blank password and send_welcome_email checked ("on")
+    response = client.post(
+        reverse("superadmin:user_edit", kwargs={"user_id": user.id}),
+        {
+            "email": user.email,
+            "role": str(role_app.pk),
+            "department": str(dept_hr.pk),
+            "password": "",  # Blank password
+            "send_welcome_email": "on",
+            "is_active": "on",
+        },
+    )
+    assert response.status_code == 200
+
+    user.refresh_from_db()
+    # Password should have been updated to a newly generated secure password
+    assert user.password != initial_hash
+    assert user.must_change_password is True
+
+    # Email must have been dispatched with credentials
+    assert len(mail.outbox) == 1
+    sent = mail.outbox[0]
+    assert sent.to == [user.email]
+    assert "Welcome to ProcureSphere 360" in sent.subject
+    all_content = sent.body
+    if hasattr(sent, "alternatives"):
+        for alt_body, _ in sent.alternatives:
+            all_content += alt_body
+    assert "Username / Login Email" in all_content or user.email in all_content
+
+
+@pytest.mark.django_db
+def test_user_edit_with_send_email_false_does_not_send_email_and_keeps_password(
+    superadmin_client, sample_roles_and_departments
+):
+    """
+    Verifies that saving a user in edit mode with send_welcome_email unchecked (omitted)
+    and blank password keeps existing password and sends no email.
+    """
+    client, _ = superadmin_client
+    _, role_app, dept_hr, _ = sample_roles_and_departments
+    mail.outbox.clear()
+
+    user = User.objects.create_user(
+        email="test_no_email_edit@example.com",
+        password="InitialPassword123!",
+        role=role_app,
+        department=dept_hr,
+        organization=dept_hr.organization,
+    )
+    initial_hash = user.password
+
+    response = client.post(
+        reverse("superadmin:user_edit", kwargs={"user_id": user.id}),
+        {
+            "email": user.email,
+            "role": str(role_app.pk),
+            "department": str(dept_hr.pk),
+            "password": "",
+            "send_welcome_email_present": "1",  # Form present, but toggle explicitly unchecked
+            "is_active": "on",
+        },
+    )
+    assert response.status_code == 200
+
+    user.refresh_from_db()
+    # Password should remain unchanged
+    assert user.password == initial_hash
+    # No email should have been sent
+    assert len(mail.outbox) == 0
+
 

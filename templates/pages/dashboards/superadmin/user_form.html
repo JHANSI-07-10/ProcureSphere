@@ -71,6 +71,18 @@
             </div>
 
             <div class="col-12">
+                <input type="hidden" name="send_welcome_email_present" value="1">
+                <div class="form-check form-switch mt-2">
+                    {{ form.send_welcome_email }}
+                    <label class="form-check-label fw-semibold text-dark" for="{{ form.send_welcome_email.id_for_label }}">
+                        <i class="fa-solid fa-paper-plane text-info me-1"></i> Send Login Credentials Email (via Brevo)
+                    </label>
+                </div>
+                <div class="form-text small text-muted">When checked, sends login credentials and temporary password to the user via Brevo.</div>
+                {% if form.send_welcome_email.errors %}<div class="text-danger small mt-1">{{ form.send_welcome_email.errors }}</div>{% endif %}
+            </div>
+
+            <div class="col-12">
                 <div class="form-check form-switch mt-2">
                     {{ form.is_active }}
                     <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">Active User Account</label>

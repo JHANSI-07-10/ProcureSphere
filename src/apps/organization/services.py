@@ -65,12 +65,11 @@ def create_organization_with_admin_service(
             defaults={"name": "Super Admin", "description": "System and Organization Administrator"},
         )
 
-        raw_password = admin_password.strip() if admin_password and admin_password.strip() else generate_secure_password()
-
         admin_user = User.objects.filter(email__iexact=norm_email).first()
         is_new = False
         if not admin_user:
             is_new = True
+            raw_password = admin_password.strip() if admin_password and admin_password.strip() else generate_secure_password()
             admin_user = User(
                 email=norm_email,
                 username=norm_email,
@@ -82,18 +81,25 @@ def create_organization_with_admin_service(
                 is_active=True,
                 must_change_password=True,
             )
+            admin_user.set_password(raw_password)
         else:
             if admin_first_name:
                 admin_user.first_name = admin_first_name.strip()
             if admin_last_name:
                 admin_user.last_name = admin_last_name.strip()
-            if not admin_user.organization_id:
-                admin_user.organization = org
-            if not admin_user.role_id:
-                admin_user.role = role
+            admin_user.organization = org
+            admin_user.role = role
             admin_user.is_staff = True
+            admin_user.is_active = True
+            if admin_password and admin_password.strip():
+                raw_password = admin_password.strip()
+                admin_user.set_password(raw_password)
+                admin_user.must_change_password = True
+            elif send_welcome_email_flag:
+                raw_password = generate_secure_password()
+                admin_user.set_password(raw_password)
+                admin_user.must_change_password = True
 
-        admin_user.set_password(raw_password)
         admin_user.save()
 
         org.admin_user = admin_user
@@ -120,7 +126,7 @@ def create_organization_with_admin_service(
             user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
         )
 
-        if send_welcome_email_flag and raw_password:
+        if send_welcome_email_flag:
             status, error = send_user_welcome_email(
                 user=admin_user,
                 temporary_password=raw_password,
@@ -202,3 +208,63 @@ def create_fiscal_period_service(
         end_date=end_date,
     )
     return period
+
+
+@transaction.atomic
+def delete_organization_service(*, organization: Organization, actor=None, request=None) -> Tuple[bool, str]:
+    """
+    Safely deletes an Organization after ensuring:
+    1. The actor is not deleting their own active assigned organization.
+    2. No protected operational records (PRs, POs, Contracts, Invoices) are tied to it.
+    3. An immutable AuditLog entry with ACTION_DELETE is preserved.
+    """
+    from django.db.models import ProtectedError
+    from apps.audit.models import AuditLog
+    from apps.audit.services import create_audit_log_service
+    from apps.requisitions.models import PurchaseRequisition
+    from apps.orders.models import PurchaseOrder
+
+    effective_actor = actor or (request.user if request and getattr(request, "user", None) and request.user.is_authenticated else None)
+
+    # Prevent deleting user's own active organization
+    if effective_actor and getattr(effective_actor, "effective_organization", None) == organization:
+        return False, "You cannot delete your own assigned active organization."
+
+    # Check for active transactional records that are protected
+    if PurchaseRequisition.objects.filter(department__organization=organization).exists():
+        return False, f"Cannot delete organization '{organization.name}' because purchase requisitions are linked to its departments. You may deactivate it instead."
+
+    if PurchaseOrder.objects.filter(cost_center__department__organization=organization).exists():
+        return False, f"Cannot delete organization '{organization.name}' because purchase orders are linked to its cost centers. You may deactivate it instead."
+
+    # Record AuditLog before deletion
+    prev_state = {
+        "id": str(organization.id),
+        "name": organization.name,
+        "code": organization.code,
+        "tax_identifier": organization.tax_identifier,
+        "admin_user": organization.admin_user.email if organization.admin_user else None,
+        "is_active": organization.is_active,
+    }
+
+    create_audit_log_service(
+        actor=effective_actor,
+        action=AuditLog.ACTION_DELETE,
+        target_model="Organization",
+        target_object_id=str(organization.id),
+        previous_state=prev_state,
+        new_state=None,
+        ip_address=request.META.get("REMOTE_ADDR") if request else None,
+        user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
+    )
+
+    org_name = organization.name
+    org_code = organization.code
+
+    try:
+        organization.delete()
+    except ProtectedError as err:
+        return False, f"Cannot delete organization '{org_name}' due to protected database dependencies: {str(err)}"
+
+    return True, f"Organization '{org_name}' ({org_code}) has been deleted successfully."
+
