@@ -136,12 +136,12 @@
                         <tr>
                             <td class="px-4 py-3">
                                 <a href="/requisitions/{{ pr.id }}/" class="fw-bold text-primary text-decoration-none">
-                                    {{ pr.requisition_number }}
+                                    <code>{{ pr.pr_number }}</code>
                                 </a>
                             </td>
                             <td class="py-3 text-dark fw-medium">{{ pr.title|truncatechars:40 }}</td>
                             <td class="py-3 text-muted small">{{ pr.created_at|date:"M d, Y" }}</td>
-                            <td class="py-3 text-end fw-semibold text-dark">${{ pr.total_estimated_amount|floatformat:2 }}</td>
+                            <td class="py-3 text-end fw-semibold text-dark">${{ pr.total_amount|floatformat:2 }}</td>
                             <td class="px-4 py-3 text-center">
                                 <span class="badge rounded-pill {% if pr.status == 'APPROVED' %}bg-success{% elif pr.status == 'REJECTED' %}bg-danger{% elif pr.status == 'DRAFT' %}bg-secondary{% else %}bg-warning text-dark{% endif %} px-3 py-1">
                                     {{ pr.get_status_display }}

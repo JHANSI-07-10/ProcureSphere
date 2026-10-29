@@ -17,7 +17,7 @@ from apps.audit.models import AuditLog
 from apps.vendors.models import VendorCredentialDispatch
 from apps.vendors.services import issue_vendor_credentials_service
 
-pytestmark = [pytest.mark.django_db, pytest.mark.regression]
+pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.regression]
 
 import django.db.backends.sqlite3.base as _sqlite_check
 import django.db.backends.postgresql.base as _pg_check
@@ -43,14 +43,23 @@ def _add_drifted_column():
         pytest.skip("Schema drift tests require PostgreSQL")
     with connection.cursor() as cur:
         cur.execute(
-            "ALTER TABLE vendors_vendorcredentialdispatch ADD COLUMN IF NOT EXISTS legal_notes text NOT NULL DEFAULT ''"
+            "ALTER TABLE vendors_vendorcredentialdispatch ADD COLUMN IF NOT EXISTS legacy_drift_notes text NOT NULL DEFAULT ''"
         )
         try:
             cur.execute(
-                "ALTER TABLE vendors_vendorcredentialdispatch ALTER COLUMN legal_notes DROP DEFAULT"
+                "ALTER TABLE vendors_vendorcredentialdispatch ALTER COLUMN legacy_drift_notes DROP DEFAULT"
             )
         except Exception:
             pass  # column may already exist without default
+
+
+def _drop_drifted_column():
+    if _is_sqlite():
+        return
+    with connection.cursor() as cur:
+        cur.execute(
+            "ALTER TABLE vendors_vendorcredentialdispatch DROP COLUMN IF EXISTS legacy_drift_notes"
+        )
 
 
 def _column_nullable(name):
@@ -72,53 +81,62 @@ def _run_migration():
 
 
 def test_drift_reproduces_the_production_error(procurement_world):
-    _add_drifted_column()
-    with pytest.raises(IntegrityError, match="legal_notes"), transaction.atomic():
-        issue_vendor_credentials_service(
-            vendor=procurement_world["vendor_draft"], issued_by=procurement_world["exec"]
-        )
+    try:
+        _add_drifted_column()
+        with pytest.raises(IntegrityError, match="legacy_drift_notes"), transaction.atomic():
+            issue_vendor_credentials_service(
+                vendor=procurement_world["vendor_draft"], issued_by=procurement_world["exec"]
+            )
+    finally:
+        _drop_drifted_column()
 
 
 def test_migration_fixes_issue_credentials_and_keeps_column_and_data(procurement_world):
     w = procurement_world
-    _add_drifted_column()
-    with connection.cursor() as cur:
-        # a pre-existing row written while the column was populated must survive untouched
-        cur.execute(
-            "INSERT INTO vendors_vendorcredentialdispatch "
-            "(id, created_at, updated_at, sent_to, status, error, vendor_id, user_id, legal_notes) "
-            "SELECT gen_random_uuid(), now(), now(), 'old@x.test', 'SENT', '', %s, u.id, 'kept' FROM accounts_user u LIMIT 1",
-            [str(w["vendor_a"].id)],
-        )
-    with connection.cursor() as cur:
-        cur.execute("SET CONSTRAINTS ALL IMMEDIATE")  # flush deferred FK checks of the raw insert
-    _run_migration()
-    assert _column_nullable("legal_notes") is True  # constraint relaxed, column retained
+    try:
+        _add_drifted_column()
+        with connection.cursor() as cur:
+            # a pre-existing row written while the column was populated must survive untouched
+            cur.execute(
+                "INSERT INTO vendors_vendorcredentialdispatch "
+                "(id, created_at, updated_at, sent_to, status, error, vendor_id, user_id, legacy_drift_notes, legal_verification_status, legal_notes) "
+                "SELECT gen_random_uuid(), now(), now(), 'old@x.test', 'SENT', '', %s, u.id, 'kept', 'PENDING', '' FROM accounts_user u LIMIT 1",
+                [str(w["vendor_a"].id)],
+            )
+        with connection.cursor() as cur:
+            cur.execute("SET CONSTRAINTS ALL IMMEDIATE")  # flush deferred FK checks of the raw insert
+        _run_migration()
+        assert _column_nullable("legacy_drift_notes") is True  # constraint relaxed, column retained
 
-    dispatch = issue_vendor_credentials_service(vendor=w["vendor_draft"], issued_by=w["exec"])
-    assert dispatch.status == VendorCredentialDispatch.STATUS_SENT and dispatch.sent_at
-    assert len(mail.outbox) == 1
-    assert User.objects.filter(vendor=w["vendor_draft"], must_change_password=True).exists()
-    assert AuditLog.objects.filter(
-        target_model="Vendor", target_object_id=str(w["vendor_draft"].id)
-    ).exists()
-    with connection.cursor() as cur:
-        cur.execute(
-            "SELECT legal_notes FROM vendors_vendorcredentialdispatch WHERE sent_to='old@x.test'"
-        )
-        assert cur.fetchone()[0] == "kept"
+        dispatch = issue_vendor_credentials_service(vendor=w["vendor_draft"], issued_by=w["exec"])
+        assert dispatch.status == VendorCredentialDispatch.STATUS_SENT and dispatch.sent_at
+        assert len(mail.outbox) == 1
+        assert User.objects.filter(vendor=w["vendor_draft"], must_change_password=True).exists()
+        assert AuditLog.objects.filter(
+            target_model="Vendor", target_object_id=str(w["vendor_draft"].id)
+        ).exists()
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT legacy_drift_notes FROM vendors_vendorcredentialdispatch WHERE sent_to='old@x.test'"
+            )
+            assert cur.fetchone()[0] == "kept"
+    finally:
+        _drop_drifted_column()
 
 
 def test_failed_email_is_recorded_as_failed_after_fix(procurement_world):
     w = procurement_world
-    _add_drifted_column()
-    _run_migration()
-    with mock.patch("apps.vendors.services.send_mail", side_effect=OSError("smtp down")):
-        with pytest.raises(Exception):
-            issue_vendor_credentials_service(vendor=w["vendor_draft"], issued_by=w["exec"])
-    dispatch = VendorCredentialDispatch.objects.get(vendor=w["vendor_draft"])
-    assert dispatch.status == VendorCredentialDispatch.STATUS_FAILED
-    assert "smtp down" in dispatch.error
+    try:
+        _add_drifted_column()
+        _run_migration()
+        with mock.patch("apps.vendors.services.send_mail", side_effect=OSError("smtp down")):
+            with pytest.raises(Exception):
+                issue_vendor_credentials_service(vendor=w["vendor_draft"], issued_by=w["exec"])
+        dispatch = VendorCredentialDispatch.objects.get(vendor=w["vendor_draft"])
+        assert dispatch.status == VendorCredentialDispatch.STATUS_FAILED
+        assert "smtp down" in dispatch.error
+    finally:
+        _drop_drifted_column()
 
 
 def test_migration_is_a_noop_on_a_healthy_schema_and_idempotent(procurement_world):
@@ -126,4 +144,4 @@ def test_migration_is_a_noop_on_a_healthy_schema_and_idempotent(procurement_worl
     _run_migration()
     _run_migration()
     assert _column_nullable("sent_to") == before is False  # model columns are never relaxed
-    assert _column_nullable("legal_notes") is None  # nothing was added
+    assert _column_nullable("legacy_drift_notes") is None  # nothing was added
