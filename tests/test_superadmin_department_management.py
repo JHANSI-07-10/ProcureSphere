@@ -9,9 +9,8 @@ from apps.organization.models import CostCenter, Department, Organization
 @pytest.mark.django_db
 def test_superadmin_organizations_page_renders_departments_section(client, super_admin_user):
     """
-    1. Super Admin can open the Org & Cost Centers page.
-    2. The Departments section is visible between Legal Entities and Cost Centers.
-    3. The Add Department button is present with correct HTMX modal attributes.
+    1. Super Admin without assigned org only sees Legal Entities (no Departments or Cost Centers).
+    2. Org-scoped admin sees Departments and Cost Centers.
     """
     org = Organization.objects.create(name="Hewlett Packard Enterprise", code="HPE-GLOBAL", is_active=True)
     dept = Department.objects.create(
@@ -19,6 +18,7 @@ def test_superadmin_organizations_page_renders_departments_section(client, super
     )
     cc = CostCenter.objects.create(department=dept, code="CC-IT-101", name="Compute & Cloud Center")
 
+    # Global Super Admin: Only sees Legal Entities, NO Departments or Cost Centers
     client.force_login(super_admin_user)
     response = client.get(reverse("superadmin:organizations"))
 
@@ -30,19 +30,22 @@ def test_superadmin_organizations_page_renders_departments_section(client, super
     assert "HPE-GLOBAL" in content
     assert "Add Organization" in content
 
-    # Section 2: Departments
-    assert "Departments" in content
-    assert "Operational units and functional divisions" in content
-    assert "Add Department" in content
-    assert 'hx-get="/superadmin/departments/create/"' in content
-    assert "IT-OPS" in content
-    assert "IT Infrastructure Operations" in content
-    assert f'/superadmin/departments/{dept.pk}/edit/' in content
+    # Departments and Cost Centers should NOT be visible to global superadmin
+    assert "Operational units and functional divisions" not in content
+    assert "Financial tracking units tied to departments" not in content
 
-    # Section 3: Cost Centers
-    assert "Cost Centers" in content
-    assert "CC-IT-101" in content
-    assert "Compute &amp; Cloud Center" in content
+    # Org-Scoped Admin: Sees Departments and Cost Centers
+    super_admin_user.organization = org
+    super_admin_user.save()
+    response_org_admin = client.get(reverse("superadmin:organizations"))
+    assert response_org_admin.status_code == 200
+    content_org_admin = response_org_admin.content.decode()
+
+    assert "Departments" in content_org_admin
+    assert "Operational units and functional divisions" in content_org_admin
+    assert "IT-OPS" in content_org_admin
+    assert "Cost Centers" in content_org_admin
+    assert "CC-IT-101" in content_org_admin
 
 
 @pytest.mark.django_db

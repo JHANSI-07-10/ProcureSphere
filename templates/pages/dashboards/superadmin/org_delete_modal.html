@@ -1,0 +1,63 @@
+<div class="modal-header bg-danger bg-opacity-10 border-bottom-0 pb-2">
+    <div class="d-flex align-items-center gap-2">
+        <div class="p-2 bg-danger bg-opacity-10 text-danger rounded-3">
+            <i class="fa-solid fa-triangle-exclamation fs-5"></i>
+        </div>
+        <div>
+            <h5 class="modal-title fw-bold text-danger mb-0">Delete Organization</h5>
+            <span class="text-muted small">Confirm removal of tenant organization from platform</span>
+        </div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form hx-post="/superadmin/organizations/{{ org.pk }}/delete/" hx-target="#modal-content-body" hx-swap="outerHTML">
+    {% csrf_token %}
+    <div class="modal-body pt-3">
+        <div class="alert alert-danger bg-danger bg-opacity-10 border-danger border-opacity-25 rounded-3 mb-3">
+            <div class="fw-bold text-danger mb-1"><i class="fa-solid fa-circle-exclamation me-2"></i>Permanent Platform Action</div>
+            <p class="mb-0 small text-danger">
+                Are you sure you want to delete <strong>{{ org.name }} ({{ org.code }})</strong>?
+                This action cannot be undone. Associated departments and cost centers will be removed.
+            </p>
+        </div>
+
+        <!-- Impact Summary -->
+        <div class="card border rounded-3 bg-light p-3 mb-3">
+            <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-layer-group text-secondary me-2"></i>Associated Impact Summary</h6>
+            <div class="row g-2 small">
+                <div class="col-6">
+                    <span class="text-muted d-block">Organization Code:</span>
+                    <span class="fw-bold text-primary">{{ org.code }}</span>
+                </div>
+                <div class="col-6">
+                    <span class="text-muted d-block">Assigned Administrator:</span>
+                    <span class="fw-bold text-dark">{{ org.admin_user.email|default:"None" }}</span>
+                </div>
+                <div class="col-4 mt-2">
+                    <span class="text-muted d-block">Departments:</span>
+                    <span class="fw-bold text-dark">{{ departments_count }}</span>
+                </div>
+                <div class="col-4 mt-2">
+                    <span class="text-muted d-block">Cost Centers:</span>
+                    <span class="fw-bold text-dark">{{ cost_centers_count }}</span>
+                </div>
+                <div class="col-4 mt-2">
+                    <span class="text-muted d-block">Tenant Users:</span>
+                    <span class="fw-bold text-dark">{{ users_count }}</span>
+                </div>
+            </div>
+        </div>
+
+        <p class="text-muted small mb-0">
+            Note: Organizations with active purchase requisitions, purchase orders, or contracts cannot be deleted and must be deactivated instead.
+        </p>
+    </div>
+
+    <div class="modal-footer bg-light border-top-0 d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">
+            <i class="fa-solid fa-trash me-2"></i> Confirm Delete
+        </button>
+    </div>
+</form>

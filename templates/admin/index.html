@@ -1,69 +1,812 @@
 {% extends "admin/base_site.html" %}
 {% load i18n static %}
 
-{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static "admin/css/dashboard.css" %}">{% endblock %}
+{% block extrastyle %}
+{{ block.super }}
+<!-- Bootstrap 5 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Font Awesome 6 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<!-- Google Fonts: Inter & Outfit -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+<!-- Custom Design System Styles -->
+<link href="/static/css/style.css?v=unified_v2" rel="stylesheet">
 
-{% block coltype %}colMS{% endblock %}
+<style>
+  /* Reset default Django admin wrappers to allow full-bleed modern layout */
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    background-color: #f8fafc !important;
+    color: #1e293b !important;
+    overflow-x: hidden;
+  }
 
-{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+  #container {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+  }
 
+  /* Hide default Django header, breadcrumbs and old sidebar */
+  #header, #breadcrumbs, .breadcrumbs, #nav-sidebar, .nav-sidebar-toggle {
+    display: none !important;
+  }
+
+  #main, .main {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #content {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+  }
+
+  #content-main {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    float: none !important;
+  }
+
+  /* Signature Super Admin Sidebar Styling */
+  .sa-sidebar {
+    width: 268px !important;
+    min-width: 268px !important;
+    height: 100vh !important;
+    position: sticky !important;
+    top: 0 !important;
+    background: #121824 !important;
+    color: #ffffff !important;
+    z-index: 1030;
+    align-self: flex-start !important;
+  }
+
+  .sa-nav-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.45);
+    font-weight: 700;
+    padding: 0.85rem 0.75rem 0.25rem;
+  }
+
+  .sa-nav-link {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.78) !important;
+    display: flex;
+    align-items: center;
+    text-decoration: none !important;
+    transition: all 0.15s ease-in-out;
+  }
+
+  .sa-nav-link:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff !important;
+  }
+
+  .sa-nav-link.active,
+  #saSidebar .sa-nav-link.active {
+    background: #ffc107 !important;
+    color: #1a1a1a !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+  }
+
+  .sa-nav-link.active i,
+  .sa-nav-link.active span,
+  #saSidebar .sa-nav-link.active i,
+  #saSidebar .sa-nav-link.active span {
+    color: #1a1a1a !important;
+  }
+
+  .sa-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .sa-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10B981;
+    display: inline-block;
+  }
+
+  /* KPI Card Highlights */
+  .sa-kpi {
+    border-width: 2px !important;
+    border-style: solid !important;
+  }
+
+  .sa-kpi-sky {
+    border-color: #00B0B9 !important;
+  }
+
+  .sa-kpi-green {
+    border-color: #10B981 !important;
+  }
+
+  .sa-kpi-red {
+    border-color: #F43F5E !important;
+  }
+
+  .sa-kpi-royal {
+    border-color: #2563EB !important;
+  }
+
+  .glass-card-dark {
+    background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%) !important;
+    color: #FFFFFF !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.2);
+  }
+
+  .stat-card {
+    border-radius: 14px;
+    border: 1px solid #E2E8F0;
+    background: #FFFFFF;
+    padding: 1.25rem;
+    transition: all 0.2s ease;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -6px rgba(15, 23, 42, 0.12) !important;
+  }
+
+  .metric-value {
+    font-family: 'Outfit', 'Inter', sans-serif;
+    font-size: clamp(1.4rem, 2vw, 1.85rem);
+    font-weight: 800;
+    line-height: 1.15;
+  }
+
+  .sa-sidebar .overflow-y-auto {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+
+  .sa-sidebar .overflow-y-auto::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .sa-sidebar .overflow-y-auto::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+  }
+
+  #content > h1, #content_title, .content_title {
+    display: none !important;
+  }
+</style>
+{% endblock %}
+
+{% block coltype %}col100{% endblock %}
+{% block bodyclass %}{{ block.super }} dashboard-superadmin{% endblock %}
 {% block nav-breadcrumbs %}{% endblock %}
-
 {% block nav-sidebar %}{% endblock %}
+{% block content_title %}{% endblock %}
 
 {% block content %}
-<div id="content-main">
-  <div class="module">
-    <table>
-      <caption>
-        <a href="{% url 'admin:organization_organization_changelist' %}" class="section">Organizations</a>
-      </caption>
-      <tr>
-        <th scope="row"><a href="{% url 'admin:organization_organization_changelist' %}">Organizations</a></th>
-        <td><a href="{% url 'admin:organization_organization_add' %}" class="addlink">Add</a></td>
-      </tr>
-      {% for org in dashboard_organizations %}
-      <tr>
-        <th scope="row"><a href="{% url 'admin:organization_organization_change' org.pk %}">{{ org.name }} ({{ org.code }})</a></th>
-        <td>{% if org.is_active %}Active{% else %}Inactive{% endif %}</td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="2">No organizations yet.</td></tr>
-      {% endfor %}
-    </table>
-  </div>
-  {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+<div class="d-flex min-vh-100 bg-light w-100">
+
+    <!-- LEFT SIDEBAR MATCHING IMAGE 1 -->
+    <aside id="saSidebar" class="sa-sidebar bg-dark text-white d-flex flex-column flex-shrink-0">
+        <!-- Logo Header -->
+        <div class="px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
+            <a href="/admin/" class="d-flex align-items-center text-white text-decoration-none">
+                <i class="fa-solid fa-shield-halved text-warning fa-lg me-2"></i>
+                <div>
+                    <div class="fw-bold lh-1 text-white" style="font-size: 0.95rem;">ProcureSphere <span class="fw-light">360</span></div>
+                    {% if is_global_superadmin or request.user.is_superuser and not request.user.effective_organization %}
+                    <span class="badge bg-danger rounded-pill fw-bold mt-1" style="font-size: 0.62rem; letter-spacing: 0.04em;">SUPER ADMIN</span>
+                    {% else %}
+                    <span class="badge bg-info text-dark rounded-pill fw-bold mt-1" style="font-size: 0.62rem; letter-spacing: 0.04em;">ORG ADMIN</span>
+                    {% endif %}
+                </div>
+            </a>
+        </div>
+
+        <!-- Navigation Links -->
+        <div class="flex-grow-1 overflow-y-auto px-2 py-3">
+            <ul class="nav nav-pills flex-column gap-1" id="menu">
+                <li class="nav-item">
+                    <a href="/superadmin/" class="nav-link sa-nav-link rounded-3 py-2 px-3 active">
+                        <i class="fa-solid fa-gauge-high me-2"></i><span>Dashboard</span>
+                    </a>
+                </li>
+
+                {% if is_global_superadmin or request.user.is_superuser and not request.user.effective_organization %}
+                {# ========================================================================= #}
+                {# GLOBAL SUPER ADMIN: DEDICATED SOLELY TO TENANT ORGANIZATIONS              #}
+                {# ========================================================================= #}
+                <li class="sa-nav-label">Organization Management</li>
+                <li class="nav-item">
+                    <a href="/superadmin/organizations/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
+                        <i class="fa-solid fa-sitemap me-2"></i><span>Organizations</span>
+                    </a>
+                </li>
+
+                {% else %}
+                {# ========================================================================= #}
+                {# ORGANIZATION ADMIN: EXISTING DESIGN                                       #}
+                {# ========================================================================= #}
+                <li class="sa-nav-label">Organization &amp; Masters</li>
+                <li class="nav-item">
+                    <a href="/superadmin/organizations/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
+                        <i class="fa-solid fa-sitemap me-2"></i><span>Departments &amp; Cost Centers</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/superadmin/users/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
+                        <i class="fa-solid fa-users-gear me-2"></i><span>Manage Users &amp; Roles</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/vendors/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
+                        <i class="fa-solid fa-building-user me-2"></i><span>Vendor Management</span>
+                    </a>
+                </li>
+
+                <li class="sa-nav-label">Policies &amp; Rules</li>
+                <li class="nav-item">
+                    <a href="/superadmin/policies/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
+                        <i class="fa-solid fa-code-branch me-2"></i><span>Approval Policies</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/superadmin/budgets/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
+                        <i class="fa-solid fa-sack-dollar me-2"></i><span>Budget Configuration</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/invoices/settings/tolerances/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
+                        <i class="fa-solid fa-sliders me-2"></i><span>Business Rules</span>
+                    </a>
+                </li>
+
+                <li class="sa-nav-label">Oversight &amp; Audit</li>
+                <li class="nav-item">
+                    <a href="/notifications/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
+                        <i class="fa-solid fa-bell me-2"></i><span>Notifications &amp; Alerts</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/reports/hub/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
+                        <i class="fa-solid fa-chart-line me-2"></i><span>Reports &amp; Analytics</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/superadmin/audit/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
+                        <i class="fa-solid fa-clock-rotate-left me-2"></i><span>Audit Logs</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <!-- Sidebar Profile Footer -->
+        <div class="border-top border-secondary border-opacity-25 px-3 py-3 mt-auto">
+            <div class="d-flex align-items-center justify-content-between gap-2 w-100">
+                <div class="d-flex align-items-center overflow-hidden me-2" style="min-width: 0; flex: 1 1 auto;">
+                    <span class="sa-avatar bg-primary text-white me-2 shadow-sm flex-shrink-0">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </span>
+                    <div class="overflow-hidden" style="min-width: 0; flex: 1 1 auto;">
+                        <div class="small fw-semibold text-white text-truncate" title="{{ request.user.email }}">
+                            {{ request.user.email|default:"Admin" }}
+                        </div>
+                        {% if is_global_superadmin or request.user.is_superuser and not request.user.effective_organization %}
+                        <div class="badge bg-danger rounded-pill" style="font-size: 0.65rem;">Super Admin</div>
+                        {% else %}
+                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Org Admin</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <a href="/admin/logout/" class="btn btn-outline-light btn-sm rounded-circle flex-shrink-0 d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px; padding: 0;" title="Sign out">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN DASHBOARD CONTENT AREA -->
+    <div class="flex-grow-1 d-flex flex-column min-vh-100 overflow-hidden">
+
+        <!-- TOP BAR MATCHING IMAGE 1 -->
+        <header class="sticky-top bg-white border-bottom px-4 py-2 d-flex align-items-center justify-content-between gap-2" style="z-index: 1020;">
+            <div>
+                <a href="/superadmin/" class="btn btn-sm btn-outline-warning text-dark rounded-pill fw-semibold px-3" title="Open Frontend Portal View">
+                    <i class="fa-solid fa-desktop me-1"></i> Frontend Portal View
+                </a>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
+                <span class="sa-avatar bg-primary text-white shadow-sm">
+                    <i class="fa-solid fa-user-shield"></i>
+                </span>
+                <div class="d-none d-md-block text-start" style="max-width: 240px;">
+                    <div class="fw-bold text-dark small text-truncate">
+                        {{ request.user.email|default:"superadmin@procuresphere.com" }}
+                    </div>
+                    {% if is_global_superadmin or request.user.is_superuser and not request.user.effective_organization %}
+                    <div class="badge bg-danger rounded-pill" style="font-size: 0.65rem;">Super Admin</div>
+                    {% else %}
+                    <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Org Admin</div>
+                    {% endif %}
+                </div>
+                <a href="/admin/logout/" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold d-flex align-items-center gap-1">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    <span class="d-none d-sm-inline">Sign out</span>
+                </a>
+            </div>
+        </header>
+
+        <!-- DASHBOARD BODY CONTAINER -->
+        <main class="flex-grow-1 p-3 p-md-4">
+
+            {% if messages %}
+            <div class="mb-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- HERO CARD -->
+            <div class="glass-card-dark p-3 p-md-4 mb-4">
+                <div class="row align-items-center g-3">
+                    <div class="col-lg-7">
+                        {% if is_global_superadmin or request.user.is_superuser and not request.user.effective_organization %}
+                        <span class="badge bg-danger rounded-pill fw-bold px-3 py-1 mb-2">
+                            <i class="fa-solid fa-shield-halved me-1"></i> SUPER ADMIN &bull; TENANT MANAGEMENT
+                        </span>
+                        <h2 class="fw-bold mb-1 text-white">Super Admin Control Center</h2>
+                        <p class="mb-0 small text-white-50">Create tenant organizations and provision dedicated organization administrator accounts.</p>
+                        {% else %}
+                        <span class="badge bg-info text-dark rounded-pill fw-bold px-3 py-1 mb-2">
+                            <i class="fa-solid fa-building me-1"></i> ORG ADMIN &bull; {{ scoped_org.name|upper }}
+                        </span>
+                        <h2 class="fw-bold mb-1 text-white">Organization Admin Dashboard</h2>
+                        <p class="mb-0 small text-white-50">Manage departments, cost centers, staff users &amp; roles, and operational policies for {{ scoped_org.name }}.</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-lg-5 d-flex flex-wrap gap-2 justify-content-lg-end align-items-center">
+                        <div class="badge bg-success bg-opacity-25 text-white border border-success border-opacity-50 rounded-pill px-3 py-2 fw-semibold d-flex align-items-center">
+                            <span class="sa-status-dot me-2"></span> SYSTEM CONFIG ACTIVE
+                        </div>
+                        {% if can_add_organization %}
+                        <button type="button" hx-get="/superadmin/organizations/create/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-warning text-dark rounded-pill fw-bold px-4 shadow-sm">
+                            <i class="fa-solid fa-plus me-1"></i> Create Organization
+                        </button>
+                        {% endif %}
+                        {% if not is_global_superadmin and not request.user.is_superuser or request.user.effective_organization %}
+                        <a href="/superadmin/audit/" class="btn btn-warning text-dark rounded-pill fw-bold px-4 shadow-sm">
+                            <i class="fa-solid fa-clock-rotate-left me-1"></i> Audit History
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3 KPI CARDS -->
+            {% if is_global_superadmin or request.user.is_superuser and not request.user.effective_organization %}
+            {# ========================================================================= #}
+            {# GLOBAL SUPER ADMIN KPIS: DEDICATED SOLELY TO TENANT ORGANIZATIONS         #}
+            {# ========================================================================= #}
+            <div class="row g-3 mb-4">
+                <!-- 1. TOTAL ORGANIZATIONS -->
+                <div class="col-md-4">
+                    <a href="/superadmin/organizations/" class="text-decoration-none">
+                        <div class="stat-card h-100 sa-kpi sa-kpi-sky">
+                            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <span class="text-muted small fw-semibold text-uppercase">Total Organizations</span>
+                                <span class="badge rounded-pill text-bg-info">Tenants</span>
+                            </div>
+                            <div class="metric-value" style="color:#00B0B9;">{{ total_organizations|default:dashboard_organizations.count }}</div>
+                            <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
+                                <span>Managed entities</span>
+                                <span class="fw-semibold" style="color:#00B0B9;">View Orgs <i class="fa-solid fa-arrow-right ms-1"></i></span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- 2. ACTIVE TENANTS -->
+                <div class="col-md-4">
+                    <a href="/superadmin/organizations/" class="text-decoration-none">
+                        <div class="stat-card h-100 sa-kpi sa-kpi-green">
+                            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <span class="text-muted small fw-semibold text-uppercase">Active Tenants</span>
+                                <span class="badge rounded-pill text-bg-success">Live</span>
+                            </div>
+                            <div class="metric-value" style="color:#10B981;">{{ active_organizations|default:dashboard_organizations.count }}</div>
+                            <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
+                                <span>Active organizations</span>
+                                <span class="fw-semibold" style="color:#10B981;">Active <i class="fa-solid fa-arrow-right ms-1"></i></span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- 3. PROVISIONED ADMINS -->
+                <div class="col-md-4">
+                    <a href="/superadmin/users/" class="text-decoration-none">
+                        <div class="stat-card h-100 sa-kpi sa-kpi-royal">
+                            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <span class="text-muted small fw-semibold text-uppercase">Provisioned Admins</span>
+                                <span class="badge rounded-pill text-bg-primary">Admins</span>
+                            </div>
+                            <div class="metric-value" style="color:#2563EB;">{{ provisioned_admins|default:dashboard_organizations.count }}</div>
+                            <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
+                                <span>Dedicated org admins</span>
+                                <span class="fw-semibold" style="color:#2563EB;">Admins <i class="fa-solid fa-arrow-right ms-1"></i></span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            {% else %}
+            {# ========================================================================= #}
+            {# ORGANIZATION ADMIN KPIS: EXISTING DESIGN (Users, Budget, PRs, Audits)    #}
+            {# ========================================================================= #}
+            <div class="row g-3 mb-4">
+                <!-- 1. TOTAL USERS -->
+                <div class="col-sm-6 col-xl-3">
+                    <a href="/admin/accounts/user/" class="text-decoration-none">
+                        <div class="stat-card h-100 sa-kpi sa-kpi-sky">
+                            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <span class="text-muted small fw-semibold text-uppercase">Total Users</span>
+                                <span class="badge rounded-pill text-bg-info">Active</span>
+                            </div>
+                            <div class="metric-value" style="color:#00B0B9;">{{ metrics.total_users|default:"0" }}</div>
+                            <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
+                                <span>Active users in org</span>
+                                <span class="fw-semibold" style="color:#00B0B9;">Users <i class="fa-solid fa-arrow-right ms-1"></i></span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- 2. TOTAL BUDGET ALLOCATED -->
+                <div class="col-sm-6 col-xl-3">
+                    <a href="/superadmin/budgets/" class="text-decoration-none">
+                        <div class="stat-card h-100 sa-kpi sa-kpi-green">
+                            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <span class="text-muted small fw-semibold text-uppercase">Total Budget Allocated</span>
+                                <span class="badge rounded-pill text-bg-success">Allocated</span>
+                            </div>
+                            <div class="metric-value" style="color:#10B981;">${{ metrics.allocated_budget|floatformat:2|default:"0.00" }}</div>
+                            <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
+                                <span>Department allocations</span>
+                                <span class="fw-semibold" style="color:#10B981;">Budgets <i class="fa-solid fa-arrow-right ms-1"></i></span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- 3. PENDING TRANSACTIONS -->
+                <div class="col-sm-6 col-xl-3">
+                    <a href="/requisitions/" class="text-decoration-none">
+                        <div class="stat-card h-100 sa-kpi sa-kpi-red">
+                            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <span class="text-muted small fw-semibold text-uppercase">Pending Transactions</span>
+                                <span class="badge rounded-pill text-bg-danger">Action Required</span>
+                            </div>
+                            <div class="metric-value" style="color:#F43F5E;">{{ metrics.pending_pr_count|default:"0" }} PRs</div>
+                            <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
+                                <span>{{ metrics.pending_exceptions|default:"0" }} Match Exceptions</span>
+                                <span class="fw-semibold" style="color:#F43F5E;">Review <i class="fa-solid fa-arrow-right ms-1"></i></span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- 4. AUDIT LOGS TODAY -->
+                <div class="col-sm-6 col-xl-3">
+                    <a href="/superadmin/audit/" class="text-decoration-none">
+                        <div class="stat-card h-100 sa-kpi sa-kpi-royal">
+                            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <span class="text-muted small fw-semibold text-uppercase">Audit Logs Today</span>
+                                <span class="badge rounded-pill text-bg-primary">Recorded</span>
+                            </div>
+                            <div class="metric-value" style="color:#2563EB;">{{ metrics.audits_today|default:"0" }}</div>
+                            <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
+                                <span>Org actions recorded</span>
+                                <span class="fw-semibold" style="color:#2563EB;">Logs <i class="fa-solid fa-arrow-right ms-1"></i></span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ORGANIZATIONS TABLE CARD (MATCHING IMAGE 1) -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+                <div class="card-header bg-white pt-4 pb-0 px-4 border-bottom-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <h5 class="fw-bold mb-1 text-dark">Organizations</h5>
+                        <p class="text-muted small mb-0">Tenant legal entities provisioned in ProcureSphere 360.</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        {% if can_add_organization %}
+                        <button type="button" hx-get="/superadmin/organizations/create/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-warning text-dark rounded-pill px-3 fw-bold shadow-sm">
+                            <i class="fa-solid fa-plus me-1"></i> Add Organization
+                        </button>
+                        {% endif %}
+                        <a href="/superadmin/organizations/" class="btn btn-sm btn-outline-dark rounded-pill px-3">
+                            <i class="fa-solid fa-sitemap me-1"></i> Master Organization Portal
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 mt-3">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Code</th>
+                                    <th>Name</th>
+                                    <th>Administrator</th>
+                                    <th>Status</th>
+                                    <th class="text-end pe-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for org in dashboard_organizations %}
+                                <tr>
+                                    <td class="ps-4 fw-bold text-primary">{{ org.code }}</td>
+                                    <td class="fw-semibold">{{ org.name }}</td>
+                                    <td>
+                                        {% if org.admin_user %}
+                                            <button type="button" hx-get="/superadmin/users/{{ org.admin_user.pk }}/edit/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-link p-0 text-decoration-none fw-semibold text-dark text-start">
+                                                <i class="fa-solid fa-user-check text-success me-1"></i> {{ org.admin_user.email }}
+                                            </button>
+                                        {% else %}
+                                            <span class="text-muted small">Not Assigned</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if org.is_active %}
+                                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-1">Active</span>
+                                        {% else %}
+                                        <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-1">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <button type="button" hx-get="/superadmin/organizations/{{ org.pk }}/view/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-outline-info rounded-pill px-2 py-1 me-1" title="View Organization Details">
+                                            <i class="fa-solid fa-eye me-1"></i> View
+                                        </button>
+                                        <button type="button" hx-get="/superadmin/organizations/{{ org.pk }}/edit/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1 me-1" title="Edit Organization">
+                                            <i class="fa-solid fa-pen me-1"></i> Edit
+                                        </button>
+                                        <button type="button" hx-get="/superadmin/organizations/{{ org.pk }}/delete/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1" title="Delete Organization">
+                                            <i class="fa-solid fa-trash me-1"></i> Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        No organizations yet. Click "+ Add Organization" above to create one.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {% if is_global_superadmin or request.user.is_superuser and not request.user.effective_organization %}
+            {# ========================================================================= #}
+            {# GLOBAL SUPER ADMIN: TENANT LIFECYCLE GUIDE & AUDIT ACTIONS                #}
+            {# ========================================================================= #}
+            <div class="row g-4 mb-4">
+                <div class="col-lg-12">
+                    <div class="card shadow-sm border-0 rounded-4 bg-white h-100">
+                        <div class="card-header bg-white pt-4 pb-0 px-4 border-bottom-0">
+                            <h5 class="fw-bold mb-0 text-dark">Tenant Organization Lifecycle &amp; Provisioning</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="p-3 border rounded-3 bg-light h-100 d-flex flex-column justify-content-between">
+                                        <div>
+                                            <div class="badge bg-primary rounded-pill mb-2">Step 1</div>
+                                            <h6 class="fw-bold text-dark mb-1">Create Organization</h6>
+                                            <p class="text-muted small mb-3">Define the legal entity code, tenant name, and primary domain.</p>
+                                        </div>
+                                        <button type="button" hx-get="/superadmin/organizations/create/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold align-self-start shadow-sm">
+                                            <i class="fa-solid fa-plus me-1"></i> New Org
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="p-3 border rounded-3 bg-light h-100 d-flex flex-column justify-content-between">
+                                        <div>
+                                            <div class="badge bg-info text-dark rounded-pill mb-2">Step 2</div>
+                                            <h6 class="fw-bold text-dark mb-1">Provision Org Admin</h6>
+                                            <p class="text-muted small mb-3">Assign admin email. Automated email dispatches credentials directly.</p>
+                                        </div>
+                                        <a href="/superadmin/organizations/" class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-bold align-self-start">
+                                            <i class="fa-solid fa-user-check me-1"></i> Manage Orgs
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="p-3 border rounded-3 bg-light h-100 d-flex flex-column justify-content-between">
+                                        <div>
+                                            <div class="badge bg-success rounded-pill mb-2">Step 3</div>
+                                            <h6 class="fw-bold text-dark mb-1">Admin Self-Setup</h6>
+                                            <p class="text-muted small mb-0">Org Admin logs in to configure their own Departments, Cost Centers, Staff &amp; Policies.</p>
+                                        </div>
+                                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-1 align-self-start mt-2">
+                                            Tenant Isolated
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                </div>
+            </div>
+
+            {% else %}
+            {# ========================================================================= #}
+            {# ORGANIZATION ADMIN: MASTER DATA & POLICY CONFIGURATION                   #}
+            {# ========================================================================= #}
+            <div class="row g-4 mb-4">
+                <div class="col-lg-8">
+                    <div class="card shadow-sm border-0 rounded-4 bg-white">
+                        <div class="card-header bg-white pt-4 pb-0 px-4 border-bottom-0">
+                            <h5 class="fw-bold mb-0 text-dark">Master Data &amp; Policy Configuration</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <a href="/superadmin/organizations/" class="text-decoration-none">
+                                        <div class="p-3 border rounded-3 bg-light hover-shadow transition-all d-flex align-items-center">
+                                            <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
+                                                <i class="fa-solid fa-sitemap text-primary fs-4"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="fw-bold text-dark mb-1">Departments &amp; Cost Centers</h6>
+                                                <p class="text-muted small mb-0">Department units &amp; cost center allocations</p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-md-6">
+                                    <a href="/superadmin/users/" class="text-decoration-none">
+                                        <div class="p-3 border rounded-3 bg-light hover-shadow transition-all d-flex align-items-center">
+                                            <div class="bg-info bg-opacity-10 p-3 rounded-circle me-3">
+                                                <i class="fa-solid fa-users-gear text-info fs-4"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="fw-bold text-dark mb-1">Manage Users &amp; Roles</h6>
+                                                <p class="text-muted small mb-0">Manage RBAC permissions</p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-md-6">
+                                    <a href="/superadmin/policies/" class="text-decoration-none">
+                                        <div class="p-3 border rounded-3 bg-light hover-shadow transition-all d-flex align-items-center">
+                                            <div class="bg-warning bg-opacity-10 p-3 rounded-circle me-3">
+                                                <i class="fa-solid fa-code-branch text-warning fs-4"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="fw-bold text-dark mb-1">Approval Policies</h6>
+                                                <p class="text-muted small mb-0">Thresholds &amp; Delegations</p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RECENT ACTIONS LOG PANEL -->
+                <div class="col-lg-4">
+                    <div class="card shadow-sm border-0 rounded-4 bg-white h-100">
+                        <div class="card-header bg-white pt-4 pb-0 px-4 border-bottom-0 d-flex justify-content-between align-items-center">
+                            <h5 class="fw-bold mb-0 text-dark">Recent Actions</h5>
+                            <a href="/superadmin/audit/" class="small text-decoration-none">All logs &rarr;</a>
+                        </div>
+                        <div class="card-body p-4">
+                            {% load log %}
+                            {% get_admin_log 6 as admin_log for_user user %}
+                            {% if not admin_log %}
+                            <p class="text-muted small mb-0">No recent actions recorded for your account.</p>
+                            {% else %}
+                            <ul class="list-unstyled mb-0 d-flex flex-column gap-3">
+                                {% for entry in admin_log %}
+                                <li class="d-flex align-items-start gap-2 small">
+                                    <span class="badge rounded-circle p-2 mt-1 {% if entry.is_addition %}bg-success{% elif entry.is_change %}bg-primary{% else %}bg-danger{% endif %}"></span>
+                                    <div class="overflow-hidden">
+                                        <div class="fw-semibold text-truncate text-dark">
+                                            {% if entry.get_admin_url %}
+                                            <a href="{{ entry.get_admin_url }}" class="text-decoration-none text-dark">{{ entry.object_repr }}</a>
+                                            {% else %}
+                                            {{ entry.object_repr }}
+                                            {% endif %}
+                                        </div>
+                                        <span class="text-muted" style="font-size:0.75rem;">
+                                            {{ entry.content_type.name|capfirst }} &bull; {{ entry.action_time|date:"M d, H:i" }}
+                                        </span>
+                                    </div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- COLLAPSIBLE COMPLETE DJANGO ADMIN DATABASE MODELS -->
+            <div class="card border-0 shadow-sm rounded-4 bg-white mb-4">
+                <div class="card-body p-3">
+                    <details>
+                        <summary class="fw-bold text-secondary" style="cursor: pointer;">
+                            <i class="fa-solid fa-database me-2"></i> Complete Database Models &amp; Django Admin Index (Click to Expand)
+                        </summary>
+                        <div class="mt-3 pt-3 border-top">
+                            {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+                        </div>
+                    </details>
+                </div>
+            </div>
+
+            <!-- Reusable HTMX Modal Container for Frontend Workflows -->
+            <div id="modal-container" class="modal fade" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered">
+                    <div class="modal-content" id="modal-content-body">
+                        <!-- Dynamic HTMX content injected here -->
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
 </div>
+
+<!-- Bootstrap 5 JS & HTMX for Frontend Interactivity -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+<script>
+    document.body.addEventListener('htmx:configRequest', (event) => {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+        if (csrfToken) {
+            event.detail.headers['X-CSRFToken'] = csrfToken;
+        }
+    });
+</script>
 {% endblock %}
 
 {% block sidebar %}
-<div id="content-related">
-    <div class="module" id="recent-actions-module">
-        <h2>{% translate 'Recent actions' %}</h2>
-        <h3>{% translate 'My actions' %}</h3>
-            {% load log %}
-            {% get_admin_log 10 as admin_log for_user user %}
-            {% if not admin_log %}
-            <p>{% translate 'None available' %}</p>
-            {% else %}
-            <ul class="actionlist">
-            {% for entry in admin_log %}
-            <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}">
-                {% if entry.is_deletion or not entry.get_admin_url %}
-                    {{ entry.object_repr }}
-                {% else %}
-                    <a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
-                {% endif %}
-                <br>
-                {% if entry.content_type %}
-                    <span class="mini quiet">{% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}</span>
-                {% else %}
-                    <span class="mini quiet">{% translate 'Unknown content' %}</span>
-                {% endif %}
-            </li>
-            {% endfor %}
-            </ul>
-            {% endif %}
-    </div>
-</div>
+<!-- Native sidebar replaced by integrated modern panel -->
 {% endblock %}

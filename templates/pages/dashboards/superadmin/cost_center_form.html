@@ -1,10 +1,10 @@
-<div class="modal-header bg-light border-bottom-0 pb-0">
+<div class="modal-header bg-light border-bottom-0 pb-0 rounded-top-3">
     <h5 class="modal-title fw-bold text-dark">
         <i class="fa-solid fa-coins text-primary me-2"></i>{% if is_edit %}Edit Cost Center{% else %}Create Cost Center{% endif %}
     </h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
-<form hx-post="{% if is_edit %}/superadmin/cost-centers/{{ form.instance.pk }}/edit/{% else %}/superadmin/cost-centers/create/{% endif %}" hx-target="#modal-content-body" hx-swap="outerHTML">
+<form hx-post="{% if is_edit %}/superadmin/cost-centers/{{ form.instance.pk }}/edit/{% else %}/superadmin/cost-centers/create/{% endif %}" hx-target="#modal-content-body" hx-swap="innerHTML" class="bg-white rounded-bottom-3" style="background-color: #ffffff !important;">
     {% csrf_token %}
     <div class="modal-body pt-4">
         {% if form.non_field_errors %}
@@ -29,7 +29,7 @@
             <div class="col-12">
                 <label class="form-label fw-semibold text-secondary small">Manager <span class="text-muted">(Optional)</span></label>
                 {{ form.manager }}
-                <div class="form-text">Enter the email of an existing user. Leave blank to keep this cost center unassigned.</div>
+                <div class="form-text small text-muted">Enter the email of an existing user or a new manager. Leave blank to keep this cost center unassigned.</div>
                 {% if form.manager.errors %}<div class="text-danger small mt-1">{{ form.manager.errors }}</div>{% endif %}
             </div>
         </div>

@@ -42,25 +42,27 @@
                 <div class="card border border-primary border-opacity-25 bg-light rounded-3 p-3">
                     <h6 class="fw-bold text-dark mb-2">
                         <i class="fa-solid fa-user-shield text-primary me-2"></i>
-                        {% if is_edit %}Organization Administrator{% else %}Initial Organization Administrator{% endif %}
+                        Organization Administrator Credentials
                     </h6>
                     <p class="text-muted small mb-3">
-                        {% if is_edit %}
-                        Manage the primary administrator user assigned to this organization.
-                        {% else %}
-                        The organization administrator will be automatically created with administrative access to this legal entity.
-                        {% endif %}
+                        Enter administrator details. Login credentials (email &amp; password) will be dispatched directly to the admin user via Brevo.
                     </p>
                     <div class="row g-2">
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold text-secondary small">Admin Email {% if not is_edit %}*{% endif %}</label>
+                            <label class="form-label fw-semibold text-secondary small">Admin Email *</label>
                             {{ form.admin_email }}
                             {% if form.admin_email.errors %}<div class="text-danger small">{{ form.admin_email.errors }}</div>{% endif %}
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold text-secondary small">Temporary Password</label>
-                            {{ form.admin_password }}
+                            <div class="input-group">
+                                {{ form.admin_password }}
+                                <button class="btn btn-outline-secondary" type="button" id="toggleAdminPasswordBtn" onclick="toggleOrgAdminPassword()" title="Show / Hide Password">
+                                    <i class="fa-solid fa-eye" id="toggleAdminPasswordIcon"></i>
+                                </button>
+                            </div>
                             {% if form.admin_password.errors %}<div class="text-danger small">{{ form.admin_password.errors }}</div>{% endif %}
+                            <div class="form-text small text-muted">Leave blank to auto-generate a secure password.</div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold text-secondary small">First Name</label>
@@ -72,13 +74,18 @@
                             {{ form.admin_last_name }}
                             {% if form.admin_last_name.errors %}<div class="text-danger small">{{ form.admin_last_name.errors }}</div>{% endif %}
                         </div>
-                        {% if is_edit and form.admin_user %}
                         <div class="col-12 mt-2">
-                            <label class="form-label fw-semibold text-secondary small">Assigned Admin User</label>
-                            {{ form.admin_user }}
-                            {% if form.admin_user.errors %}<div class="text-danger small">{{ form.admin_user.errors }}</div>{% endif %}
+                            <div class="alert alert-info py-2 px-3 mb-0 rounded-3 border border-info border-opacity-25 bg-info bg-opacity-10 d-flex align-items-center">
+                                <div class="form-check form-switch m-0 d-flex align-items-center">
+                                    <input type="hidden" name="send_welcome_email_present" value="1">
+                                    {{ form.send_welcome_email }}
+                                    <label class="form-check-label fw-semibold text-dark small ms-2 mb-0" for="{{ form.send_welcome_email.id_for_label }}">
+                                        <i class="fa-solid fa-bell text-info me-1"></i> Send Welcome Email Notification Alert
+                                    </label>
+                                </div>
+                            </div>
+                            {% if form.send_welcome_email.errors %}<div class="text-danger small mt-1">{{ form.send_welcome_email.errors }}</div>{% endif %}
                         </div>
-                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -89,3 +96,24 @@
         <button type="submit" class="btn btn-primary text-white fw-bold rounded-pill px-4">Save Organization</button>
     </div>
 </form>
+
+<script>
+function toggleOrgAdminPassword() {
+    var pwdInput = document.getElementById("id_admin_password");
+    var toggleIcon = document.getElementById("toggleAdminPasswordIcon");
+    if (!pwdInput) return;
+    if (pwdInput.type === "password") {
+        pwdInput.type = "text";
+        if (toggleIcon) {
+            toggleIcon.classList.remove("fa-eye");
+            toggleIcon.classList.add("fa-eye-slash");
+        }
+    } else {
+        pwdInput.type = "password";
+        if (toggleIcon) {
+            toggleIcon.classList.remove("fa-eye-slash");
+            toggleIcon.classList.add("fa-eye");
+        }
+    }
+}
+</script>

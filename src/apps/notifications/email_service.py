@@ -45,7 +45,7 @@ def send_user_welcome_email_direct(
     if not login_url:
         login_url = getattr(settings, "APP_LOGIN_URL", "http://localhost:8000/login/")
 
-    subject = "Welcome to ProcureSphere 360 – Your Account Details"
+    subject = "Welcome to ProcureSphere 360 - Your Account Details"
     context = {
         "user": user,
         "temporary_password": temporary_password,
@@ -79,7 +79,9 @@ def send_user_welcome_email_direct(
             import requests
 
             sender_name = getattr(settings, "BREVO_SENDER_NAME", "ProcureSphere 360")
-            sender_email = getattr(settings, "BREVO_SENDER_EMAIL", getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@procuresphere.com"))
+            sender_email = getattr(settings, "BREVO_SENDER_EMAIL", "") or getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@procuresphere.com")
+            if "<" in str(sender_email) and ">" in str(sender_email):
+                sender_email = str(sender_email).split("<")[1].split(">")[0].strip()
 
             payload = {
                 "sender": {
