@@ -157,14 +157,15 @@ def calculate_vendor_scorecard_service(
     underlying data is stored as NULL — never a fabricated score. Each run is a new record,
     so trend history is preserved.
     """
-    if not (evaluation_period or "").strip():
+    evaluation_period = (evaluation_period or "").strip()
+    if not evaluation_period:
         from django.core.exceptions import ValidationError
 
         raise ValidationError("Evaluation period is required.")
 
     scorecard = VendorScorecard.objects.create(
         vendor=vendor,
-        evaluation_period=evaluation_period.strip(),
+        evaluation_period=evaluation_period,
         delivery_score=compute_delivery_score(vendor),
         quality_score=compute_quality_score(vendor),
         price_score=compute_price_score(vendor),
